@@ -61,7 +61,7 @@ Let's start with our first quest.
 
 Our robot got stuck in a maintenance tunnel in cell `(0, 0)`, facing to the right. We need it to move back out of the tunnel to the exit in cell `(4, 2)`. To help our robot escape, we need to write a program that it can execute!
 
-### How to talk to a computer?
+### Programming languages - How to talk to a computer.
 To tell a computer (or in this case our robot) what we want it to do, we need to communicate with it. We humans communicate through natural language, which is super flexible, but also often very imprecise. Computers are very precise machines, and need to be told *exactly* what we want them to do. No fuzziness allowed!
 
 Computer engineers have thus invented **programming languages** a computer can understand. There are many different programming languages, for different types of computers, and different purposes.
@@ -117,7 +117,7 @@ To call a function in our program, we write its name, like `forward`, or `turnLe
 
 > **Note**: Why do we need the parenthesis? The short answer: the Papyrus syntax requires it. The long answer: there are other statement types involving named things in Papyrus. The parenthesis allow us to distinguish between these statements and function calls. Many programming languages use this convention, so Papyrus uses it too.
 
-## Solving the quest
+### Solving the quest
 With our 3 trusty functions and the function call syntax, we can now write our first Papyrus program and get our robot out of the tunnel.
 
 As a first step, duplicate the quest setup from the image above onto your own grid. As per the quest description, the robot starts at location `(0, 0)` facing to the right, so put your robot there. Let's look at what we have.
@@ -162,11 +162,115 @@ forward()
 
 What computer do we use to execute this?
 
-## Executing the solution
-Surprise, you are the computer! Execute each statement of your program from top to bottom and check the solution. On a call to the function `forward` move your robot once grid cell in the direction its heading. On a call to the functions `turnLeft` and `turnRight`, turn your robot in-place accordingly.
+### Executing the solution
+Surprise, you are the computer! Execute each statement of your program from top to bottom and check the solution. On a call to the function `forward` move your robot one grid cell in the direction it's heading in. On a call to the functions `turnLeft` and `turnRight`, turn your robot in-place, either 90 degrees to the left or right.
 
-Here's my running the program.
+Here's me running the program.
 
 [![images](images/quest-01-youtube.png)](https://www.youtube.com/watch?v=DgvwRfPVBA8)
 
 > Note: it is often helpful to run only parts of your program to get a better feel for your solution.
+
+### What we've learned
+* Computers are told what to do by communicating with them using a programming language.
+* Different programming languages are used for different types of computers and purposes.
+* Paperbots are programmed in the Papyrus language.
+* Programs consist of statements which are executed top to bottom, one after the other.
+* A programming language supports different types of statements.
+* One type of statement Papyrus supports are function call statements.
+* A function is a tiny program with a name.
+* We can use other people's functions in our program by calling them like this: `functionName()`.
+* Using functions makes our programs smaller, and allows re-using previously written code.
+
+### Exercise
+Create mazes of your own, with a start location for the robot and a location for the exit. Write programs for your robot to escape the maze.
+
+## Quest #2: The maze of tediousness
+**TODO image of a much larger maze**
+
+Our robot is a little silly and got stuck. Again! This time however, it got stuck in a much larger maze. Help it escape by writing a program.
+
+### Loops - how to not repeat yourself
+If you've done the exercise for quest #1, you might have noticed that having to write a function call over and over again can become quite tedious:
+
+```
+forward()
+forward()
+forward()
+forward()
+forward()
+forward()
+forward()
+```
+
+Many programming languages help you avoid such repetition by giving you a type of statement called a **loop**. A loop lets you execute one or more statements multiple times without you having to manually write it all out.
+
+In Papyrus, you can rewrite the tedious program above like this:
+
+```
+repeat 7 times
+   forward()
+```
+
+Welcome our new best friend: the **repeat statement**! It makes sure the `forward` function is called 7 times in a row, without us having to write it all out.
+
+The number in between `repeat` and `times` can be any positive number, including `0`. Negative numbers are not allowed!
+
+How do we specify which statements beneath the `repeat` statement are repeated and which are not? Let's look at an example:
+
+```
+repeat 10 times
+   forward()
+   turnLeft()
+turnRight()
+```
+
+Only statements directly below the repeat statement and intended to the right will be repeated. The call to `turnRight` is not part of the repeated list of statements as it is not intended to the right.
+
+The last program is equivalent to this program:
+
+```
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+forward()
+turnLeft()
+turnRight()
+```
+
+That's a lot less repetitive! Our programs can contain as many `repeat` statements as we want, just like we can add as many function calls as we want.
+
+```
+repeat 4 times
+   forward()
+turnLeft()
+repeat 4 times
+   forward()
+turnLeft()
+repeat 4 times
+   forward()
+turnLeft()
+repeat 4 times
+   forward()
+```
+
+Go ahead, place your robot anywhere on the grid and execute the above program. Congratulations, your robot just ran in circles!
+
+> **Note**: loops like `repeat` are also called **control flow statements**. These types of statements change the order in which other statements are executed in the program. Instead of strictly going from top to bottom, control flow statements may make the program jump to a previous statement, or skip a list of statements. These statements thus control the "flow" of the program.
+
+# Solving the quest

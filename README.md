@@ -22,9 +22,55 @@ Digital programming games support visual and linguistic learning types, but don'
 To play Paperbots you need:
 
 1. A pencil
-2. A few pieces of paper
-3. An eraser
+1. An eraser
+1. A few empty pieces of paper
 
 Paperbots is played on a grid of 1x1cm big cells. The size of the grid depends on the quest that's being played. A grid spanning most of a letter sized paper should be sufficient for most quests. This repository contains a grid template in [Microsoft Word](grid.docx) and [PDF](grid.pdf) format that you can print out. Alternatively, you can use grid paper and draw a grid of 1x1cm cells on it. Here's what the grid template looks like
 
 ![images/grid.jpg](images/grid.jpg)
+
+Sometimes you may want to refer to a specific cell on the grid. To make this easier, the grid template labels the columns and rows with numbers. To specify a cell, you can take its column and row number to form what is called a coordinate. The cell in the bottom left corner has the coordinate `(0, 0)`, the cell in the top right corner has the coordinate `(23, 15)` and so on.
+
+> **Note**: the above choice of numbers of columns and rows, as well as the cell size of 1x1cm are completely arbitrary. You can make the grid smaller, the cells smaller, or make them human size. Whatever works best for you!
+
+Next, we need to build a robot that fits into a single cell of our grid. A cell of the template grid is 1x1cm, so our robot should fit into a single cell. The robot most also have a visual indicator showing you which direction it is pointed in. You can be as creative as you want when building your robot, or lazy like me, as shown below.
+
+![images/robot.jpg](images/robot.jpg)
+
+The robot is pointing to the right, indicated by the tip of the triangle. I cut out a piece of 2x1cm piece of paper, folded it in half, and drew a little triangle on it. The fold helps me more easily grab and move the robot around.
+
+You should now have
+
+1. A pencil
+2. An eraser
+3. A few empty pieces of paper
+3. A grid
+4. A robot
+
+That's all we need, let's start with our first quest.
+
+## Quest #1: Basic operations
+![images/quest-01.jpg](images/quest-01.jpg)
+
+Our robot got stuck in a maintenance tunnel in cell `(0, 0)`. We need it to move back out of the tunnel to the exit in cell `(4, 2)`. We can write a program in the programming language Papyrus that we then send to the robot for it to execute it.
+
+Papyrus programs are written on a piece of paper. A Papyrus program is a list of statements our robot executes in sequence. For example:
+
+```
+forward
+forward
+turnRight
+forward
+```
+
+Each statement goes in its own line. When the robot executes a program, it goes through the list of statements, from top to bottom, and executes each statement.
+
+There are many different types of statements. The program above only consists of statements of a single type: a call to a function.
+
+The robot comes with a list of built-in functions:
+
+1. `forward`: instructs the robot to move one cell forward in the direction it is facing.
+1. `backward`: instructs the robot to move one cell backward, oposite of the direction it is facing.
+2. `turnLeft`: instructs the robot to turn counter-clockwise by 90 degrees.
+3. `turnRight`: instructs the robot to turn clockwise 90 degrees.
+

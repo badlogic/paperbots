@@ -207,9 +207,10 @@ Create mazes of your own, with a start location for the robot and a location for
 
 ## Quest #2: Hello, this is robot.
 **TODO image of the grid for this quest**
+
 Our engineers have installed a new module on the robot. With it, the robot can print a number onto the cell in front of it. The engineering team has asked us to take the robot and its new module for a test drive. They want us to print the numbers 1 to 5 on a consecutive horizontal line of cells on the grid, from left to right. The robot should be placed at location `(0, 0)`.
 
-The engineering team has provided us with specification of a new function that they've added to the robot's function library.
+The engineering team has provided us with Papyrus specification of a new function that they've added to the robot's function library.
 
 * `print(value: number)`: prints the number given to it via the parameter `value` onto the cell in front of the robot. If the cell already has a number printed on it, that number gets painted over, and the new number is printed onto the cell. If the cell is blocked by a wall or other object, the number is not printed.
 
@@ -232,6 +233,8 @@ In the specification, we state a name and a **data type** for each parameter. As
 The type of a parameter is also important for the computer to know when it executes our program. So far, we've only seen data of the type `number`. But computers can of course work with different types of data, like text, or images. If we pass data of an incorrect type to a function expecting a different type, the computer will tell us that we have an error in our program! Programmers are forgetful creatures, and its nice to have the computer alert us if we made a silly error. Specifying the types of our parameters helps the computer help us!
 
 When we call the function in our program, we do not care about parameter names and data types anymore, but just want to specify the values we want to pass to the function. The computer already knows the types of parameters from the specification, so we don't need to repeat them. All it needs to perform the data type check for each parameter are the values we pass to the function in question!
+
+> Note: the syntax for function specifications and function calls we use in Papyrus can be found in many other programming languages as well. However, some programming languages might choose a different syntax. No worries, the general concepts are the same!
 
 ### Solving the puzzle
 With the `print(value: number)` function, our robot can finally communicate with the outside world, albeit in a very limited way. Let's put on our computational thinking hat and solve this quest.
@@ -285,9 +288,12 @@ forward()
 ```
 
 ### Executing the solution
+Time to run our program. Like before, we go through each statement and perform the action it represents. Here's my running the program.
+
+**TODO video of execution**
 
 ### Exercises
-
+Make the robot print the date of your birthday. Start with the year, then the month, then the day.
 
 ### What we've learned
 * Functions can have zero or more parameters
@@ -296,7 +302,59 @@ forward()
 * When we call a function with data that does not have the correct data type, the computer tells us we made a programming error.
 * Sometimes a problem is underspecified. We can either ask more questions, or decide on a way forward ourselves!
 
-## Quest #3: The maze of tediousness
+## Quest #3: Return to sender
+** TODO image of quest grid **
+
+Hot on the heels of the new printer module, the engineers have added yet another module to the robot. This time, it's a scanner that can read a number from the cell in front of the robot. They want us to test the new module. For every cell with a number in it, we should scan the number, multiply it by `2` and subtract `1` from it, then print the result to the cell right above it. The robot should start at location `(0, 0)` and move to location `(4, 0)`.
+
+The engineering team has provided us with specification of a new function that they've added to the robot's function library.
+
+* `scan(): number`: scans the number in the cell in front of the robot and returns it. If there is no number in the cell in front of the robot, the function returns `0`.
+
+## Functions returning values
+So far we've seen functions with and without parameters that executed some action, like `forward()` to move forward, or `print(value: number)` to print a number on a cell.
+
+But often we also want a function to compute something for us and give us back a value, like scanning a number in a cell and returning as that number for use in the rest of our program. That is what **function return values** are for!
+
+In Papyrus, we can see if a function returns a value by looking at its specification. In the case of `scan(): number`, the fact the function returns a value is denoted by the `: number` part. It says "the function `scan()` returns a value of the number data type. This part of the function specification is called **return type**. Functions that don't return a value omit the return type, like in the case of `print(value: number)`.
+
+## Expressions
+Our engineers have asked us to read a number and perform some arithmetic on it. But how do we do that?
+
+The answer in Papyrus is to create an **expression**. Expressions appear in a program every time we need a value, e.g. when we call a function that expects one or more parameters as in `print(2)`. Here, `2` is a simple expression, consisting of the value `2` of the type `number`. Every expression eventually boils down to a singe value of a specific data type. But expressions can be much more powerful than just the number `2`!
+
+Computers are naturally good at working with numbers. Our robot is no exception. It can add, subtract, multiply, and divide values of the `number` type. In Papyrus, we can use an **arithmetic expression** to describe an arithmetic calculation to the computer to execute:
+
+```
+1 + 3 - 4 * 20 / 5
+```
+
+The `+` and `-` symbols are the addition and subtraction **operators**. The `*` and `/` symbols are the multiplication and division operators.
+
+Our robot is smart enough to evaluate the expression above in the correct order. We know that multiplication and division are always evaluated before addition and subtraction, and so does the robot!
+
+The robot would evaluate the above expression to `-12`, like a good math citizen (check it). But where does that value derived from the expression go?
+
+Well, nowhere if we don't use it! The robot would simply discard the value and move on to the next statement in the program. So let's pass it to a function:
+
+```
+print(1 + 3 - 4 * 20 / 5)
+```
+
+And sure enough, our robot would print `-12` onto the cell in front of it! Why does this work? The `print(value: number)` function expects us to pass a number as the first parameter. As we've just learned, expressions are always evaluated to a single value of a specific type. In case of arithmetic expressions, we get a value of type `number`, which we can pass to the function.
+
+But it gets crazier! We know the `scan(): number` returns a number to us. How can we use that number? In an arithmetic expression of course!
+
+```
+print(2 + scan() / 3)
+```
+
+Assume the robot stands in front of a cell with the number `6` in it. When this line of code is executed, the robot calls the `scan()` function, which returns the number `6`. The robot then uses this number in the rest of the arithmetic expression, which becomes `2 + 6 / 3`, which the robot can evaluate to the number `4`. Now we have a single `number` value to pass to our `print(value: number)` function. Fantastic!
+
+### Solving the puzzle
+
+
+## Quest #4: The maze of tediousness
 **TODO image of a much larger maze**
 
 Our robot is a little silly and got stuck. Again! This time however, it got stuck in a much larger maze. Help it escape by writing a program.

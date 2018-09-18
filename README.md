@@ -208,7 +208,7 @@ Create mazes of your own, with a start location for the robot and a location for
 ## Quest #2: Hello, this is robot.
 **TODO image of the grid for this quest**
 
-Our engineers have installed a new module on the robot. With it, the robot can print a number onto the cell in front of it. The engineering team has asked us to take the robot and its new module for a test drive. They want us to print the numbers 1 to 5 on a consecutive horizontal line of cells on the grid, from left to right. The robot should be placed at location `(0, 0)`.
+Our engineers have installed a new module on the robot. With it, the robot can print a number onto the cell in front of it. The engineering team has asked us to take the robot and its new module for a test drive. They want us to print the numbers 1 to 5 on a consecutive horizontal line of cells on the grid, from left to right. The robot should be placed at location `(0, 0)` looking to the right.
 
 The engineering team has provided us with Papyrus specification of a new function that they've added to the robot's function library.
 
@@ -305,7 +305,9 @@ Make the robot print the date of your birthday. Start with the year, then the mo
 ## Quest #3: Return to sender
 ** TODO image of quest grid **
 
-Hot on the heels of the new printer module, the engineers have added yet another module to the robot. This time, it's a scanner that can read a number from the cell in front of the robot. They want us to test the new module. For every cell with a number in it, we should scan the number, multiply it by `2` and subtract `1` from it, then print the result to the cell right above it. The robot should start at location `(0, 0)` and move to location `(4, 0)`.
+Hot on the heels of the new printer module, the engineers have added yet another module to the robot. This time, it's a scanner that can read a number from the cell in front of the robot. They want us to test the new module.
+
+For every cell with a number in it, we should scan the number, multiply it by `2` and subtract `1` from it, then print the result to the cell it scanned the original number from. The robot should start at location `(0, 0)` facing to the right, and move to location `(4, 0)`.
 
 The engineering team has provided us with specification of a new function that they've added to the robot's function library.
 
@@ -349,10 +351,41 @@ But it gets crazier! We know the `scan(): number` returns a number to us. How ca
 print(2 + scan() / 3)
 ```
 
-Assume the robot stands in front of a cell with the number `6` in it. When this line of code is executed, the robot calls the `scan()` function, which returns the number `6`. The robot then uses this number in the rest of the arithmetic expression, which becomes `2 + 6 / 3`, which the robot can evaluate to the number `4`. Now we have a single `number` value to pass to our `print(value: number)` function. Fantastic!
+Assume the robot stands in front of a cell with the number `6` in it. When this line of code is executed, the robot calls the `scan()` function, which returns the number `6`. The robot then uses this number in the rest of the arithmetic expression, which becomes `2 + 6 / 3`, which the robot can evaluate to the number `4`. Now we have a single `number` value to pass to our `print(value: number)` function.
+
+Anywhere in our program where a `number` is expected, we can use an expression that evaluates to a value of the `number` type. The expression can be a simple number like `2`, or a complex arithmetic expression like `scan() + 3 * scan() - 2`.
 
 ### Solving the puzzle
+Computational thinking time! We have a few new tools at our disposal: the `scan(): number` function and expressions. Let's put them to work!
 
+Our robot is already looking at the first cell with a number. So let's scan in the number, calculate a new number based on the formula the engineers gave us, and finally overwrite the old number with the result of the calculation. Once we are done, we can move to the next cell.
+
+```
+print(scan() * 2 - 1)
+forward()
+```
+
+Hm, looks like we have a **pattern** here that we can simply repeat. Our final program looks like this:
+
+```
+print(scan() * 2 - 1)
+forward()
+print(scan() * 2 - 1)
+forward()
+print(scan() * 2 - 1)
+forward()
+```
+
+Wow, that was way easier than anticipated.
+
+### Executing the solution
+Like before, we evaluate one statement after the other. But we need to be very careful about the order in which we evaluate the parts of our statements, like function calls and expressions!
+
+Before we can execute the `print(value: number)` function, we have to evaluate the arithmetic expression to a single value of type `number`. Looking at the expression, we see that we don't have the value returned from `scan(): number` yet, so let's execute that function. It returns the value `3`, which we can plug into the rest of the expression. Great, everything is a number, so we can calculate the expression result: `5`. Now we have all we need to call and execute the `print(value: number)` function.
+
+The rest of the program follows the same mechanism. Here's me running the program.
+
+**TODO video of execution**
 
 ## Quest #4: The maze of tediousness
 **TODO image of a much larger maze**

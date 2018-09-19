@@ -206,7 +206,7 @@ Here's me running the program.
 Create mazes of your own, with a start location for the robot and a location for the exit. Write programs for your robot to escape the maze.
 
 ## Quest #2: Hello, this is robot.
-**TODO image of the grid for this quest**
+![images/quest-02.jpg](images/quest-02.jpg)
 
 Our engineers have installed a new module on the robot. With it, the robot can print a number onto the cell in front of it. The engineering team has asked us to take the robot and its new module for a test drive. They want us to print the numbers 1 to 5 on a consecutive horizontal line of cells on the grid, from left to right. The robot should be placed at location `(0, 0)` looking to the right.
 
@@ -303,11 +303,11 @@ Make the robot print the date of your birthday. Start with the year, then the mo
 * Sometimes a problem is underspecified. We can either ask more questions, or decide on a way forward ourselves!
 
 ## Quest #3: Return to sender
-** TODO image of quest grid **
+![images/quest-03.jpg](images/quest-03.jpg)
 
 Hot on the heels of the new printer module, the engineers have added yet another module to the robot. This time, it's a scanner that can read a number from the cell in front of the robot. They want us to test the new module.
 
-For every cell with a number in it, we should scan the number, multiply it by `2` and subtract `1` from it, then print the result to the cell it scanned the original number from. The robot should start at location `(0, 0)` facing to the right, and move to location `(4, 0)`.
+For every cell with a number in it, we should scan the number, multiply it by `2` and subtract `1` from it, then print the result to the cell it scanned the original number from. The robot should start at location `(2, 2)` facing to the right, and move to location `(6, 2)`.
 
 The engineering team has provided us with specification of a new function that they've added to the robot's function library.
 
@@ -318,9 +318,9 @@ So far we've seen functions with and without parameters that executed some actio
 
 But often we also want a function to compute something for us and give us back a value, like scanning a number in a cell and returning as that number for use in the rest of our program. That is what **function return values** are for!
 
-In Papyrus, we can see if a function returns a value by looking at its specification. In the case of `scan(): number`, the fact the function returns a value is denoted by the `: number` part. It says "the function `scan()` returns a value of the number data type. This part of the function specification is called **return type**. Functions that don't return a value omit the return type, like in the case of `print(value: number)`.
+In Papyrus, we can see if a function returns a value by looking at its specification. In the case of `scan(): number`, the fact the function returns a value is denoted by the `: number` part. It says "the function `scan()` returns a value of the number data type. This part of the function specification is called **return type**. Functions that don't return a value omit the return type, like in the case of `print(value: number)`. Of course, we can also have functions that both take parameters and return a value. Can you guess what the function `add(a: number, b: number): number` does?.
 
-## Expressions
+### Expressions
 Our engineers have asked us to read a number and perform some arithmetic on it. But how do we do that?
 
 The answer in Papyrus is to create an **expression**. Expressions appear in a program every time we need a value, e.g. when we call a function that expects one or more parameters as in `print(2)`. Here, `2` is a simple expression, consisting of the value `2` of the type `number`. Every expression eventually boils down to a singe value of a specific data type. But expressions can be much more powerful than just the number `2`!
@@ -345,7 +345,7 @@ print(1 + 3 - 4 * 20 / 5)
 
 And sure enough, our robot would print `-12` onto the cell in front of it! Why does this work? The `print(value: number)` function expects us to pass a number as the first parameter. As we've just learned, expressions are always evaluated to a single value of a specific type. In case of arithmetic expressions, we get a value of type `number`, which we can pass to the function.
 
-But it gets crazier! We know the `scan(): number` returns a number to us. How can we use that number? In an arithmetic expression of course!
+But it gets crazier! We know the `scan(): number` function returns a number to us. How can we use that number? In an arithmetic expression of course!
 
 ```
 print(2 + scan() / 3)
@@ -387,7 +387,24 @@ The rest of the program follows the same mechanism. Here's me running the progra
 
 **TODO video of execution**
 
-## Quest #4: The maze of tediousness
+### Exercise
+With the `print(value: numer)` and `scan(): number` functions the robot can now communicate with the outside world. By printing, it can store information on the grid. Can you find a way to count from 1 to 5 by using these two functions and expressions?
+
+### What we've learned
+* Functions can not only receive values through parameters, but also return values to us to use in the rest of our program.
+* In Papyrus, we specify that a function returns a value by appending the returned value's data type at the end of the function specification. E.g. `scan(): number`.
+* For functions that don't return a value, we omit the return value type. E.g. `forward()`, or `print(value: number)`.
+* Anywhere in our program where we need a value of a specific data type, we can write an expression producing a value of that type. E.g. calling `print(value: number)` requires us to pass a number value.
+* For number values we can write arbitrarily complex arithmetic expressions like `3 + 4 * 10 / 30`. The `+` stands for addition, the `-` for subtraction, the `*` for multiplication and the `/` for division.
+* The computer knows to evaluate the arithmetic expression in the correct order: multiplication and division before addition and subtraction. E.g. `3 + 4 * 5 / 2` evaluates to `1`.
+* If an expression contains a call to a function returning a value, the function is executed first before the expression is evaluated. E.g. `2 + 3 * scan()` would first execute `scan()` which returns a number. The number is then substituted into the rest of the expression.
+
+## Quest #4: More than the sum of its parts
+Our robot has been exploring an old cavern and reached its end. We'd want it to move back out and, while doing so, count how many cells make up the cavern. Once it has exited the cavern, the robot should print the cell count onto cell `(8, 4)`, indicated by the `0`. The cell count should include the cell the robot starts in. The robot starts in cell `(4, 2)`, facing to the right.
+
+### Variables
+
+## Quest #5: The maze of tediousness
 **TODO image of a much larger maze**
 
 Our robot is a little silly and got stuck. Again! This time however, it got stuck in a much larger maze. Help it escape by writing a program.

@@ -400,9 +400,109 @@ With the `print(value: numer)` and `scan(): number` functions the robot can now 
 * If an expression contains a call to a function returning a value, the function is executed first before the expression is evaluated. E.g. `2 + 3 * scan()` would first execute `scan()` which returns a number. The number is then substituted into the rest of the expression.
 
 ## Quest #4: More than the sum of its parts
+![images/quest-04.jpg](images/quest-04.jpg)
 Our robot has been exploring an old cavern and reached its end. We'd want it to move back out and, while doing so, count how many cells make up the cavern. Once it has exited the cavern, the robot should print the cell count onto cell `(8, 4)`, indicated by the `0`. The cell count should include the cell the robot starts in. The robot starts in cell `(4, 2)`, facing to the right.
 
+### Data storage
+Computers are not only good at working with numbers. They are also pretty great when it comes to storing and retrieving data.
+
+Data like photos, videos, music or documents are usually stored on a hard drive. When you turn a computer off, the data on a hard drive doesn't vanish! Storing and retrieving data to and from a hard drive can be very slow though. When we want to memorize values like a calculation result in our programs, we want access to it to be fast! Luckily, almost all computers come with a component called **random access memory** (RAM) or memory for short.
+
+Storing and retrieving values to and from this memory is very fast and a great place to store (temporary) values our program is working with.
+
 ### Variables
+In Papyrus, an expressions like `3 + 4 * 5` gets evaluated to the value `23`. This value is temporarily stored in memory, until it is no longer needed. We don't know where in memory the value is stored, and have no way to access it after its been used, e.g. after we've passed it to a function like `print(3 + 4 * 5)`.
+
+For our quest, we need to make the robot count the number of cells it crossed, and print that count at the end. We therefor need a way to temporarily store the current count value somehow. That's where **variables** come in handy!
+
+In Papyrus, a variable is a name for a storage location in memory that can hold a value of a specific data type. We can create a variable with a **variable declaration statement**:
+
+```
+count: number = 0
+```
+
+This tells the robot to reserve storage in memory big enough to store a `number` and copy the initial value `0` to it. Without this initial value, the contents of the variable would be undefined, which would obviously be bad!
+
+In our program, we can refer to that variable by the name `count`. We can give variables any name we want, as long as there's no other variable of the same name.
+
+> Note: just like with parameters, we specified a name and a type. In both cases we used the syntax `name: type`. This is a recurring theme!
+
+To store a value in our variable, we use an **assignment statement** in Papyrus. Here's an arbitrary example:
+
+```
+count = 3 * 4 + scan()
+```
+
+The left side behind the **assignment operator** `=` is an expression the robot first evaluates to a single `number` value (12 plus whatever number `scan(): number` returns). It then stores this value in the variable given by the name `count` on the right side of the assignment operator.
+
+The general syntax of an assignment statement is `variableName = expression`, where the type of the variable must match the type of the expression. If that is not the case, the computer will tell us that we have an error. It obviously makes no sense to store an image in a variable that can only hold a `number`.
+
+Great, we now know how to temporarily store values in a variable. How about retrieving the value from the variable and using it? Easy:
+
+```
+print(2 + 3 * count)
+```
+
+Aha! We simply use the variable name in an expression, like we use numbers! Of course, the type of the variable must match the types in the rest of the expression. In this case, we know count is a `number`. The expression is an arithmetic expression, so operating on numbers as well. Everything it good!
+
+### Solving the puzzle
+Let's put variables to work! Our robot is supposed to count all cells it touches, including its starting cell, until it reaches cell `(8, 3)`. We'll use a variable to count the cells. Since we also need to count the start cell, we initialize it to `1`:
+
+```
+cellCount: number = 1
+```
+
+Next we need to move the robot through the cavern, increasing the cell count for every new cell we move onto. For the first cell, this may look like this:
+
+```
+forward()
+cellCount = cellCount + 1
+```
+
+Now that's an interesting expression! It will take the old variable value, add one to it, and store that new value back into the variable. What about the rest of the cells? Looks like we can just re-use this pattern!
+
+```
+forward()
+cellCount = cellCount + 1
+forward()
+cellCount = cellCount + 1
+forward()
+cellCount = cellCount + 1
+```
+
+We've hit the right most wall, so let's turn, then move foward again:
+
+```
+turnLeft()
+forward()
+cellCount = cellCount + 1
+```
+
+We've reached the exit of the cavern, so let's finish our job and print the number of cells that make up the cavern onto cell `(8, 4)` in front of the robot.
+
+```
+print(cellCount)
+```
+
+Here's our full program:
+
+```
+cellCount: number = 1
+forward()
+cellCount = cellCount + 1
+forward()
+cellCount = cellCount + 1
+forward()
+cellCount = cellCount + 1
+forward()
+cellCount = cellCount + 1
+turnLeft()
+forward()
+cellCount = cellCount + 1
+print(cellCount)
+```
+
+
 
 ## Quest #5: The maze of tediousness
 **TODO image of a much larger maze**

@@ -236,7 +236,7 @@ When we call the function in our program, we do not care about parameter names a
 
 > Note: the syntax for function specifications and function calls we use in Papyrus can be found in many other programming languages as well. However, some programming languages might choose a different syntax. No worries, the general concepts are the same!
 
-### Solving the puzzle
+### Solving the quest
 With the `print(value: number)` function, our robot can finally communicate with the outside world, albeit in a very limited way. Let's put on our computational thinking hat and solve this quest.
 
 There's some rubble right next to our robot, so we need to navigate around that before we start printing.
@@ -355,7 +355,7 @@ Assume the robot stands in front of a cell with the number `6` in it. When this 
 
 Anywhere in our program where a `number` is expected, we can use an expression that evaluates to a value of the `number` type. The expression can be a simple number like `2`, or a complex arithmetic expression like `scan() + 3 * scan() - 2`.
 
-### Solving the puzzle
+### Solving the quest
 Computational thinking time! We have a few new tools at our disposal: the `scan(): number` function and expressions. Let's put them to work!
 
 Our robot is already looking at the first cell with a number. So let's scan in the number, calculate a new number based on the formula the engineers gave us, and finally overwrite the old number with the result of the calculation. Once we are done, we can move to the next cell.
@@ -395,7 +395,7 @@ With the `print(value: numer)` and `scan(): number` functions the robot can now 
 * In Papyrus, we specify that a function returns a value by appending the returned value's data type at the end of the function specification. E.g. `scan(): number`.
 * For functions that don't return a value, we omit the return value type. E.g. `forward()`, or `print(value: number)`.
 * Anywhere in our program where we need a value of a specific data type, we can write an expression producing a value of that type. E.g. calling `print(value: number)` requires us to pass a number value.
-* For number values we can write arbitrarily complex arithmetic expressions like `3 + 4 * 10 / 30`. The `+` stands for addition, the `-` for subtraction, the `*` for multiplication and the `/` for division.
+* For number values we can write arbitrarily complex arithmetic expressions like `3 + 4 * 10 / 30`. The `+` stands for addition, the `-` for subtraction, the `*` for multiplication and the `/` for division. These operators only work with `number` values!
 * The computer knows to evaluate the arithmetic expression in the correct order: multiplication and division before addition and subtraction. E.g. `3 + 4 * 5 / 2` evaluates to `1`.
 * If an expression contains a call to a function returning a value, the function is executed first before the expression is evaluated. E.g. `2 + 3 * scan()` would first execute `scan()` which returns a number. The number is then substituted into the rest of the expression.
 
@@ -445,7 +445,7 @@ print(2 + 3 * count)
 
 Aha! We simply use the variable name in an expression, like we use numbers! Of course, the type of the variable must match the types in the rest of the expression. In this case, we know count is a `number`. The expression is an arithmetic expression, so operating on numbers as well. Everything it good!
 
-### Solving the puzzle
+### Solving the quest
 Let's put variables to work! Our robot is supposed to count all cells it touches, including its starting cell, until it reaches cell `(8, 3)`. We'll use a variable to count the cells. Since we also need to count the start cell, we initialize it to `1`:
 
 ```
@@ -571,6 +571,8 @@ turnRight()
 
 Only statements between `repeat` and `end` will be repeated for `count` (or `10`) times. The call to `turnRight()` is not part of the repeated list of statements as it is not between `repeat` and `end`.
 
+Note that we've **indented** the statements inside the `repeat` loop to the right by adding 3 spaces in front of them. This indendation makes it easier for us to see which statements are part of the loop and will be repeated. Some people prefer using tabulators for indentation. There are pros and contras for each style. Ultimately, you should pick one style and use it everywhere for consistency.
+
 The last program is equivalent to this program:
 
 ```
@@ -636,3 +638,121 @@ Let's dissect this. The robot will execute the statements inside the outer most 
 > **Note**: loops like `repeat` are also called **control flow statements**. These types of statements change the order in which other statements are executed in the program. Instead of strictly going from top to bottom, control flow statements may make the program jump to a previous statement, or skip a list of statements. These statements thus control the "flow" of the program.
 
 # Solving the quest
+The `repeat` statement makes solving this quest rather simple. Let's start by navigating our robot through the first vertical line of cells:
+
+```
+repeat 10 times
+   forward()
+end
+```
+
+Next we need to get around the corner
+
+```
+turnRight()
+forward()
+forward()
+turnRight()
+```
+
+Now it can move downwards until it hits another wall.
+
+```
+repeat 5 times
+   forward()
+end
+```
+
+All that's left is moving around the next corner and then to the exit.
+
+```
+turnLeft()
+forward()
+forward()
+turnLeft()
+
+repeat 5 times
+   forward()
+end
+```
+
+Yay, the robot escaped!
+
+### Executing the solution
+When executing a `repeat` statement, we need to keep track of the number of repetitions to execute, and how many repetitions we've already executed. Here's how you can do this:
+
+1. When you encounter a `repeat` statement, evaluate the expression specifying how often the list of statements inside the `repeat` should be repeated. Write that down on a piece of paper.
+2. Execute the statements inside the `repeat`.
+3. Everytime you complete a repetition, draw a vertical stroke next to the repetition number you noted down in step 1.
+4. If there aren't as many strokes as repetitions you need to execute, go to step 2.
+5. If there are as many strokes as repetitions to execute, continue with the next statement after the `end` belonging to the repetition.
+
+Here's me executing the solution.
+
+** TODO video of execution **
+
+### Exercise
+Solve quests #3 and #4 using the `repeat` statement. Check the difference in code size between your original solution and the solution using `repeat`!
+
+### What we've learned
+* Programs often contain repetitive patterns.
+* Loops can help shorten such code and make it clearer, by letting us write the pattern once and repeating it for a certain amount of times.
+* In Papyrus, one way to loop a list of statements is to use the `repeat` statement.
+* The `repeat` statements syntax is `repeat <number expression> times <list of statements> end`.
+* The `number` of times the list of statements should be repeated must be greater or equal to `0`.
+* All statements in between the `repeat <number expression> times` and `end` will be executed as many times as specified by the number between `repeat` and `times`.
+* To make it more obvious which statements are inside a `repeat` loop, we indent them to the right by spaces or a tabulator.
+* Loops can be nested, which means putting a loop inside a loop (inside another loop, ...).
+
+## Quest #6: Hitting a wall
+The engineers have outfitted the robot with another sensor that can tell us if there is a wall in front of it or not. They want us to test the new sensor by writing a program that let's the robot move forward until it hits a wall. The robot starts at location `(0,0)`, facing to the right.
+
+The engineering team has provided us with specification of a new function that they've added to the robot's function library.
+
+* `isWallAhead(): boolean`: scans the cell in front of the robot. If there is a wall, the function returns the `boolean` value `true`. If there is no wall, the function returns the `boolean` value `false`.
+
+### Booleans - what is true and false
+Often we encounter situations, where we only need to know if something is true or false, like whether there's a wall ahead of us or not. We could use a `number`, say `0` for false, and `1` for true to encode such data. But that's a bit messy, as we now need to remember which number stands for what value. We also need to make sure that we handle all other numbers that don't correspond to `0` and `1`!
+
+Many programming languages, including Papyrus, thus have a data type that allows us to store two values: `true` and `false`. This data type is usually called `boolean` (sometimes also `bool`), named after mathematician [George Boole](https://en.wikipedia.org/wiki/George_Boole).
+
+Everytime we need to work with data that can be either `true` or `false` we use the `boolean` data type. While the `number` data type can repesent any decimal number value, the `boolean` data type can only represent the values `true` and `false`.
+
+Creating and using a boolean variable works just like creating a `number` variable.
+
+```
+var isItTrue: boolean = false
+isItTrue = true
+```
+
+Here, we specify that the variable `isItTrue` has the data type `boolean`, meaning that we can only store the values `true` or `false` in such a variable. The following would be an error:
+
+```
+var isItTrue: boolean = 0
+```
+
+Since the value `0` has the data type `number`, we can't store it in a variable that can only store `boolean` values!
+
+Similarly, using a `boolean` value in an arithmetic expression, that is an expression using the operators `+`, `-`, `*` and `/` on `number` values, is an error too:
+
+```
+2 + true / false
+```
+
+This obviously makes no sense!
+
+We also can't print a `boolean` value with our `print(value: number)` function, as it expects a `number` as an argument, and not a `boolean`!
+
+```
+print(true)
+```
+But we can call our new function `isWallAhead(): boolean` and store the returned `boolean` value in a `boolean` variable.
+
+```
+var wallAhead = isWallAhead()
+```
+
+
+
+
+

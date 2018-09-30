@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "module": "amd",
+        "noImplicitAny": false,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "outFile": "js/paperbots-lang.js",
+        "sourceMap": true
+    },
+    "include": [
+		"src/**/*",
+    ],
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts"
+	]
+}

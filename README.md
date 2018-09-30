@@ -752,6 +752,10 @@ But we can call our new function `isWallAhead(): boolean` and store the returned
 var wallAhead = isWallAhead()
 ```
 
+That's not a lot we can do with `boolean` values. Surely, that can't be all?
+
+### While - loop until told otherwise
+
 
 
 

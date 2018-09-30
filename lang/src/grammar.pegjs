@@ -51,7 +51,7 @@ Statement
   / Expression
 
 Variable
-  = "var" _ id:Identifier _ (":" _ typeName:Identifier _)? "=" _ init: Expression
+  = "var" _ id:Identifier _ typeName:(":" _ Identifier _)? "=" _ init: Expression
   {
     return {
       kind: "variable",
@@ -92,10 +92,28 @@ While
   }
 
 If
-  = "if" _ Expression _ "then" _ (Statement)* _ ("elseif" _ Expression _ "then" _ (Statement)*)* ("else" _ (Statement)*)? _ "end"
+  = "if" _ cond:Expression _ "then"
+  		_ trueBlock:(_ Statement _)* _
+    elseIfs:("elseif" _ Expression _ "then"
+        _ (_ Statement _)*)* _
+    falseBlock:("else"
+    	_ (_ Statement _)*)? _
+    "end"
+  {
+    if (elseIfs.length > 0) {
+    	elseIfs[0] = 0
+    }
+
+    return {
+    	kind: "if",
+        trueBlock: trueBlock.map(function(element) { return element[1]; }),
+        elseIfs: elseIfs,
+        falseBlock: falseBlock ? falseBlock[2].map(function(element) { return element[1]; }) : []
+	}
+  }
 
 Expression
-  = head:Term tail:(_ ("+" / "-") _ Term)*
+  = head:Relational tail:(_ ("and" / "or" / "xor" ) _ Relational)*
   {
     if (tail.length == 0) return head;
 
@@ -109,8 +127,8 @@ Expression
     }, head);
   }
 
-Term
-  = head:Factor tail:(_ ("*" / "/") _ Factor)*
+Relational
+  = head:AddSubtract tail:(_ ("<" / "<=" / ">" / ">=" / "==" / "!=") _ AddSubtract)*
   {
     if (tail.length == 0) return head;
 
@@ -122,11 +140,53 @@ Term
           right: element[3]
         }
     }, head);
+  }
+
+AddSubtract
+  = head:MultiplyDivide tail:(_ ("+" / "-") _ MultiplyDivide)*
+  {
+    if (tail.length == 0) return head;
+
+  	return tail.reduce(function(result, element) {
+    	return {
+          kind: "binaryOp",
+          operator: element[1],
+          left: result,
+          right: element[3]
+        }
+    }, head);
+  }
+
+MultiplyDivide
+  = head:Unary tail:(_ ("*" / "/") _ Unary)*
+  {
+    if (tail.length == 0) return head;
+
+  	return tail.reduce(function(result, element) {
+    	return {
+          kind: "binaryOp",
+          operator: element[1],
+          left: result,
+          right: element[3]
+        }
+    }, head);
+  }
+
+Unary
+  = op:("not" _?/ "-" _?)? factor:Factor
+  {
+  	if (!op) return factor;
+    return {
+    	kind: "unaryOp",
+        operator: op[0],
+        value: factor
+    };
   }
 
 Factor
   = "(" _ expr:Expression _ ")" { return expr; }
   / Number
+  / Boolean
   / String
   / CallOrIdentifier
 
@@ -158,9 +218,18 @@ Number "number"
   {
     return {
       kind: "number",
-      value: parseFloat(text(), 10)
+      value: parseFloat(text())
     };
   }
+
+Boolean "boolean"
+ =  ("false" / "true")
+ {
+ 	return {
+    	kind: "boolean",
+        value: text() == "true"
+    };
+ }
 
 String "string"
   = '"' chars:StringCharacter* '"'
@@ -176,7 +245,7 @@ StringCharacter
   / !'"' . { return text(); }
 
 Identifier "identifier"
-  = !Reserved [a-zA-Z_]+
+  = !Reserved IdentifierStart IdentifierPart*
   {
     return {
       kind: "identifier",
@@ -184,17 +253,30 @@ Identifier "identifier"
     };
   }
 
+IdentifierStart
+  = [a-zA-Z_]
+
+IdentifierPart
+  = [a-zA-Z_0-9]
+
 Reserved
-  = "var"
+  = ("var"
   / "fun"
-  / "end"
+  / "elseif"
   / "repeat"
   / "while"
   / "if"
   / "then"
   / "else"
-  / "elseif"
   / "times"
+  / "true"
+  / "false"
+  / "xor"
+  / "and"
+  / "or"
+  / "end"
+  / "not") !IdentifierPart
+
 
 _ "whitespace"
   = [ \t\n\r]* { return "whitespace"; }

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Paperbots</title>
+	<script src="js/require.js"></script>
+	<script src="js/paperbots-lang.js"></script>
+
+	<style>
+		.container {
+			display: flex;
+			flex-direction: row;
+		}
+
+		.editor {
+			width: 48%;
+			height: 500px;
+			margin-right: 2%;
+		}
+		.output {
+			width: 50%;
+			height: 500px;
+			background: lightgrey;
+		}
+	</style>
+</head>
+<body>
+	<h1>Paperbots</h1>
+
+	<div class="container">
+		<textarea class="editor"></textarea>
+		<textArea class="output" disabled></textArea>
+	</div>
+
+	<script>
+		var editor = document.getElementsByClassName("editor")[0];
+		var output = document.getElementsByClassName("output")[0];
+		var compiler = null;
+
+		require(["Paperbots"], function(module) {
+			paperbots = module.paperbots;
+			compiler = new paperbots.Compiler();
+			editor.value = window.localStorage.getItem("editor-content") || "";
+			compile();
+		});
+
+		function compile () {
+			try {
+				var result = compiler.parse(editor.value);
+				output.value = JSON.stringify(result, null, 2);
+			} catch (e) {
+				output.value = e.message;
+			}
+		}
+
+		editor.addEventListener("keyup", function(e) {
+			compile();
+			window.localStorage.setItem("editor-content", editor.value);
+		});
+	</script>
+</body>

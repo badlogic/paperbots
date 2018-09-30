@@ -1,0 +1,15 @@
+{
+  "name": "paperbots",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "concurrently \"./node_modules/lite-server/bin/lite-server -c lite-server.json\" \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs\"",
+    "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs && tsc"
+  },
+  "devDependencies": {
+    "ts-pegjs": "0.2.2",
+    "typescript": "3.1.1",
+    "nodemon": "1.18.4",
+    "concurrently": "4.0.1",
+    "lite-server": "2.4.0"
+  }
+}

@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "concurrently \"./node_modules/lite-server/bin/lite-server -c lite-server.json\" \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs\"",
+    "grammar": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs",
     "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs && tsc"
   },
   "devDependencies": {

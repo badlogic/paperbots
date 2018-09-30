@@ -1,15 +1,21 @@
 // PEG grammar for a minimal programming language
 
 Program
-  = stmts:(_ (Statement / Function) _)*
+  = stmts:(_ (Statement / Function / Record) _)*
   {
     return stmts.map(function(element) {
       return element[1];
     });
   }
 
+Type
+  = id:Identifier
+  {
+    return id;
+  }
+
 Function "function"
-  = "fun" _ id:Identifier _ "(" params:Parameters ")" _ returnType:(":" _ Identifier _)? _ stmts:(_ Statement _)* _ "end"
+  = "fun" _ id:Identifier _ "(" params:Parameters ")" _ returnType:(":" _ Type _)? _ stmts:(_ Statement _)* _ "end"
   {
     return {
       kind: "function",
@@ -21,7 +27,7 @@ Function "function"
   }
 
 Parameter
-  = name:Identifier _ ":" _ typeName:Identifier
+  = name:Identifier _ ":" _ typeName:Type
   {
     return {
       kind: "parameter",
@@ -38,9 +44,42 @@ Parameters
     params = params[1].map(function(element) {
       return element[3];
     })
-	params.unshift(head);
+  	params.unshift(head);
     return params;
   }
+
+Record
+  = "record" _ name:Identifier _ fields:Fields _ "end"
+  {
+    return {
+      kind: "record",
+      name: name,
+      fields: fields
+    }
+  }
+
+Field
+  = name:Identifier _ ":" _ typeName:Type
+  {
+    return {
+      kind: "field",
+      name: name,
+      typeName: typeName
+    }
+  }
+
+Fields
+  = fields:(Field (_ Field)*)?
+  {
+    if (fields == null) return [];
+    var head = fields[0];
+    fields = fields[1].map(function(element) {
+      return element[1];
+    })
+  	fields.unshift(head);
+    return fields;
+  }
+
 
 Statement
   = Variable
@@ -51,7 +90,7 @@ Statement
   / Expression
 
 Variable
-  = "var" _ id:Identifier _ typeName:(":" _ Identifier _)? "=" _ init: Expression
+  = "var" _ id:Identifier _ typeName:(":" _ Type _)? "=" _ init: Expression
   {
     return {
       kind: "variable",
@@ -188,17 +227,23 @@ Factor
   / Number
   / Boolean
   / String
-  / CallOrIdentifier
+  / VariableAccess
 
-CallOrIdentifier "function call or variable name"
+VariableAccess "function call or variable name"
   = id:Identifier args:(Arguments)?
   {
-  	if (args === null) return { kind: "variableAccess", name: id };
-    return {
-      kind: "functionCall",
-      name: id,
-      args: args
-    };
+  	if (args === null) {
+      return {
+        kind: "variableAccess",
+        name: id
+      }
+    } else {
+      return {
+        kind: "functionCall",
+        name: id,
+        args: args
+      };
+    }
   }
 
 Arguments "arguments"
@@ -275,7 +320,8 @@ Reserved
   / "and"
   / "or"
   / "end"
-  / "not") !IdentifierPart
+  / "not"
+  / "record" ) !IdentifierPart
 
 
 _ "whitespace"

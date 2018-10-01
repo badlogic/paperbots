@@ -15,7 +15,7 @@
 })(function(CodeMirror) {
 "use strict";
 
-CodeMirror.defineMode("lua", function(config, parserConfig) {
+CodeMirror.defineMode("paperbots", function(config, parserConfig) {
   var indentUnit = config.indentUnit;
 
   function prefixRE(words) {

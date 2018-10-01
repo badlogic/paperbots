@@ -4004,10 +4004,14 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
                 this.compiler = new Compiler();
                 this.editor = CodeMirror(editorElement, {
                     tabSize: 3,
+                    indentUnit: 3,
                     indentWithTabs: true,
                     lineNumbers: true,
                     gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
-                    fixedGutter: true
+                    fixedGutter: true,
+                    extraKeys: {
+                        "Tab": "indentAuto"
+                    }
                 });
                 this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
                 var markers = Array();

@@ -2,24 +2,51 @@
 <html>
 <head>
 	<title>Paperbots</title>
+	<script src="js/jquery.js"></script>
+	<script src="js/codemirror.js"></script>
+	<script src="js/paperbots-cm.js"></script>
 	<script src="js/require.js"></script>
 	<script src="js/paperbots-lang.js"></script>
-
+	<link rel="stylesheet" type="text/css" href="css/codemirror.css">
 	<style>
 		.container {
 			display: flex;
 			flex-direction: row;
 		}
 
-		.editor {
-			width: 48%;
+		#editor {
+			width: 50%;
 			height: 500px;
 			margin-right: 2%;
+			position: relative;
 		}
-		.output {
+
+		#output {
 			width: 50%;
 			height: 500px;
 			background: lightgrey;
+		}
+
+		.CodeMirror {
+			width: 100%;
+			height: 100%;
+			border: 1px solid #222;
+		}
+
+		.CodeMirror-scroll {
+			height: 500px;
+		}
+
+		.gutter-breakpoints {
+			width: 16px;
+		}
+
+		.highlighted-line {
+			background:lightcoral;
+		}
+
+		.compiler-error {
+			text-decoration: underline red;
 		}
 	</style>
 </head>
@@ -27,34 +54,14 @@
 	<h1>Paperbots</h1>
 
 	<div class="container">
-		<textarea class="editor"></textarea>
-		<textArea class="output" disabled></textArea>
+		<div id="editor"></div>
+		<textArea id="output" disabled></textArea>
 	</div>
 
 	<script>
-		var editor = document.getElementsByClassName("editor")[0];
-		var output = document.getElementsByClassName("output")[0];
-		var compiler = null;
-
 		require(["Paperbots"], function(module) {
-			paperbots = module.paperbots;
-			compiler = new paperbots.Compiler();
-			editor.value = window.localStorage.getItem("editor-content") || "";
-			compile();
-		});
-
-		function compile () {
-			try {
-				var result = compiler.parse(editor.value);
-				output.value = JSON.stringify(result, null, 2);
-			} catch (e) {
-				output.value = e.message;
-			}
-		}
-
-		editor.addEventListener("keyup", function(e) {
-			compile();
-			window.localStorage.setItem("editor-content", editor.value);
+			var paperbots = module.paperbots;
+			var editor = new paperbots.Editor(document.getElementById("editor"), document.getElementById("output"));
 		});
 	</script>
 </body>

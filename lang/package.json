@@ -11,6 +11,8 @@
     "typescript": "3.1.1",
     "nodemon": "1.18.4",
     "concurrently": "4.0.1",
-    "lite-server": "2.4.0"
+    "lite-server": "2.4.0",
+    "@types/codemirror": "0.0.61",
+    "@types/jquery": "3.3.10"
   }
 }

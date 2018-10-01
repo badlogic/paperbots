@@ -8,6 +8,12 @@ Program
     });
   }
 
+Comment
+  = "#" (!"\n" .)* "\n"
+  {
+    return "comment"
+  }
+
 Type
   = id:Identifier
   {
@@ -88,6 +94,7 @@ Statement
   / While
   / If
   / Expression
+  / Comment
 
 Variable
   = "var" _ id:Identifier _ typeName:(":" _ Type _)? "=" _ init: Expression

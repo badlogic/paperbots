@@ -2,6 +2,7 @@
 <html>
 <head>
 	<title>Paperbots</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="js/jquery.js"></script>
 	<script src="js/codemirror.js"></script>
 	<script src="js/paperbots-cm.js"></script>
@@ -14,7 +15,14 @@
 	<h1>Paperbots</h1>
 
 	<div class="pb-container">
-		<canvas id="pb-canvas"></canvas>
+		<div id="pb-canvas-container">
+			<canvas id="pb-canvas"></canvas>
+			<div id="pb-canvas-tools">
+				<input type="button" value="Floor" class="selected">
+				<input type="button" value="Wall">
+				<input type="button" value="Flag">
+			</div>
+		</div>
 		<div id="pb-editor"></div>
 		<pre id="pb-output" disabled></pre>
 	</div>
@@ -22,7 +30,11 @@
 	<script>
 		require(["Paperbots"], function(module) {
 			var paperbots = module.paperbots;
-			var editor = new paperbots.Editor(document.getElementById("pb-canvas"), document.getElementById("pb-editor"), document.getElementById("pb-output"));
+			var editor = new paperbots.Editor(
+				document.getElementById("pb-canvas-container"),
+				document.getElementById("pb-editor"),
+				document.getElementById("pb-output")
+			);
 		});
 	</script>
 </body>

@@ -1,7 +1,12 @@
 /* Layout */
+html {
+	box-sizing: border-box;
+}
+
 body {
-	background: black;
-	color: white;
+	background: #dddddd;
+	color: 333333;
+	margin: 0;
 }
 
 .pb-container {
@@ -9,11 +14,31 @@ body {
 	flex-direction: column;
 }
 
+#pb-canvas-container {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	margin: 20px;
+}
+
 #pb-canvas {
 	width: 512px;
 	height: 512px;
-	margin-bottom: 20px;
 	background: grey;
+	image-rendering: -moz-crisp-edges;
+  	image-rendering: -webkit-crisp-edges;
+  	image-rendering: pixelated;
+  	image-rendering: crisp-edges;
+}
+
+#pb-canvas-tools {
+	display: flex;
+	flex-direction: row;
+}
+
+#pb-canvas-tools .selected {
+	background: green;
+	color: #dddddd;
 }
 
 #pb-editor {

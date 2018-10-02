@@ -11,6 +11,178 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+define("Input", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Input = (function () {
+        function Input(element) {
+            this.lastX = 0;
+            this.lastY = 0;
+            this.buttonDown = false;
+            this.currTouch = null;
+            this.listeners = new Array();
+            this.element = element;
+            this.setupCallbacks(element);
+        }
+        Input.prototype.setupCallbacks = function (element) {
+            var _this = this;
+            element.addEventListener("mousedown", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].down(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = true;
+                }
+            }, true);
+            element.addEventListener("mousemove", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        if (_this.buttonDown) {
+                            listeners[i].dragged(x, y);
+                        }
+                        else {
+                            listeners[i].moved(x, y);
+                        }
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                }
+            }, true);
+            element.addEventListener("mouseup", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
+            element.addEventListener("touchstart", function (ev) {
+                if (_this.currTouch != null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    var rect = element.getBoundingClientRect();
+                    var x = touch.clientX - rect.left;
+                    var y = touch.clientY - rect.top;
+                    _this.currTouch = new Touch(touch.identifier, x, y);
+                    break;
+                }
+                var listeners = _this.listeners;
+                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
+                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
+                }
+                console.log("Start " + _this.currTouch.x + ", " + _this.currTouch.y);
+                _this.lastX = _this.currTouch.x;
+                _this.lastY = _this.currTouch.y;
+                _this.buttonDown = true;
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchend", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
+                            listeners[i_2].up(x, y);
+                        }
+                        console.log("End " + x + ", " + y);
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchcancel", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
+                            listeners[i_3].up(x, y);
+                        }
+                        console.log("End " + x + ", " + y);
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchmove", function (ev) {
+                if (_this.currTouch == null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = touch.clientX - rect.left;
+                        var y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
+                            listeners[i_4].dragged(x, y);
+                        }
+                        console.log("Drag " + x + ", " + y);
+                        _this.lastX = _this.currTouch.x = x;
+                        _this.lastY = _this.currTouch.y = y;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+        };
+        Input.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        Input.prototype.removeListener = function (listener) {
+            var idx = this.listeners.indexOf(listener);
+            if (idx > -1) {
+                this.listeners.splice(idx, 1);
+            }
+        };
+        return Input;
+    }());
+    exports.Input = Input;
+    var Touch = (function () {
+        function Touch(identifier, x, y) {
+            this.identifier = identifier;
+            this.x = x;
+            this.y = y;
+        }
+        return Touch;
+    }());
+    exports.Touch = Touch;
+});
 define("Parser", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -3982,7 +4154,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("Paperbots", ["require", "exports", "Parser"], function (require, exports, Parser_1) {
+define("Paperbots", ["require", "exports", "Parser", "Input"], function (require, exports, Parser_1, Input_1) {
     "use strict";
     exports.__esModule = true;
     var paperbots;
@@ -4051,20 +4223,224 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
             return Editor;
         }());
         paperbots.Editor = Editor;
-        var Canvas = (function () {
-            function Canvas(canvas) {
-                var _this = this;
-                this.canvas = canvas;
-                this.ctx = canvas.getContext("2d");
-                requestAnimationFrame(function () { _this.draw(); });
+        var AssetManager = (function () {
+            function AssetManager() {
+                this.toLoad = new Array();
+                this.loaded = {};
+                this.error = {};
             }
+            AssetManager.prototype.loadImage = function (url) {
+                var _this = this;
+                var img = new Image();
+                var asset = { image: img, url: url };
+                this.toLoad.push(asset);
+                img.onload = function () {
+                    _this.loaded[asset.url] = asset;
+                    var idx = _this.toLoad.indexOf(asset);
+                    if (idx >= 0)
+                        _this.toLoad.splice(idx, 1);
+                    console.log("Loaded image " + url);
+                };
+                img.onerror = function () {
+                    _this.loaded[asset.url] = asset;
+                    var idx = _this.toLoad.indexOf(asset);
+                    if (idx >= 0)
+                        _this.toLoad.splice(idx, 1);
+                    console.log("Couldn't load image " + url);
+                };
+                img.src = url;
+            };
+            AssetManager.prototype.getImage = function (url) {
+                return this.loaded[url].image;
+            };
+            AssetManager.prototype.hasMoreToLoad = function () {
+                return this.toLoad.length;
+            };
+            return AssetManager;
+        }());
+        var Wall = (function () {
+            function Wall() {
+            }
+            return Wall;
+        }());
+        paperbots.Wall = Wall;
+        var Flag = (function () {
+            function Flag() {
+            }
+            return Flag;
+        }());
+        paperbots.Flag = Flag;
+        var NumberTile = (function () {
+            function NumberTile(value) {
+                this.value = value;
+            }
+            return NumberTile;
+        }());
+        paperbots.NumberTile = NumberTile;
+        var World = (function () {
+            function World() {
+                this.tiles = Array(16 * 16);
+                for (var i = 0; i < 10; i++) {
+                    this.setTile(i, 2, new Wall());
+                }
+            }
+            World.prototype.getTile = function (x, y) {
+                if (x < 0 || x > World.WORLD_SIZE)
+                    return null;
+                if (y < 0 || y > World.WORLD_SIZE)
+                    return null;
+                return this.tiles[x + y * World.WORLD_SIZE];
+            };
+            World.prototype.setTile = function (x, y, tile) {
+                if (x < 0 || x > World.WORLD_SIZE)
+                    return;
+                if (y < 0 || y > World.WORLD_SIZE)
+                    return;
+                this.tiles[x + y * World.WORLD_SIZE] = tile;
+            };
+            World.WORLD_SIZE = 16;
+            return World;
+        }());
+        paperbots.World = World;
+        var Canvas = (function () {
+            function Canvas(canvasContainer) {
+                var _this = this;
+                this.canvasContainer = canvasContainer;
+                this.world = new World();
+                this.assets = new AssetManager();
+                this.selectedTool = "Floor";
+                var container = $(canvasContainer);
+                this.canvas = container.find("#pb-canvas")[0];
+                this.ctx = this.canvas.getContext("2d");
+                this.assets.loadImage("img/wall.png");
+                this.assets.loadImage("img/floor.png");
+                requestAnimationFrame(function () { _this.draw(); });
+                var tools = container.find("#pb-canvas-tools input");
+                for (var i = 0; i < tools.length; i++) {
+                    $(tools[i]).click(function (tool) {
+                        tools.removeClass("selected");
+                        $(tool.target).addClass("selected");
+                        _this.selectedTool = tool.target.value;
+                    });
+                }
+                this.input = new Input_1.Input(this.canvas);
+                this.input.addListener({
+                    down: function (x, y) {
+                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
+                        x = x / cellSize | 0;
+                        y = (_this.canvas.height - y) / cellSize | 0;
+                        if (_this.selectedTool == "Wall") {
+                            _this.world.setTile(x, y, new Wall());
+                        }
+                        else if (_this.selectedTool == "Floor") {
+                            _this.world.setTile(x, y, null);
+                        }
+                    },
+                    up: function (x, y) {
+                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
+                        x = x / cellSize | 0;
+                        y = (_this.canvas.height - y) / cellSize | 0;
+                        if (_this.selectedTool == "Wall") {
+                            _this.world.setTile(x, y, new Wall());
+                        }
+                        else if (_this.selectedTool == "Floor") {
+                            _this.world.setTile(x, y, null);
+                        }
+                    },
+                    moved: function (x, y) {
+                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
+                        x = x / cellSize | 0;
+                        y = (_this.canvas.height - y) / cellSize | 0;
+                    },
+                    dragged: function (x, y) {
+                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
+                        x = x / cellSize | 0;
+                        y = (_this.canvas.height - y) / cellSize | 0;
+                        if (_this.selectedTool == "Wall") {
+                            _this.world.setTile(x, y, new Wall());
+                        }
+                        else if (_this.selectedTool == "Floor") {
+                            _this.world.setTile(x, y, null);
+                        }
+                    }
+                });
+            }
+            Canvas.prototype.setWorld = function (world) {
+                this.world = world;
+            };
+            Canvas.prototype.getWorld = function () {
+                return this.world;
+            };
             Canvas.prototype.draw = function () {
                 var _this = this;
                 var ctx = this.ctx;
                 var canvas = this.canvas;
-                ctx.fillStyle = "#ff00ff";
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+                ctx.fillStyle = "#eeeeee";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (!this.assets.hasMoreToLoad()) {
+                    this.drawWorld();
+                }
+                else {
+                    this.drawGrid();
+                }
                 requestAnimationFrame(function () { _this.draw(); });
+            };
+            Canvas.prototype.drawImage = function (img, x, y, w, h) {
+                this.ctx.drawImage(img, x, this.canvas.height - y - h, w, h);
+            };
+            Canvas.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
+                this.ctx.save();
+                this.ctx.translate(x + w / 2, this.canvas.height - y - h + h / 2);
+                this.ctx.rotate(Math.PI / 180 * angle);
+                this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
+                this.ctx.restore();
+            };
+            Canvas.prototype.drawWorld = function () {
+                var ctx = this.ctx;
+                var canvas = this.canvas;
+                var cellSize = canvas.width / World.WORLD_SIZE;
+                var floorImage = this.assets.getImage("img/floor.png");
+                for (var y = 0; y < canvas.height; y += cellSize) {
+                    for (var x = 0; x < canvas.width; x += cellSize) {
+                    }
+                }
+                this.drawGrid();
+                for (var y = 0; y < canvas.height; y += cellSize) {
+                    for (var x = 0; x < canvas.width; x += cellSize) {
+                        var img = null;
+                        var wx = (x / cellSize) | 0;
+                        var wy = (y / cellSize) | 0;
+                        var obj = this.world.getTile(wx, wy);
+                        if (obj instanceof Wall) {
+                            img = this.assets.getImage("img/wall.png");
+                        }
+                        else if (obj instanceof Flag) {
+                            img = this.assets.getImage("img/flag.png");
+                        }
+                        if (img)
+                            this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
+                    }
+                }
+            };
+            Canvas.prototype.drawGrid = function () {
+                var ctx = this.ctx;
+                var canvas = this.canvas;
+                ctx.strokeStyle = "#7f7f7f";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                var cell_size = canvas.width / World.WORLD_SIZE;
+                for (var y = 0; y < canvas.height; y += cell_size) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                }
+                for (var x = 0; x < canvas.width; x += cell_size) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
             };
             return Canvas;
         }());

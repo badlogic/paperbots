@@ -4322,7 +4322,7 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 this.canvasContainer = canvasContainer;
                 this.world = new World();
                 this.assets = new AssetManager();
-                this.selectedTool = "Floor";
+                this.selectedTool = "Robot";
                 this.lastWidth = 0;
                 var container = $(canvasContainer);
                 this.canvas = container.find("#pb-canvas")[0];
@@ -4396,6 +4396,10 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                             }
                             _this.world.setTile(x, y, new LetterTile(letter));
                         }
+                        else if (_this.selectedTool == "Robot") {
+                            _this.world.robot.x = x;
+                            _this.world.robot.y = y;
+                        }
                     },
                     moved: function (x, y) {
                         var cellSize = _this.canvas.width / World.WORLD_SIZE;
@@ -4411,6 +4415,10 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                         }
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
+                        }
+                        else if (_this.selectedTool == "Robot") {
+                            _this.world.robot.x = x;
+                            _this.world.robot.y = y;
                         }
                     }
                 });
@@ -4483,7 +4491,8 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                     }
                 }
                 var robot = this.world.robot;
-                this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize, robot.y * cellSize, cellSize, cellSize, robot.angle);
+                robot.angle += 1;
+                this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
             };
             Canvas.prototype.drawGrid = function () {
                 var ctx = this.ctx;

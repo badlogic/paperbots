@@ -156,7 +156,7 @@ export module paperbots {
 		private world = new World();
 		private ctx: CanvasRenderingContext2D;
 		private assets = new AssetManager();
-		private selectedTool = "Floor";
+		private selectedTool = "Robot";
 		private input: Input;
 		private lastWidth = 0;
 
@@ -228,6 +228,9 @@ export module paperbots {
 							}
 						}
 						this.world.setTile(x, y, new LetterTile(letter));
+					} else if (this.selectedTool == "Robot") {
+						this.world.robot.x = x;
+						this.world.robot.y = y;
 					}
 				},
 				moved: (x, y) => {
@@ -243,6 +246,9 @@ export module paperbots {
 						this.world.setTile(x, y, new Wall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
+					} else if (this.selectedTool == "Robot") {
+						this.world.robot.x = x;
+						this.world.robot.y = y;
 					}
 				}
 			});
@@ -323,7 +329,8 @@ export module paperbots {
 			}
 
 			let robot = this.world.robot;
-			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize, robot.y * cellSize, cellSize, cellSize, robot.angle);
+			robot.angle += 1;
+			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
 		}
 
 		drawGrid () {

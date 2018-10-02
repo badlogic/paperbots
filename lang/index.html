@@ -6,62 +6,23 @@
 	<script src="js/codemirror.js"></script>
 	<script src="js/paperbots-cm.js"></script>
 	<script src="js/require.js"></script>
-	<script src="js/paperbots-lang.js"></script>
-	<link rel="stylesheet" type="text/css" href="css/codemirror.css">
-	<style>
-		.container {
-			display: flex;
-			flex-direction: row;
-		}
-
-		#editor {
-			width: 50%;
-			height: 500px;
-			margin-right: 2%;
-			position: relative;
-		}
-
-		#output {
-			width: 50%;
-			height: 500px;
-			background: lightgrey;
-		}
-
-		.CodeMirror {
-			width: 100%;
-			height: 100%;
-			border: 1px solid #222;
-		}
-
-		.CodeMirror-scroll {
-			height: 500px;
-		}
-
-		.gutter-breakpoints {
-			width: 16px;
-		}
-
-		.highlighted-line {
-			background:lightcoral;
-		}
-
-		.compiler-error {
-			text-decoration: underline red;
-		}
-	</style>
+	<script src="js/paperbots.js"></script>
+	<link rel="stylesheet" type="text/css" href="css/codemirror.css" />
+	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
 <body>
 	<h1>Paperbots</h1>
 
-	<div class="container">
-		<div id="editor"></div>
-		<textArea id="output" disabled></textArea>
+	<div class="pb-container">
+		<canvas id="pb-canvas"></canvas>
+		<div id="pb-editor"></div>
+		<pre id="pb-output" disabled></pre>
 	</div>
 
 	<script>
 		require(["Paperbots"], function(module) {
 			var paperbots = module.paperbots;
-			var editor = new paperbots.Editor(document.getElementById("editor"), document.getElementById("output"));
+			var editor = new paperbots.Editor(document.getElementById("pb-canvas"), document.getElementById("pb-editor"), document.getElementById("pb-output"));
 		});
 	</script>
 </body>

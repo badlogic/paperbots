@@ -3997,11 +3997,12 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
         }());
         paperbots.Compiler = Compiler;
         var Editor = (function () {
-            function Editor(editorElement, compilerOutput) {
+            function Editor(canvasElement, editorElement, compilerOutput) {
                 var _this = this;
                 this.editorElement = editorElement;
                 this.compilerOutput = compilerOutput;
                 this.compiler = new Compiler();
+                this.canvas = new Canvas(canvasElement);
                 this.editor = CodeMirror(editorElement, {
                     tabSize: 3,
                     indentUnit: 3,
@@ -4018,7 +4019,7 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
                 var compile = function () {
                     try {
                         var result = _this.compiler.parse(_this.editor.getDoc().getValue());
-                        compilerOutput.value = JSON.stringify(result, null, 2);
+                        compilerOutput.innerHTML = JSON.stringify(result, null, 2);
                         markers.forEach(function (marker) { return marker.clear(); });
                         markers.length = 0;
                     }
@@ -4030,7 +4031,7 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
                         var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
                         var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
                         markers.push(_this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
-                        compilerOutput.value = loc.start.line + ":" + loc.start.column + ": " + err.message;
+                        compilerOutput.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
                     }
                 };
                 this.editor.on("change", function (instance, change) {
@@ -4050,6 +4051,23 @@ define("Paperbots", ["require", "exports", "Parser"], function (require, exports
             return Editor;
         }());
         paperbots.Editor = Editor;
+        var Canvas = (function () {
+            function Canvas(canvas) {
+                var _this = this;
+                this.canvas = canvas;
+                this.ctx = canvas.getContext("2d");
+                requestAnimationFrame(function () { _this.draw(); });
+            }
+            Canvas.prototype.draw = function () {
+                var _this = this;
+                var ctx = this.ctx;
+                var canvas = this.canvas;
+                ctx.fillStyle = "#ff00ff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(function () { _this.draw(); });
+            };
+            return Canvas;
+        }());
     })(paperbots = exports.paperbots || (exports.paperbots = {}));
 });
-//# sourceMappingURL=paperbots-lang.js.map
+//# sourceMappingURL=paperbots.js.map

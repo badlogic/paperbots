@@ -10,10 +10,12 @@ export module paperbots {
 
 	export class Editor {
 		private editor: CodeMirror.Editor;
+		private canvas: Canvas;
 		private compiler: Compiler;
 
-		constructor(private editorElement: HTMLElement, private compilerOutput: HTMLTextAreaElement) {
+		constructor(canvasElement: HTMLCanvasElement, private editorElement: HTMLElement, private compilerOutput: HTMLElement) {
 			this.compiler = new Compiler();
+			this.canvas = new Canvas(canvasElement);
 			this.editor = CodeMirror(editorElement, {
 				tabSize: 3,
 				indentUnit: 3,
@@ -31,7 +33,7 @@ export module paperbots {
 			var compile = () => {
 				try {
 					let result = this.compiler.parse(this.editor.getDoc().getValue());
-					compilerOutput.value = JSON.stringify(result, null, 2);
+					compilerOutput.innerHTML = JSON.stringify(result, null, 2);
 					markers.forEach(marker => marker.clear());
 					markers.length = 0;
 				} catch (e) {
@@ -42,7 +44,7 @@ export module paperbots {
 					let from = {line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0)};
 					let to = {line: loc.end.line - 1, ch: loc.end.column - 1};
 					markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message}));
-					compilerOutput.value = loc.start.line + ":" + loc.start.column + ": " + err.message;
+					compilerOutput.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
 				}
 			}
 
@@ -66,6 +68,24 @@ export module paperbots {
 			}
 
 			compile();
+		}
+	}
+
+	class Canvas {
+		private ctx: CanvasRenderingContext2D;
+
+		constructor(private canvas: HTMLCanvasElement) {
+			this.ctx = canvas.getContext("2d");
+			requestAnimationFrame(() => { this.draw(); });
+		}
+
+		draw () {
+			let ctx = this.ctx;
+			let canvas = this.canvas;
+
+			ctx.fillStyle = "#ff00ff";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			requestAnimationFrame(() => { this.draw(); });
 		}
 	}
 }

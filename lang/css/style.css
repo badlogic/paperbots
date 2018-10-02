@@ -1,0 +1,48 @@
+/* Layout */
+body {
+	background: black;
+	color: white;
+}
+
+.pb-container {
+	display: flex;
+	flex-direction: column;
+}
+
+#pb-canvas {
+	width: 512px;
+	height: 512px;
+	margin-bottom: 20px;
+	background: grey;
+}
+
+#pb-editor {
+	height: 20em;
+	margin-bottom: 20px;
+	position: relative;
+	border: 1px solid black;
+}
+
+#pb-output {
+	background: lightgrey;
+	color: black;
+	margin-bottom: 20px;
+}
+
+/* CodeMirror styles */
+.CodeMirror {
+	width: 100%;
+	height: 100%;
+}
+
+.gutter-breakpoints {
+	width: 16px;
+}
+
+.highlighted-line {
+	background:lightcoral;
+}
+
+.compiler-error {
+	text-decoration: underline red;
+}

@@ -4,7 +4,7 @@
         "noImplicitAny": false,
         "removeComments": true,
         "preserveConstEnums": true,
-        "outFile": "js/paperbots-lang.js",
+        "outFile": "js/paperbots.js",
         "sourceMap": true
     },
     "include": [

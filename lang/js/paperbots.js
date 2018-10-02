@@ -4276,9 +4276,19 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             return LetterTile;
         }());
         paperbots.LetterTile = LetterTile;
+        var Robot = (function () {
+            function Robot() {
+                this.x = 0;
+                this.y = 0;
+                this.angle = 0;
+            }
+            return Robot;
+        }());
+        paperbots.Robot = Robot;
         var World = (function () {
             function World() {
                 this.tiles = Array(16 * 16);
+                this.robot = new Robot();
                 for (var i = 0; i < 10; i++) {
                     this.setTile(i, 2, new Wall());
                 }
@@ -4319,6 +4329,7 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 this.ctx = this.canvas.getContext("2d");
                 this.assets.loadImage("img/wall.png");
                 this.assets.loadImage("img/floor.png");
+                this.assets.loadImage("img/robot.png");
                 requestAnimationFrame(function () { _this.draw(); });
                 var tools = container.find("#pb-canvas-tools input");
                 for (var i = 0; i < tools.length; i++) {
@@ -4471,6 +4482,8 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                             this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
                     }
                 }
+                var robot = this.world.robot;
+                this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize, robot.y * cellSize, cellSize, cellSize, robot.angle);
             };
             Canvas.prototype.drawGrid = function () {
                 var ctx = this.ctx;

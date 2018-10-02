@@ -114,12 +114,17 @@ export module paperbots {
 	export class Wall { }
 	export class NumberTile { constructor (public readonly value: number) { } }
 	export class LetterTile { constructor (public readonly value: string) { } }
-
 	export type WorldObject = Wall | NumberTile | LetterTile;
+	export class Robot {
+		x = 0;
+		y = 0;
+		angle = 0;
+	}
 
 	export class World {
 		static WORLD_SIZE = 16;
 		tiles = Array<WorldObject>(16 * 16);
+		robot = new Robot();
 
 		constructor () {
 			for (var i = 0; i < 10; i++) {
@@ -161,6 +166,7 @@ export module paperbots {
 			this.ctx = this.canvas.getContext("2d");
 			this.assets.loadImage("img/wall.png");
 			this.assets.loadImage("img/floor.png");
+			this.assets.loadImage("img/robot.png");
 			requestAnimationFrame(() => { this.draw(); });
 
 			let tools = container.find("#pb-canvas-tools input");
@@ -315,6 +321,9 @@ export module paperbots {
 					if (img) this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
 				}
 			}
+
+			let robot = this.world.robot;
+			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize, robot.y * cellSize, cellSize, cellSize, robot.angle);
 		}
 
 		drawGrid () {

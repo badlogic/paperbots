@@ -112,10 +112,10 @@ export module paperbots {
 
 
 	export class Wall { }
-	export class Flag { }
 	export class NumberTile { constructor (public readonly value: number) { } }
+	export class LetterTile { constructor (public readonly value: string) { } }
 
-	export type WorldObject = null | Wall | Flag | NumberTile;
+	export type WorldObject = Wall | NumberTile | LetterTile;
 
 	export class World {
 		static WORLD_SIZE = 16;
@@ -124,6 +124,12 @@ export module paperbots {
 		constructor () {
 			for (var i = 0; i < 10; i++) {
 				this.setTile(i, 2, new Wall());
+			}
+			this.setTile(2, 2, new NumberTile(12));
+
+			let hello = "Hello world.";
+			for (var i = 0; i < hello.length; i++) {
+				this.setTile(4 + i, 4, new LetterTile(hello.charAt(i)));
 			}
 		}
 
@@ -147,6 +153,7 @@ export module paperbots {
 		private assets = new AssetManager();
 		private selectedTool = "Floor";
 		private input: Input;
+		private lastWidth = 0;
 
 		constructor(private canvasContainer: HTMLElement) {
 			let container = $(canvasContainer);
@@ -185,6 +192,36 @@ export module paperbots {
 						this.world.setTile(x, y, new Wall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
+					} else if (this.selectedTool == "Number") {
+						var number = null;
+						while (number == null) {
+							number = prompt("Please enter a number between 0-99.", "0");
+							if (!number) return;
+							try {
+								number = parseInt(number, 10);
+								if (number < 0 || number > 99) {
+									alert("The number must be between 0-99.");
+									number = null;
+								}
+							} catch (e) {
+								alert("The number must be between 0-99.");
+								number = null;
+							}
+						}
+						this.world.setTile(x, y, new NumberTile(number));
+					} else if (this.selectedTool == "Letter") {
+						var letter = null;
+						while (letter == null) {
+							letter = prompt("Please enter a letter", "a");
+							if (!letter) return;
+
+							letter = letter.trim();
+							if (letter.length != 1) {
+								alert("Only a single letter is allowed.");
+								letter = null;
+							}
+						}
+						this.world.setTile(x, y, new LetterTile(letter));
 					}
 				},
 				moved: (x, y) => {
@@ -214,10 +251,15 @@ export module paperbots {
 		}
 
 		draw () {
+			requestAnimationFrame(() => { this.draw(); });
+
 			let ctx = this.ctx;
 			let canvas = this.canvas;
-			canvas.width = canvas.clientWidth;
-			canvas.height = canvas.clientHeight;
+			if (this.lastWidth != canvas.clientWidth) {
+				canvas.width = canvas.clientWidth;
+				canvas.height = canvas.clientWidth;
+				this.lastWidth = canvas.width;
+			}
 
 			ctx.fillStyle = "#eeeeee";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -227,8 +269,6 @@ export module paperbots {
 			} else {
 				this.drawGrid();
 			}
-
-			requestAnimationFrame(() => { this.draw(); });
 		}
 
 		drawImage (img: HTMLImageElement, x: number, y: number, w: number, h: number) {
@@ -242,16 +282,19 @@ export module paperbots {
 			this.ctx.restore();
 		}
 
+		drawText(text: string, x: number, y: number) {
+			let ctx = this.ctx;
+			let cellSize = this.canvas.width / World.WORLD_SIZE;
+			ctx.fillStyle = "#000000";
+			ctx.font = cellSize * 0.5 + "pt Arial";
+			let metrics = ctx.measureText(text);
+			ctx.fillText(text, x + cellSize / 2 - metrics.width / 2, this.canvas.height - y - cellSize / 4);
+		}
+
 		drawWorld () {
 			let ctx = this.ctx;
 			let canvas = this.canvas;
 			let cellSize = canvas.width / World.WORLD_SIZE;
-			let floorImage = this.assets.getImage("img/floor.png");
-			for (var y = 0; y < canvas.height; y += cellSize) {
-				for (var x = 0; x < canvas.width; x += cellSize) {
-					// this.drawImage(floorImage, x, y, cellSize, cellSize);
-				}
-			}
 
 			this.drawGrid();
 
@@ -263,8 +306,10 @@ export module paperbots {
 					let obj = this.world.getTile(wx, wy);
 					if (obj instanceof Wall) {
 						img = this.assets.getImage("img/wall.png");
-					} else if (obj instanceof Flag) {
-						img = this.assets.getImage("img/flag.png");
+					} else if (obj instanceof NumberTile) {
+						this.drawText("" + obj.value, x, y);
+					} else if (obj instanceof LetterTile) {
+						this.drawText("" + obj.value, x, y);
 					}
 
 					if (img) this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
@@ -277,9 +322,9 @@ export module paperbots {
 			let canvas = this.canvas;
 
 			ctx.strokeStyle = "#7f7f7f";
-			ctx.lineWidth = 1;
-			ctx.setLineDash([2, 2]);
 			let cell_size = canvas.width / World.WORLD_SIZE;
+			ctx.beginPath();
+			ctx.setLineDash([2, 2]);
 			for (var y = 0; y < canvas.height; y += cell_size) {
 				ctx.moveTo(0, y);
 				ctx.lineTo(canvas.width, y);
@@ -289,7 +334,6 @@ export module paperbots {
 				ctx.lineTo(x, canvas.height);
 			}
 			ctx.stroke();
-			ctx.setLineDash([]);
 		}
 	}
 }

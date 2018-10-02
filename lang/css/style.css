@@ -19,17 +19,19 @@ body {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
+	align-items: center;
 	margin-bottom: 20px;
 }
 
 #pb-canvas {
-	width: 512px;
-	height: 512px;
+	width: 100%;
+	max-width: 512px;
 	background: grey;
 	image-rendering: -moz-crisp-edges;
   	image-rendering: -webkit-crisp-edges;
   	image-rendering: pixelated;
-  	image-rendering: crisp-edges;
+	image-rendering: crisp-edges;
+	margin-bottom: 20px;
 }
 
 #pb-canvas-tools {
@@ -53,6 +55,8 @@ body {
 	background: lightgrey;
 	color: black;
 	margin-bottom: 20px;
+	padding: 20px;
+	border-radius: 5px;
 }
 
 /* CodeMirror styles */

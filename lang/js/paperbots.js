@@ -88,7 +88,6 @@ define("Input", ["require", "exports"], function (require, exports) {
                 for (var i_1 = 0; i_1 < listeners.length; i_1++) {
                     listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
                 }
-                console.log("Start " + _this.currTouch.x + ", " + _this.currTouch.y);
                 _this.lastX = _this.currTouch.x;
                 _this.lastY = _this.currTouch.y;
                 _this.buttonDown = true;
@@ -106,7 +105,6 @@ define("Input", ["require", "exports"], function (require, exports) {
                         for (var i_2 = 0; i_2 < listeners.length; i_2++) {
                             listeners[i_2].up(x, y);
                         }
-                        console.log("End " + x + ", " + y);
                         _this.lastX = x;
                         _this.lastY = y;
                         _this.buttonDown = false;
@@ -4264,12 +4262,6 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             return Wall;
         }());
         paperbots.Wall = Wall;
-        var Flag = (function () {
-            function Flag() {
-            }
-            return Flag;
-        }());
-        paperbots.Flag = Flag;
         var NumberTile = (function () {
             function NumberTile(value) {
                 this.value = value;
@@ -4277,11 +4269,23 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             return NumberTile;
         }());
         paperbots.NumberTile = NumberTile;
+        var LetterTile = (function () {
+            function LetterTile(value) {
+                this.value = value;
+            }
+            return LetterTile;
+        }());
+        paperbots.LetterTile = LetterTile;
         var World = (function () {
             function World() {
                 this.tiles = Array(16 * 16);
                 for (var i = 0; i < 10; i++) {
                     this.setTile(i, 2, new Wall());
+                }
+                this.setTile(2, 2, new NumberTile(12));
+                var hello = "Hello world.";
+                for (var i = 0; i < hello.length; i++) {
+                    this.setTile(4 + i, 4, new LetterTile(hello.charAt(i)));
                 }
             }
             World.prototype.getTile = function (x, y) {
@@ -4309,6 +4313,7 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 this.world = new World();
                 this.assets = new AssetManager();
                 this.selectedTool = "Floor";
+                this.lastWidth = 0;
                 var container = $(canvasContainer);
                 this.canvas = container.find("#pb-canvas")[0];
                 this.ctx = this.canvas.getContext("2d");
@@ -4346,6 +4351,40 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
                         }
+                        else if (_this.selectedTool == "Number") {
+                            var number = null;
+                            while (number == null) {
+                                number = prompt("Please enter a number between 0-99.", "0");
+                                if (!number)
+                                    return;
+                                try {
+                                    number = parseInt(number, 10);
+                                    if (number < 0 || number > 99) {
+                                        alert("The number must be between 0-99.");
+                                        number = null;
+                                    }
+                                }
+                                catch (e) {
+                                    alert("The number must be between 0-99.");
+                                    number = null;
+                                }
+                            }
+                            _this.world.setTile(x, y, new NumberTile(number));
+                        }
+                        else if (_this.selectedTool == "Letter") {
+                            var letter = null;
+                            while (letter == null) {
+                                letter = prompt("Please enter a letter", "a");
+                                if (!letter)
+                                    return;
+                                letter = letter.trim();
+                                if (letter.length != 1) {
+                                    alert("Only a single letter is allowed.");
+                                    letter = null;
+                                }
+                            }
+                            _this.world.setTile(x, y, new LetterTile(letter));
+                        }
                     },
                     moved: function (x, y) {
                         var cellSize = _this.canvas.width / World.WORLD_SIZE;
@@ -4373,10 +4412,14 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             };
             Canvas.prototype.draw = function () {
                 var _this = this;
+                requestAnimationFrame(function () { _this.draw(); });
                 var ctx = this.ctx;
                 var canvas = this.canvas;
-                canvas.width = canvas.clientWidth;
-                canvas.height = canvas.clientHeight;
+                if (this.lastWidth != canvas.clientWidth) {
+                    canvas.width = canvas.clientWidth;
+                    canvas.height = canvas.clientWidth;
+                    this.lastWidth = canvas.width;
+                }
                 ctx.fillStyle = "#eeeeee";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 if (!this.assets.hasMoreToLoad()) {
@@ -4385,7 +4428,6 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 else {
                     this.drawGrid();
                 }
-                requestAnimationFrame(function () { _this.draw(); });
             };
             Canvas.prototype.drawImage = function (img, x, y, w, h) {
                 this.ctx.drawImage(img, x, this.canvas.height - y - h, w, h);
@@ -4397,15 +4439,18 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
                 this.ctx.restore();
             };
+            Canvas.prototype.drawText = function (text, x, y) {
+                var ctx = this.ctx;
+                var cellSize = this.canvas.width / World.WORLD_SIZE;
+                ctx.fillStyle = "#000000";
+                ctx.font = cellSize * 0.5 + "pt Arial";
+                var metrics = ctx.measureText(text);
+                ctx.fillText(text, x + cellSize / 2 - metrics.width / 2, this.canvas.height - y - cellSize / 4);
+            };
             Canvas.prototype.drawWorld = function () {
                 var ctx = this.ctx;
                 var canvas = this.canvas;
                 var cellSize = canvas.width / World.WORLD_SIZE;
-                var floorImage = this.assets.getImage("img/floor.png");
-                for (var y = 0; y < canvas.height; y += cellSize) {
-                    for (var x = 0; x < canvas.width; x += cellSize) {
-                    }
-                }
                 this.drawGrid();
                 for (var y = 0; y < canvas.height; y += cellSize) {
                     for (var x = 0; x < canvas.width; x += cellSize) {
@@ -4416,8 +4461,11 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                         if (obj instanceof Wall) {
                             img = this.assets.getImage("img/wall.png");
                         }
-                        else if (obj instanceof Flag) {
-                            img = this.assets.getImage("img/flag.png");
+                        else if (obj instanceof NumberTile) {
+                            this.drawText("" + obj.value, x, y);
+                        }
+                        else if (obj instanceof LetterTile) {
+                            this.drawText("" + obj.value, x, y);
                         }
                         if (img)
                             this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
@@ -4428,9 +4476,9 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 var ctx = this.ctx;
                 var canvas = this.canvas;
                 ctx.strokeStyle = "#7f7f7f";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([2, 2]);
                 var cell_size = canvas.width / World.WORLD_SIZE;
+                ctx.beginPath();
+                ctx.setLineDash([2, 2]);
                 for (var y = 0; y < canvas.height; y += cell_size) {
                     ctx.moveTo(0, y);
                     ctx.lineTo(canvas.width, y);
@@ -4440,7 +4488,6 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                     ctx.lineTo(x, canvas.height);
                 }
                 ctx.stroke();
-                ctx.setLineDash([]);
             };
             return Canvas;
         }());

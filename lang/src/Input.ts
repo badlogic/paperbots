@@ -80,7 +80,6 @@ export class Input {
 			for (let i = 0; i < listeners.length; i++) {
 				listeners[i].down(this.currTouch.x, this.currTouch.y);
 			}
-			console.log("Start " + this.currTouch.x + ", " + this.currTouch.y);
 			this.lastX = this.currTouch.x;
 			this.lastY = this.currTouch.y;
 			this.buttonDown = true;
@@ -98,7 +97,6 @@ export class Input {
 					for (let i = 0; i < listeners.length; i++) {
 						listeners[i].up(x, y);
 					}
-					console.log("End " + x + ", " + y);
 					this.lastX = x;
 					this.lastY = y;
 					this.buttonDown = false;

@@ -422,7 +422,7 @@ export module paperbots {
 		drawText(text: string, x: number, y: number, color = "#000000") {
 			let ctx = this.ctx;
 			ctx.fillStyle = color;
-			ctx.font = this.cellSize * 0.5 + "pt Arial";
+			ctx.font = this.cellSize * 0.5 + "pt monospace";
 			let metrics = ctx.measureText(text);
 			ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
 		}

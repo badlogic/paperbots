@@ -4606,7 +4606,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 if (color === void 0) { color = "#000000"; }
                 var ctx = this.ctx;
                 ctx.fillStyle = color;
-                ctx.font = this.cellSize * 0.5 + "pt Arial";
+                ctx.font = this.cellSize * 0.5 + "pt monospace";
                 var metrics = ctx.measureText(text);
                 ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
             };

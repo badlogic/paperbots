@@ -271,6 +271,8 @@ export module paperbots {
 		private selectedTool = "Robot";
 		private input: Input;
 		private lastWidth = 0;
+		private cellSize = 0;
+		private drawingSize = 0;
 
 		constructor(private canvasContainer: HTMLElement) {
 			let container = $(canvasContainer);
@@ -294,9 +296,10 @@ export module paperbots {
 			this.input = new Input(this.canvas);
 			this.input.addListener({
 				down: (x, y) => {
-					let cellSize = this.canvas.width / World.WORLD_SIZE;
-					x = x / cellSize | 0;
-					y = (this.canvas.height - y) / cellSize | 0;
+					let cellSize = this.cellSize;
+					x = ((x / cellSize) | 0) - 1;
+					y = ((this.drawingSize - y) / cellSize) | 0;
+
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, new Wall());
 					} else if (this.selectedTool == "Floor") {
@@ -304,9 +307,10 @@ export module paperbots {
 					}
 				},
 				up: (x, y) => {
-					let cellSize = this.canvas.width / World.WORLD_SIZE;
-					x = x / cellSize | 0;
-					y = (this.canvas.height - y) / cellSize | 0;
+					let cellSize = this.cellSize;
+					x = ((x / cellSize) | 0) - 1;
+					y = ((this.drawingSize - y) / cellSize) | 0;
+
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, new Wall());
 					} else if (this.selectedTool == "Floor") {
@@ -351,14 +355,15 @@ export module paperbots {
 					}
 				},
 				moved: (x, y) => {
-					let cellSize = this.canvas.width / World.WORLD_SIZE;
-					x = x / cellSize | 0;
-					y = (this.canvas.height - y) / cellSize | 0;
+					let cellSize = this.cellSize;
+					x = ((x / cellSize) | 0) - 1;
+					y = ((this.drawingSize - y) / cellSize) | 0;
 				},
 				dragged: (x, y) => {
-					let cellSize = this.canvas.width / World.WORLD_SIZE;
-					x = x / cellSize | 0;
-					y = (this.canvas.height - y) / cellSize | 0;
+					let cellSize = this.cellSize;
+					x = ((x / cellSize) | 0) - 1;
+					y = ((this.drawingSize - y) / cellSize) | 0;
+
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, new Wall());
 					} else if (this.selectedTool == "Floor") {
@@ -390,50 +395,52 @@ export module paperbots {
 				canvas.width = canvas.clientWidth;
 				canvas.height = canvas.clientWidth;
 				this.lastWidth = canvas.width;
+				this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
+				this.drawingSize = this.cellSize * World.WORLD_SIZE;
 			}
 
 			ctx.fillStyle = "#eeeeee";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+			this.drawGrid();
 			if (!this.assets.hasMoreToLoad()) {
 				this.drawWorld();
-			} else {
-				this.drawGrid();
 			}
 		}
 
 		drawImage (img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-			this.ctx.drawImage(img, x, this.canvas.height - y - h, w, h);
+			this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
 		}
 		drawRotatedImage (img: HTMLImageElement, x: number, y: number, w: number, h: number, angle: number) {
 			this.ctx.save();
-			this.ctx.translate(x + w / 2, this.canvas.height - y - h + h / 2);
+			this.ctx.translate(x + w / 2, this.drawingSize - y - h + h / 2);
 			this.ctx.rotate(Math.PI / 180 * angle);
 			this.ctx.drawImage(img, -w/2, -h/2, w, h);
 			this.ctx.restore();
 		}
 
-		drawText(text: string, x: number, y: number) {
+		drawText(text: string, x: number, y: number, color = "#000000") {
 			let ctx = this.ctx;
-			let cellSize = this.canvas.width / World.WORLD_SIZE;
-			ctx.fillStyle = "#000000";
-			ctx.font = cellSize * 0.5 + "pt Arial";
+			ctx.fillStyle = color;
+			ctx.font = this.cellSize * 0.5 + "pt Arial";
 			let metrics = ctx.measureText(text);
-			ctx.fillText(text, x + cellSize / 2 - metrics.width / 2, this.canvas.height - y - cellSize / 4);
+			ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
 		}
 
 		drawWorld () {
 			let ctx = this.ctx;
 			let canvas = this.canvas;
-			let cellSize = canvas.width / World.WORLD_SIZE;
+			let cellSize = this.cellSize;
+			let drawingSize = this.drawingSize;
 
-			this.drawGrid();
+			ctx.save();
+			ctx.translate(this.cellSize, 0);
 
-			for (var y = 0; y < canvas.height; y += cellSize) {
-					for (var x = 0; x < canvas.width; x += cellSize) {
+			for (var y = 0; y < drawingSize; y += cellSize) {
+					for (var x = 0; x < drawingSize; x += cellSize) {
 					var img = null;
-					let wx = (x / cellSize) | 0;
-					let wy = (y / cellSize) | 0;
+					let wx = (x / cellSize);
+					let wy = (y / cellSize);
 					let obj = this.world.getTile(wx, wy);
 					if (obj instanceof Wall) {
 						img = this.assets.getImage("img/wall.png");
@@ -451,29 +458,40 @@ export module paperbots {
 			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
 			ctx.beginPath();
 			ctx.strokeStyle = "#ff0000";
-			ctx.moveTo((robot.x + 0.5) * cellSize, canvas.height - (robot.y + 0.5) * cellSize);
-			ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, canvas.height - (robot.y + robot.dirY + 0.5) * cellSize);
+			ctx.moveTo((robot.x + 0.5) * cellSize, drawingSize - (robot.y + 0.5) * cellSize);
+			ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, drawingSize - (robot.y + robot.dirY + 0.5) * cellSize);
 			ctx.stroke();
+			ctx.restore();
 		}
 
 		drawGrid () {
 			let ctx = this.ctx;
 			let canvas = this.canvas;
 
+			for (var y = 0; y < World.WORLD_SIZE; y++) {
+				this.drawText("" + y, 0, y * this.cellSize, "#aaaaaa");
+			}
+
+			for (var x = 0; x < World.WORLD_SIZE; x++) {
+				this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#aaaaaa");
+			}
+
+			ctx.save();
+			ctx.translate(this.cellSize, 0);
 			ctx.strokeStyle = "#7f7f7f";
-			let cell_size = canvas.width / World.WORLD_SIZE;
 			ctx.beginPath();
 			ctx.setLineDash([2, 2]);
-			for (var y = 0; y < canvas.height; y += cell_size) {
-				ctx.moveTo(0, y);
-				ctx.lineTo(canvas.width, y);
+			for (var y = 0; y <= World.WORLD_SIZE; y++) {
+				ctx.moveTo(0, y * this.cellSize);
+				ctx.lineTo(this.drawingSize, y * this.cellSize);
 			}
-			for (var x = 0; x < canvas.width; x += cell_size) {
-				ctx.moveTo(x, 0);
-				ctx.lineTo(x, canvas.height);
+			for (var x = 0; x <= World.WORLD_SIZE; x++) {
+				ctx.moveTo(x * this.cellSize, 0);
+				ctx.lineTo(x * this.cellSize, this.drawingSize);
 			}
 			ctx.stroke();
 			ctx.setLineDash([]);
+			ctx.restore()
 		}
 	}
 }

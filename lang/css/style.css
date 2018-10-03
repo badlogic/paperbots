@@ -25,7 +25,7 @@ body {
 
 #pb-canvas {
 	width: 100%;
-	max-width: 512px;
+	max-width: 544px;
 	background: grey;
 	image-rendering: -moz-crisp-edges;
   	image-rendering: -webkit-crisp-edges;

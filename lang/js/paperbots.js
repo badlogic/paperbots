@@ -4459,6 +4459,8 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 this.assets = new AssetManager();
                 this.selectedTool = "Robot";
                 this.lastWidth = 0;
+                this.cellSize = 0;
+                this.drawingSize = 0;
                 var container = $(canvasContainer);
                 this.canvas = container.find("#pb-canvas")[0];
                 this.ctx = this.canvas.getContext("2d");
@@ -4478,9 +4480,9 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 this.input = new Utils_1.Input(this.canvas);
                 this.input.addListener({
                     down: function (x, y) {
-                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
-                        x = x / cellSize | 0;
-                        y = (_this.canvas.height - y) / cellSize | 0;
+                        var cellSize = _this.cellSize;
+                        x = ((x / cellSize) | 0) - 1;
+                        y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, new Wall());
                         }
@@ -4489,9 +4491,9 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         }
                     },
                     up: function (x, y) {
-                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
-                        x = x / cellSize | 0;
-                        y = (_this.canvas.height - y) / cellSize | 0;
+                        var cellSize = _this.cellSize;
+                        x = ((x / cellSize) | 0) - 1;
+                        y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, new Wall());
                         }
@@ -4543,14 +4545,14 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         }
                     },
                     moved: function (x, y) {
-                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
-                        x = x / cellSize | 0;
-                        y = (_this.canvas.height - y) / cellSize | 0;
+                        var cellSize = _this.cellSize;
+                        x = ((x / cellSize) | 0) - 1;
+                        y = ((_this.drawingSize - y) / cellSize) | 0;
                     },
                     dragged: function (x, y) {
-                        var cellSize = _this.canvas.width / World.WORLD_SIZE;
-                        x = x / cellSize | 0;
-                        y = (_this.canvas.height - y) / cellSize | 0;
+                        var cellSize = _this.cellSize;
+                        x = ((x / cellSize) | 0) - 1;
+                        y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, new Wall());
                         }
@@ -4580,44 +4582,46 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                     canvas.width = canvas.clientWidth;
                     canvas.height = canvas.clientWidth;
                     this.lastWidth = canvas.width;
+                    this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
+                    this.drawingSize = this.cellSize * World.WORLD_SIZE;
                 }
                 ctx.fillStyle = "#eeeeee";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                this.drawGrid();
                 if (!this.assets.hasMoreToLoad()) {
                     this.drawWorld();
                 }
-                else {
-                    this.drawGrid();
-                }
             };
             Canvas.prototype.drawImage = function (img, x, y, w, h) {
-                this.ctx.drawImage(img, x, this.canvas.height - y - h, w, h);
+                this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
             };
             Canvas.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
                 this.ctx.save();
-                this.ctx.translate(x + w / 2, this.canvas.height - y - h + h / 2);
+                this.ctx.translate(x + w / 2, this.drawingSize - y - h + h / 2);
                 this.ctx.rotate(Math.PI / 180 * angle);
                 this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
                 this.ctx.restore();
             };
-            Canvas.prototype.drawText = function (text, x, y) {
+            Canvas.prototype.drawText = function (text, x, y, color) {
+                if (color === void 0) { color = "#000000"; }
                 var ctx = this.ctx;
-                var cellSize = this.canvas.width / World.WORLD_SIZE;
-                ctx.fillStyle = "#000000";
-                ctx.font = cellSize * 0.5 + "pt Arial";
+                ctx.fillStyle = color;
+                ctx.font = this.cellSize * 0.5 + "pt Arial";
                 var metrics = ctx.measureText(text);
-                ctx.fillText(text, x + cellSize / 2 - metrics.width / 2, this.canvas.height - y - cellSize / 4);
+                ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
             };
             Canvas.prototype.drawWorld = function () {
                 var ctx = this.ctx;
                 var canvas = this.canvas;
-                var cellSize = canvas.width / World.WORLD_SIZE;
-                this.drawGrid();
-                for (var y = 0; y < canvas.height; y += cellSize) {
-                    for (var x = 0; x < canvas.width; x += cellSize) {
+                var cellSize = this.cellSize;
+                var drawingSize = this.drawingSize;
+                ctx.save();
+                ctx.translate(this.cellSize, 0);
+                for (var y = 0; y < drawingSize; y += cellSize) {
+                    for (var x = 0; x < drawingSize; x += cellSize) {
                         var img = null;
-                        var wx = (x / cellSize) | 0;
-                        var wy = (y / cellSize) | 0;
+                        var wx = (x / cellSize);
+                        var wy = (y / cellSize);
                         var obj = this.world.getTile(wx, wy);
                         if (obj instanceof Wall) {
                             img = this.assets.getImage("img/wall.png");
@@ -4636,27 +4640,36 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
                 ctx.beginPath();
                 ctx.strokeStyle = "#ff0000";
-                ctx.moveTo((robot.x + 0.5) * cellSize, canvas.height - (robot.y + 0.5) * cellSize);
-                ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, canvas.height - (robot.y + robot.dirY + 0.5) * cellSize);
+                ctx.moveTo((robot.x + 0.5) * cellSize, drawingSize - (robot.y + 0.5) * cellSize);
+                ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, drawingSize - (robot.y + robot.dirY + 0.5) * cellSize);
                 ctx.stroke();
+                ctx.restore();
             };
             Canvas.prototype.drawGrid = function () {
                 var ctx = this.ctx;
                 var canvas = this.canvas;
+                for (var y = 0; y < World.WORLD_SIZE; y++) {
+                    this.drawText("" + y, 0, y * this.cellSize, "#aaaaaa");
+                }
+                for (var x = 0; x < World.WORLD_SIZE; x++) {
+                    this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#aaaaaa");
+                }
+                ctx.save();
+                ctx.translate(this.cellSize, 0);
                 ctx.strokeStyle = "#7f7f7f";
-                var cell_size = canvas.width / World.WORLD_SIZE;
                 ctx.beginPath();
                 ctx.setLineDash([2, 2]);
-                for (var y = 0; y < canvas.height; y += cell_size) {
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
+                for (var y = 0; y <= World.WORLD_SIZE; y++) {
+                    ctx.moveTo(0, y * this.cellSize);
+                    ctx.lineTo(this.drawingSize, y * this.cellSize);
                 }
-                for (var x = 0; x < canvas.width; x += cell_size) {
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, canvas.height);
+                for (var x = 0; x <= World.WORLD_SIZE; x++) {
+                    ctx.moveTo(x * this.cellSize, 0);
+                    ctx.lineTo(x * this.cellSize, this.drawingSize);
                 }
                 ctx.stroke();
                 ctx.setLineDash([]);
+                ctx.restore();
             };
             return Canvas;
         }());

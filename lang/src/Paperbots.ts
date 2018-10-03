@@ -1,6 +1,6 @@
 import {SyntaxError, parse} from "./Parser";
 import {TextMarker} from "../node_modules/@types/codemirror/index";
-import {Input} from "./Input";
+import {Input, TimeKeeper} from "./Utils";
 
 export module paperbots {
 	export class Compiler {
@@ -115,21 +115,122 @@ export module paperbots {
 	export class NumberTile { constructor (public readonly value: number) { } }
 	export class LetterTile { constructor (public readonly value: string) { } }
 	export type WorldObject = Wall | NumberTile | LetterTile;
+
+	enum RobotAction {
+		Forward,
+		TurnLeft,
+		TurnRight,
+		None
+	}
+
 	export class Robot {
+		static readonly FORWARD_DURATION = 1;
+		static readonly TURN_DURATION = 1;
 		x = 0;
-		y = 0;
+		y = 15;
+		dirX = 1;
+		dirY = 0;
 		angle = 0;
+		action = RobotAction.None;
+
+		actionTime = 0;
+		startX = 0;
+		startY = 0
+		targetX = 0;
+		targetY = 0;
+		startAngle = 0;
+		targetAngle = 0;
+
+		constructor(private world: World) { }
+
+		turnLeft () {
+			this.angle = this.angle - 90;
+			let temp = this.dirX;
+			this.dirX = -this.dirY;
+			this.dirY = temp;
+		}
+
+		setAction(action: RobotAction) {
+			if (this.action != RobotAction.None) {
+				throw new Error("Can't set action while robot is executing previous action.");
+			}
+			this.action = action;
+			switch (action) {
+			case RobotAction.Forward:
+				this.startX = this.x;
+				this.startY = this.y;
+				this.targetX = this.x + this.dirX;
+				this.targetY = this.y + this.dirY;
+				console.log(this.targetX + ", " + this.targetY);
+				if (this.world.getTile(this.targetX, this.targetY) instanceof Wall) {
+					this.targetX = this.startX;
+					this.targetY = this.startY;
+				}
+				break;
+			case RobotAction.TurnLeft: {
+				this.startAngle = this.angle;
+				this.targetAngle = this.angle - 90;
+				let temp = this.dirX;
+				this.dirX = -this.dirY;
+				this.dirY = temp;
+				console.log(this.targetAngle);
+				break;
+			}
+			case RobotAction.TurnRight: {
+				this.startAngle = this.angle;
+				this.targetAngle = this.angle + 90;
+				let temp = this.dirX;
+				this.dirX = this.dirY;
+				this.dirY = -temp;
+				console.log(this.targetAngle);
+				break;
+			}
+			}
+			this.actionTime = 0
+		}
+
+		update (delta: number): boolean {
+			this.actionTime += delta;
+			switch (this.action) {
+				case RobotAction.Forward: {
+					let percentage = this.actionTime / Robot.FORWARD_DURATION;
+					if (percentage >= 1) {
+						this.action = RobotAction.None;
+						this.x = this.targetX;
+						this.y = this.targetY;
+					} else {
+						this.x = this.startX + (this.targetX - this.startX) * percentage;
+						this.y = this.startY + (this.targetY - this.startY) * percentage;
+					}
+					break;
+				}
+				case RobotAction.TurnLeft:
+				case RobotAction.TurnRight: {
+					let percentage = this.actionTime / Robot.TURN_DURATION;
+					if (percentage >= 1) {
+						this.action = RobotAction.None;
+						this.angle = this.targetAngle;
+					} else {
+						this.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
+					}
+					break;
+				}
+			}
+			return this.action == RobotAction.None;
+		}
 	}
 
 	export class World {
 		static WORLD_SIZE = 16;
 		tiles = Array<WorldObject>(16 * 16);
-		robot = new Robot();
+		robot = new Robot(this);
+		private time = new TimeKeeper();
 
 		constructor () {
 			for (var i = 0; i < 10; i++) {
 				this.setTile(i, 2, new Wall());
 			}
+			this.setTile(1, 0, new Wall());
 			this.setTile(2, 2, new NumberTile(12));
 
 			let hello = "Hello world.";
@@ -139,15 +240,26 @@ export module paperbots {
 		}
 
 		getTile (x: number, y: number): WorldObject {
-			if (x < 0 || x > World.WORLD_SIZE) return null;
-			if (y < 0 || y > World.WORLD_SIZE) return null;
+			x = x | 0;
+			y = y | 0;
+			if (x < 0 || x >= World.WORLD_SIZE) return new Wall();
+			if (y < 0 || y >= World.WORLD_SIZE) return new Wall();
 			return this.tiles[x + y * World.WORLD_SIZE];
 		}
 
 		setTile (x: number, y: number, tile: WorldObject) {
-			if (x < 0 || x > World.WORLD_SIZE) return;
-			if (y < 0 || y > World.WORLD_SIZE) return;
+			x = x | 0;
+			y = y | 0;
+			if (x < 0 || x >= World.WORLD_SIZE) return;
+			if (y < 0 || y >= World.WORLD_SIZE) return;
 			this.tiles[x + y * World.WORLD_SIZE] = tile;
+		}
+
+		lastWasTurn = false;
+		update () {
+			this.time.update();
+			let delta = this.time.delta;
+			this.robot.update(delta);
 		}
 	}
 
@@ -172,9 +284,10 @@ export module paperbots {
 			let tools = container.find("#pb-canvas-tools input");
 			for (var i = 0; i < tools.length; i++) {
 				$(tools[i]).click((tool) => {
+					let value = (tool.target as HTMLInputElement).value;
 					tools.removeClass("selected");
 					$(tool.target).addClass("selected");
-					this.selectedTool = (tool.target as HTMLInputElement).value;
+					this.selectedTool = value;
 				});
 			}
 
@@ -229,8 +342,12 @@ export module paperbots {
 						}
 						this.world.setTile(x, y, new LetterTile(letter));
 					} else if (this.selectedTool == "Robot") {
-						this.world.robot.x = x;
-						this.world.robot.y = y;
+						if (this.world.robot.x != x || this.world.robot.y != y) {
+							this.world.robot.x = x;
+							this.world.robot.y = y;
+						} else {
+							this.world.robot.turnLeft();
+						}
 					}
 				},
 				moved: (x, y) => {
@@ -264,6 +381,8 @@ export module paperbots {
 
 		draw () {
 			requestAnimationFrame(() => { this.draw(); });
+
+			this.world.update();
 
 			let ctx = this.ctx;
 			let canvas = this.canvas;
@@ -329,8 +448,12 @@ export module paperbots {
 			}
 
 			let robot = this.world.robot;
-			robot.angle += 1;
 			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
+			ctx.beginPath();
+			ctx.strokeStyle = "#ff0000";
+			ctx.moveTo((robot.x + 0.5) * cellSize, canvas.height - (robot.y + 0.5) * cellSize);
+			ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, canvas.height - (robot.y + robot.dirY + 0.5) * cellSize);
+			ctx.stroke();
 		}
 
 		drawGrid () {
@@ -350,6 +473,7 @@ export module paperbots {
 				ctx.lineTo(x, canvas.height);
 			}
 			ctx.stroke();
+			ctx.setLineDash([]);
 		}
 	}
 }

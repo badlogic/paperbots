@@ -11,176 +11,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-define("Input", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Input = (function () {
-        function Input(element) {
-            this.lastX = 0;
-            this.lastY = 0;
-            this.buttonDown = false;
-            this.currTouch = null;
-            this.listeners = new Array();
-            this.element = element;
-            this.setupCallbacks(element);
-        }
-        Input.prototype.setupCallbacks = function (element) {
-            var _this = this;
-            element.addEventListener("mousedown", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].down(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = true;
-                }
-            }, true);
-            element.addEventListener("mousemove", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        if (_this.buttonDown) {
-                            listeners[i].dragged(x, y);
-                        }
-                        else {
-                            listeners[i].moved(x, y);
-                        }
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                }
-            }, true);
-            element.addEventListener("mouseup", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].up(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = false;
-                }
-            }, true);
-            element.addEventListener("touchstart", function (ev) {
-                if (_this.currTouch != null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    var rect = element.getBoundingClientRect();
-                    var x = touch.clientX - rect.left;
-                    var y = touch.clientY - rect.top;
-                    _this.currTouch = new Touch(touch.identifier, x, y);
-                    break;
-                }
-                var listeners = _this.listeners;
-                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
-                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
-                }
-                _this.lastX = _this.currTouch.x;
-                _this.lastY = _this.currTouch.y;
-                _this.buttonDown = true;
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchend", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
-                            listeners[i_2].up(x, y);
-                        }
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchcancel", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
-                            listeners[i_3].up(x, y);
-                        }
-                        console.log("End " + x + ", " + y);
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchmove", function (ev) {
-                if (_this.currTouch == null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = touch.clientX - rect.left;
-                        var y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
-                            listeners[i_4].dragged(x, y);
-                        }
-                        console.log("Drag " + x + ", " + y);
-                        _this.lastX = _this.currTouch.x = x;
-                        _this.lastY = _this.currTouch.y = y;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-        };
-        Input.prototype.addListener = function (listener) {
-            this.listeners.push(listener);
-        };
-        Input.prototype.removeListener = function (listener) {
-            var idx = this.listeners.indexOf(listener);
-            if (idx > -1) {
-                this.listeners.splice(idx, 1);
-            }
-        };
-        return Input;
-    }());
-    exports.Input = Input;
-    var Touch = (function () {
-        function Touch(identifier, x, y) {
-            this.identifier = identifier;
-            this.x = x;
-            this.y = y;
-        }
-        return Touch;
-    }());
-    exports.Touch = Touch;
-});
 define("Parser", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -4152,7 +3982,205 @@ define("Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("Paperbots", ["require", "exports", "Parser", "Input"], function (require, exports, Parser_1, Input_1) {
+define("Utils", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Input = (function () {
+        function Input(element) {
+            this.lastX = 0;
+            this.lastY = 0;
+            this.buttonDown = false;
+            this.currTouch = null;
+            this.listeners = new Array();
+            this.element = element;
+            this.setupCallbacks(element);
+        }
+        Input.prototype.setupCallbacks = function (element) {
+            var _this = this;
+            element.addEventListener("mousedown", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].down(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = true;
+                }
+            }, true);
+            element.addEventListener("mousemove", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        if (_this.buttonDown) {
+                            listeners[i].dragged(x, y);
+                        }
+                        else {
+                            listeners[i].moved(x, y);
+                        }
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                }
+            }, true);
+            element.addEventListener("mouseup", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
+            element.addEventListener("touchstart", function (ev) {
+                if (_this.currTouch != null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    var rect = element.getBoundingClientRect();
+                    var x = touch.clientX - rect.left;
+                    var y = touch.clientY - rect.top;
+                    _this.currTouch = new Touch(touch.identifier, x, y);
+                    break;
+                }
+                var listeners = _this.listeners;
+                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
+                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
+                }
+                _this.lastX = _this.currTouch.x;
+                _this.lastY = _this.currTouch.y;
+                _this.buttonDown = true;
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchend", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
+                            listeners[i_2].up(x, y);
+                        }
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchcancel", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
+                            listeners[i_3].up(x, y);
+                        }
+                        console.log("End " + x + ", " + y);
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchmove", function (ev) {
+                if (_this.currTouch == null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = touch.clientX - rect.left;
+                        var y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
+                            listeners[i_4].dragged(x, y);
+                        }
+                        console.log("Drag " + x + ", " + y);
+                        _this.lastX = _this.currTouch.x = x;
+                        _this.lastY = _this.currTouch.y = y;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+        };
+        Input.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        Input.prototype.removeListener = function (listener) {
+            var idx = this.listeners.indexOf(listener);
+            if (idx > -1) {
+                this.listeners.splice(idx, 1);
+            }
+        };
+        return Input;
+    }());
+    exports.Input = Input;
+    var Touch = (function () {
+        function Touch(identifier, x, y) {
+            this.identifier = identifier;
+            this.x = x;
+            this.y = y;
+        }
+        return Touch;
+    }());
+    exports.Touch = Touch;
+    var TimeKeeper = (function () {
+        function TimeKeeper() {
+            this.maxDelta = 0.064;
+            this.framesPerSecond = 0;
+            this.delta = 0;
+            this.totalTime = 0;
+            this.lastTime = Date.now() / 1000;
+            this.frameCount = 0;
+            this.frameTime = 0;
+        }
+        TimeKeeper.prototype.update = function () {
+            var now = Date.now() / 1000;
+            this.delta = now - this.lastTime;
+            this.frameTime += this.delta;
+            this.totalTime += this.delta;
+            if (this.delta > this.maxDelta)
+                this.delta = this.maxDelta;
+            this.lastTime = now;
+            this.frameCount++;
+            if (this.frameTime > 1) {
+                this.framesPerSecond = this.frameCount / this.frameTime;
+                this.frameTime = 0;
+                this.frameCount = 0;
+            }
+        };
+        return TimeKeeper;
+    }());
+    exports.TimeKeeper = TimeKeeper;
+});
+define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require, exports, Parser_1, Utils_1) {
     "use strict";
     exports.__esModule = true;
     var paperbots;
@@ -4276,22 +4304,120 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             return LetterTile;
         }());
         paperbots.LetterTile = LetterTile;
+        var RobotAction;
+        (function (RobotAction) {
+            RobotAction[RobotAction["Forward"] = 0] = "Forward";
+            RobotAction[RobotAction["TurnLeft"] = 1] = "TurnLeft";
+            RobotAction[RobotAction["TurnRight"] = 2] = "TurnRight";
+            RobotAction[RobotAction["None"] = 3] = "None";
+        })(RobotAction || (RobotAction = {}));
         var Robot = (function () {
-            function Robot() {
+            function Robot(world) {
+                this.world = world;
                 this.x = 0;
-                this.y = 0;
+                this.y = 15;
+                this.dirX = 1;
+                this.dirY = 0;
                 this.angle = 0;
+                this.action = RobotAction.None;
+                this.actionTime = 0;
+                this.startX = 0;
+                this.startY = 0;
+                this.targetX = 0;
+                this.targetY = 0;
+                this.startAngle = 0;
+                this.targetAngle = 0;
             }
+            Robot.prototype.turnLeft = function () {
+                this.angle = this.angle - 90;
+                var temp = this.dirX;
+                this.dirX = -this.dirY;
+                this.dirY = temp;
+            };
+            Robot.prototype.setAction = function (action) {
+                if (this.action != RobotAction.None) {
+                    throw new Error("Can't set action while robot is executing previous action.");
+                }
+                this.action = action;
+                switch (action) {
+                    case RobotAction.Forward:
+                        this.startX = this.x;
+                        this.startY = this.y;
+                        this.targetX = this.x + this.dirX;
+                        this.targetY = this.y + this.dirY;
+                        console.log(this.targetX + ", " + this.targetY);
+                        if (this.world.getTile(this.targetX, this.targetY) instanceof Wall) {
+                            this.targetX = this.startX;
+                            this.targetY = this.startY;
+                        }
+                        break;
+                    case RobotAction.TurnLeft: {
+                        this.startAngle = this.angle;
+                        this.targetAngle = this.angle - 90;
+                        var temp = this.dirX;
+                        this.dirX = -this.dirY;
+                        this.dirY = temp;
+                        console.log(this.targetAngle);
+                        break;
+                    }
+                    case RobotAction.TurnRight: {
+                        this.startAngle = this.angle;
+                        this.targetAngle = this.angle + 90;
+                        var temp = this.dirX;
+                        this.dirX = this.dirY;
+                        this.dirY = -temp;
+                        console.log(this.targetAngle);
+                        break;
+                    }
+                }
+                this.actionTime = 0;
+            };
+            Robot.prototype.update = function (delta) {
+                this.actionTime += delta;
+                switch (this.action) {
+                    case RobotAction.Forward: {
+                        var percentage = this.actionTime / Robot.FORWARD_DURATION;
+                        if (percentage >= 1) {
+                            this.action = RobotAction.None;
+                            this.x = this.targetX;
+                            this.y = this.targetY;
+                        }
+                        else {
+                            this.x = this.startX + (this.targetX - this.startX) * percentage;
+                            this.y = this.startY + (this.targetY - this.startY) * percentage;
+                        }
+                        break;
+                    }
+                    case RobotAction.TurnLeft:
+                    case RobotAction.TurnRight: {
+                        var percentage = this.actionTime / Robot.TURN_DURATION;
+                        if (percentage >= 1) {
+                            this.action = RobotAction.None;
+                            this.angle = this.targetAngle;
+                        }
+                        else {
+                            this.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
+                        }
+                        break;
+                    }
+                }
+                return this.action == RobotAction.None;
+            };
+            Robot.FORWARD_DURATION = 1;
+            Robot.TURN_DURATION = 1;
             return Robot;
         }());
         paperbots.Robot = Robot;
         var World = (function () {
             function World() {
                 this.tiles = Array(16 * 16);
-                this.robot = new Robot();
+                this.robot = new Robot(this);
+                this.time = new Utils_1.TimeKeeper();
+                this.lastWasTurn = false;
                 for (var i = 0; i < 10; i++) {
                     this.setTile(i, 2, new Wall());
                 }
+                this.setTile(1, 0, new Wall());
                 this.setTile(2, 2, new NumberTile(12));
                 var hello = "Hello world.";
                 for (var i = 0; i < hello.length; i++) {
@@ -4299,18 +4425,27 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 }
             }
             World.prototype.getTile = function (x, y) {
-                if (x < 0 || x > World.WORLD_SIZE)
-                    return null;
-                if (y < 0 || y > World.WORLD_SIZE)
-                    return null;
+                x = x | 0;
+                y = y | 0;
+                if (x < 0 || x >= World.WORLD_SIZE)
+                    return new Wall();
+                if (y < 0 || y >= World.WORLD_SIZE)
+                    return new Wall();
                 return this.tiles[x + y * World.WORLD_SIZE];
             };
             World.prototype.setTile = function (x, y, tile) {
-                if (x < 0 || x > World.WORLD_SIZE)
+                x = x | 0;
+                y = y | 0;
+                if (x < 0 || x >= World.WORLD_SIZE)
                     return;
-                if (y < 0 || y > World.WORLD_SIZE)
+                if (y < 0 || y >= World.WORLD_SIZE)
                     return;
                 this.tiles[x + y * World.WORLD_SIZE] = tile;
+            };
+            World.prototype.update = function () {
+                this.time.update();
+                var delta = this.time.delta;
+                this.robot.update(delta);
             };
             World.WORLD_SIZE = 16;
             return World;
@@ -4334,12 +4469,13 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                 var tools = container.find("#pb-canvas-tools input");
                 for (var i = 0; i < tools.length; i++) {
                     $(tools[i]).click(function (tool) {
+                        var value = tool.target.value;
                         tools.removeClass("selected");
                         $(tool.target).addClass("selected");
-                        _this.selectedTool = tool.target.value;
+                        _this.selectedTool = value;
                     });
                 }
-                this.input = new Input_1.Input(this.canvas);
+                this.input = new Utils_1.Input(this.canvas);
                 this.input.addListener({
                     down: function (x, y) {
                         var cellSize = _this.canvas.width / World.WORLD_SIZE;
@@ -4397,8 +4533,13 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                             _this.world.setTile(x, y, new LetterTile(letter));
                         }
                         else if (_this.selectedTool == "Robot") {
-                            _this.world.robot.x = x;
-                            _this.world.robot.y = y;
+                            if (_this.world.robot.x != x || _this.world.robot.y != y) {
+                                _this.world.robot.x = x;
+                                _this.world.robot.y = y;
+                            }
+                            else {
+                                _this.world.robot.turnLeft();
+                            }
                         }
                     },
                     moved: function (x, y) {
@@ -4432,6 +4573,7 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
             Canvas.prototype.draw = function () {
                 var _this = this;
                 requestAnimationFrame(function () { _this.draw(); });
+                this.world.update();
                 var ctx = this.ctx;
                 var canvas = this.canvas;
                 if (this.lastWidth != canvas.clientWidth) {
@@ -4491,8 +4633,12 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                     }
                 }
                 var robot = this.world.robot;
-                robot.angle += 1;
                 this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
+                ctx.beginPath();
+                ctx.strokeStyle = "#ff0000";
+                ctx.moveTo((robot.x + 0.5) * cellSize, canvas.height - (robot.y + 0.5) * cellSize);
+                ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, canvas.height - (robot.y + robot.dirY + 0.5) * cellSize);
+                ctx.stroke();
             };
             Canvas.prototype.drawGrid = function () {
                 var ctx = this.ctx;
@@ -4510,6 +4656,7 @@ define("Paperbots", ["require", "exports", "Parser", "Input"], function (require
                     ctx.lineTo(x, canvas.height);
                 }
                 ctx.stroke();
+                ctx.setLineDash([]);
             };
             return Canvas;
         }());

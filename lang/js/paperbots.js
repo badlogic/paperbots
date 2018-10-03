@@ -3982,6 +3982,33 @@ define("Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
+define("Compiler", ["require", "exports", "Parser"], function (require, exports, Parser_1) {
+    "use strict";
+    exports.__esModule = true;
+    var CompilerError = (function () {
+        function CompilerError(message, location) {
+            this.message = message;
+            this.location = location;
+        }
+        return CompilerError;
+    }());
+    exports.CompilerError = CompilerError;
+    var Compiler = (function () {
+        function Compiler() {
+        }
+        Compiler.prototype.parse = function (input) {
+            try {
+                return Parser_1.parse(input);
+            }
+            catch (e) {
+                var error = e;
+                throw new CompilerError(error.message, error.location);
+            }
+        };
+        return Compiler;
+    }());
+    exports.Compiler = Compiler;
+});
 define("Utils", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -4179,28 +4206,63 @@ define("Utils", ["require", "exports"], function (require, exports) {
         return TimeKeeper;
     }());
     exports.TimeKeeper = TimeKeeper;
+    var AssetManager = (function () {
+        function AssetManager() {
+            this.toLoad = new Array();
+            this.loaded = {};
+            this.error = {};
+        }
+        AssetManager.prototype.loadImage = function (url) {
+            var _this = this;
+            var img = new Image();
+            var asset = { image: img, url: url };
+            this.toLoad.push(asset);
+            img.onload = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Loaded image " + url);
+            };
+            img.onerror = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Couldn't load image " + url);
+            };
+            img.src = url;
+        };
+        AssetManager.prototype.getImage = function (url) {
+            return this.loaded[url].image;
+        };
+        AssetManager.prototype.hasMoreToLoad = function () {
+            return this.toLoad.length;
+        };
+        return AssetManager;
+    }());
+    exports.AssetManager = AssetManager;
 });
-define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require, exports, Parser_1, Utils_1) {
+define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (require, exports, Utils_1, Compiler_1) {
     "use strict";
     exports.__esModule = true;
     var paperbots;
     (function (paperbots) {
-        var Compiler = (function () {
-            function Compiler() {
-            }
-            Compiler.prototype.parse = function (input) {
-                return Parser_1.parse(input);
-            };
-            return Compiler;
-        }());
-        paperbots.Compiler = Compiler;
         var Editor = (function () {
-            function Editor(canvasElement, editorElement, compilerOutput) {
+            function Editor(canvasElement, editorElement, outputElement) {
+                this.canvas = new Canvas(canvasElement);
+                this.codeEditor = new CodeEditor(editorElement, outputElement);
+            }
+            return Editor;
+        }());
+        paperbots.Editor = Editor;
+        var CodeEditor = (function () {
+            function CodeEditor(editorElement, outputElement) {
                 var _this = this;
                 this.editorElement = editorElement;
-                this.compilerOutput = compilerOutput;
-                this.compiler = new Compiler();
-                this.canvas = new Canvas(canvasElement);
+                this.outputElement = outputElement;
+                this.markers = Array();
+                this.compiler = new Compiler_1.Compiler();
                 this.editor = CodeMirror(editorElement, {
                     tabSize: 3,
                     indentUnit: 3,
@@ -4212,108 +4274,49 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         "Tab": "indentAuto"
                     }
                 });
-                this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
-                var markers = Array();
-                var compile = function () {
-                    try {
-                        var result = _this.compiler.parse(_this.editor.getDoc().getValue());
-                        compilerOutput.innerHTML = JSON.stringify(result, null, 2);
-                        markers.forEach(function (marker) { return marker.clear(); });
-                        markers.length = 0;
-                    }
-                    catch (e) {
-                        markers.forEach(function (marker) { return marker.clear(); });
-                        markers.length = 0;
-                        var err = e;
-                        var loc = err.location;
-                        var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
-                        var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
-                        markers.push(_this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
-                        compilerOutput.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
-                    }
-                };
                 this.editor.on("change", function (instance, change) {
-                    compile();
+                    _this.compile();
                     window.localStorage.setItem("editor-content", _this.editor.getDoc().getValue());
                 });
                 this.editor.on("gutterClick", function (cm, n) {
                     var info = cm.lineInfo(n);
-                    cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : makeMarker());
+                    cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : this.newBreakpointMarker());
                 });
-                function makeMarker() {
-                    var marker = $("\n\t\t\t\t<svg height=\"15\" width=\"15\">\n\t\t\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t\t  \t</svg>\n\t\t\t\t");
-                    return marker[0];
+                this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
+                this.compile();
+            }
+            CodeEditor.prototype.compile = function () {
+                this.markers.forEach(function (marker) { return marker.clear(); });
+                this.markers.length = 0;
+                try {
+                    var result = this.compiler.parse(this.editor.getDoc().getValue());
+                    this.outputElement.innerHTML = JSON.stringify(result, null, 2);
                 }
-                compile();
-            }
-            return Editor;
-        }());
-        paperbots.Editor = Editor;
-        var AssetManager = (function () {
-            function AssetManager() {
-                this.toLoad = new Array();
-                this.loaded = {};
-                this.error = {};
-            }
-            AssetManager.prototype.loadImage = function (url) {
-                var _this = this;
-                var img = new Image();
-                var asset = { image: img, url: url };
-                this.toLoad.push(asset);
-                img.onload = function () {
-                    _this.loaded[asset.url] = asset;
-                    var idx = _this.toLoad.indexOf(asset);
-                    if (idx >= 0)
-                        _this.toLoad.splice(idx, 1);
-                    console.log("Loaded image " + url);
-                };
-                img.onerror = function () {
-                    _this.loaded[asset.url] = asset;
-                    var idx = _this.toLoad.indexOf(asset);
-                    if (idx >= 0)
-                        _this.toLoad.splice(idx, 1);
-                    console.log("Couldn't load image " + url);
-                };
-                img.src = url;
+                catch (e) {
+                    var err = e;
+                    var loc = err.location;
+                    var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
+                    var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
+                    this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
+                    this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+                }
             };
-            AssetManager.prototype.getImage = function (url) {
-                return this.loaded[url].image;
+            CodeEditor.prototype.newBreakpointMarker = function () {
+                var marker = $("\n\t\t\t<svg height=\"15\" width=\"15\">\n\t\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t\t  </svg>\n\t\t\t");
+                return marker[0];
             };
-            AssetManager.prototype.hasMoreToLoad = function () {
-                return this.toLoad.length;
-            };
-            return AssetManager;
+            return CodeEditor;
         }());
-        var Wall = (function () {
-            function Wall() {
-            }
-            return Wall;
-        }());
-        paperbots.Wall = Wall;
-        var NumberTile = (function () {
-            function NumberTile(value) {
-                this.value = value;
-            }
-            return NumberTile;
-        }());
-        paperbots.NumberTile = NumberTile;
-        var LetterTile = (function () {
-            function LetterTile(value) {
-                this.value = value;
-            }
-            return LetterTile;
-        }());
-        paperbots.LetterTile = LetterTile;
+        paperbots.CodeEditor = CodeEditor;
         var RobotAction;
         (function (RobotAction) {
             RobotAction[RobotAction["Forward"] = 0] = "Forward";
             RobotAction[RobotAction["TurnLeft"] = 1] = "TurnLeft";
             RobotAction[RobotAction["TurnRight"] = 2] = "TurnRight";
             RobotAction[RobotAction["None"] = 3] = "None";
-        })(RobotAction || (RobotAction = {}));
+        })(RobotAction = paperbots.RobotAction || (paperbots.RobotAction = {}));
         var Robot = (function () {
-            function Robot(world) {
-                this.world = world;
+            function Robot() {
                 this.x = 0;
                 this.y = 15;
                 this.dirX = 1;
@@ -4334,7 +4337,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 this.dirX = -this.dirY;
                 this.dirY = temp;
             };
-            Robot.prototype.setAction = function (action) {
+            Robot.prototype.setAction = function (world, action) {
                 if (this.action != RobotAction.None) {
                     throw new Error("Can't set action while robot is executing previous action.");
                 }
@@ -4346,7 +4349,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         this.targetX = this.x + this.dirX;
                         this.targetY = this.y + this.dirY;
                         console.log(this.targetX + ", " + this.targetY);
-                        if (this.world.getTile(this.targetX, this.targetY) instanceof Wall) {
+                        if (world.getTile(this.targetX, this.targetY).kind == "wall") {
                             this.targetX = this.startX;
                             this.targetY = this.startY;
                         }
@@ -4408,29 +4411,30 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
             return Robot;
         }());
         paperbots.Robot = Robot;
+        function assertNever(x) {
+            throw new Error("Unexpected object: " + x);
+        }
         var World = (function () {
             function World() {
                 this.tiles = Array(16 * 16);
-                this.robot = new Robot(this);
-                this.time = new Utils_1.TimeKeeper();
-                this.lastWasTurn = false;
+                this.robot = new Robot();
                 for (var i = 0; i < 10; i++) {
-                    this.setTile(i, 2, new Wall());
+                    this.setTile(i, 2, World.newWall());
                 }
-                this.setTile(1, 0, new Wall());
-                this.setTile(2, 2, new NumberTile(12));
+                this.setTile(1, 0, World.newWall());
+                this.setTile(2, 2, World.newNumber(12));
                 var hello = "Hello world.";
                 for (var i = 0; i < hello.length; i++) {
-                    this.setTile(4 + i, 4, new LetterTile(hello.charAt(i)));
+                    this.setTile(4 + i, 4, World.newLetter(hello.charAt(i)));
                 }
             }
             World.prototype.getTile = function (x, y) {
                 x = x | 0;
                 y = y | 0;
                 if (x < 0 || x >= World.WORLD_SIZE)
-                    return new Wall();
+                    return World.newWall();
                 if (y < 0 || y >= World.WORLD_SIZE)
-                    return new Wall();
+                    return World.newWall();
                 return this.tiles[x + y * World.WORLD_SIZE];
             };
             World.prototype.setTile = function (x, y, tile) {
@@ -4442,11 +4446,12 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                     return;
                 this.tiles[x + y * World.WORLD_SIZE] = tile;
             };
-            World.prototype.update = function () {
-                this.time.update();
-                var delta = this.time.delta;
+            World.prototype.update = function (delta) {
                 this.robot.update(delta);
             };
+            World.newWall = function () { return { kind: "wall" }; };
+            World.newNumber = function (value) { return { kind: "number", value: value }; };
+            World.newLetter = function (value) { return { kind: "letter", value: value }; };
             World.WORLD_SIZE = 16;
             return World;
         }());
@@ -4456,11 +4461,12 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                 var _this = this;
                 this.canvasContainer = canvasContainer;
                 this.world = new World();
-                this.assets = new AssetManager();
+                this.assets = new Utils_1.AssetManager();
                 this.selectedTool = "Robot";
                 this.lastWidth = 0;
                 this.cellSize = 0;
                 this.drawingSize = 0;
+                this.time = new Utils_1.TimeKeeper();
                 var container = $(canvasContainer);
                 this.canvas = container.find("#pb-canvas")[0];
                 this.ctx = this.canvas.getContext("2d");
@@ -4484,7 +4490,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         x = ((x / cellSize) | 0) - 1;
                         y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
-                            _this.world.setTile(x, y, new Wall());
+                            _this.world.setTile(x, y, World.newWall());
                         }
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
@@ -4495,7 +4501,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         x = ((x / cellSize) | 0) - 1;
                         y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
-                            _this.world.setTile(x, y, new Wall());
+                            _this.world.setTile(x, y, World.newWall());
                         }
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
@@ -4518,7 +4524,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                                     number = null;
                                 }
                             }
-                            _this.world.setTile(x, y, new NumberTile(number));
+                            _this.world.setTile(x, y, World.newNumber(number));
                         }
                         else if (_this.selectedTool == "Letter") {
                             var letter = null;
@@ -4532,7 +4538,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                                     letter = null;
                                 }
                             }
-                            _this.world.setTile(x, y, new LetterTile(letter));
+                            _this.world.setTile(x, y, World.newLetter(letter));
                         }
                         else if (_this.selectedTool == "Robot") {
                             if (_this.world.robot.x != x || _this.world.robot.y != y) {
@@ -4554,7 +4560,7 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         x = ((x / cellSize) | 0) - 1;
                         y = ((_this.drawingSize - y) / cellSize) | 0;
                         if (_this.selectedTool == "Wall") {
-                            _this.world.setTile(x, y, new Wall());
+                            _this.world.setTile(x, y, World.newWall());
                         }
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
@@ -4575,7 +4581,8 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
             Canvas.prototype.draw = function () {
                 var _this = this;
                 requestAnimationFrame(function () { _this.draw(); });
-                this.world.update();
+                this.time.update();
+                this.world.update(this.time.delta);
                 var ctx = this.ctx;
                 var canvas = this.canvas;
                 if (this.lastWidth != canvas.clientWidth) {
@@ -4623,14 +4630,19 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         var wx = (x / cellSize);
                         var wy = (y / cellSize);
                         var obj = this.world.getTile(wx, wy);
-                        if (obj instanceof Wall) {
-                            img = this.assets.getImage("img/wall.png");
-                        }
-                        else if (obj instanceof NumberTile) {
-                            this.drawText("" + obj.value, x, y);
-                        }
-                        else if (obj instanceof LetterTile) {
-                            this.drawText("" + obj.value, x, y);
+                        if (!obj)
+                            continue;
+                        switch (obj.kind) {
+                            case "wall":
+                                img = this.assets.getImage("img/wall.png");
+                                break;
+                            case "number":
+                                this.drawText("" + obj.value, x, y);
+                                break;
+                            case "letter":
+                                this.drawText("" + obj.value, x, y);
+                                break;
+                            default: assertNever(obj);
                         }
                         if (img)
                             this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);

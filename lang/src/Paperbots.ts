@@ -1,22 +1,26 @@
-import {SyntaxError, parse} from "./Parser";
 import {TextMarker} from "../node_modules/@types/codemirror/index";
-import {Input, TimeKeeper} from "./Utils";
+import {AssetManager, Input, TimeKeeper} from "./Utils";
+import {Compiler, CompilerError} from "./Compiler";
 
-export module paperbots {
-	export class Compiler {
-		parse(input: string) {
-			return parse(input);
+export namespace paperbots {
+	export class Editor {
+		private canvas: Canvas;
+		private codeEditor: CodeEditor;
+
+		constructor(canvasElement: HTMLCanvasElement, editorElement: HTMLElement, outputElement: HTMLElement) {
+			this.canvas = new Canvas(canvasElement);
+			this.codeEditor = new CodeEditor(editorElement, outputElement);
 		}
 	}
 
-	export class Editor {
-		private editor: CodeMirror.Editor;
-		private canvas: Canvas;
+	export class CodeEditor {
 		private compiler: Compiler;
+		private editor: CodeMirror.Editor;
+		private markers = Array<TextMarker>();
 
-		constructor(canvasElement: HTMLCanvasElement, private editorElement: HTMLElement, private compilerOutput: HTMLElement) {
+		constructor (private editorElement: HTMLElement, private outputElement: HTMLElement) {
 			this.compiler = new Compiler();
-			this.canvas = new Canvas(canvasElement);
+
 			this.editor = CodeMirror(editorElement, {
 				tabSize: 3,
 				indentUnit: 3,
@@ -28,95 +32,50 @@ export module paperbots {
 					"Tab": "indentAuto"
 				}
 			});
-			this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
-
-			var markers = Array<TextMarker>();
-			var compile = () => {
-				try {
-					let result = this.compiler.parse(this.editor.getDoc().getValue());
-					compilerOutput.innerHTML = JSON.stringify(result, null, 2);
-					markers.forEach(marker => marker.clear());
-					markers.length = 0;
-				} catch (e) {
-					markers.forEach(marker => marker.clear());
-					markers.length = 0;
-					let err = (e as SyntaxError);
-					let loc = err.location;
-					let from = {line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0)};
-					let to = {line: loc.end.line - 1, ch: loc.end.column - 1};
-					markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message}));
-					compilerOutput.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
-				}
-			}
 
 			this.editor.on("change", (instance, change) => {
-				compile();
+				this.compile();
 				window.localStorage.setItem("editor-content", this.editor.getDoc().getValue());
 			});
 
 			this.editor.on("gutterClick", function(cm, n) {
 				let info = cm.lineInfo(n);
-				cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : makeMarker());
+				cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : this.newBreakpointMarker());
 			});
 
-			function makeMarker() {
-				let marker = $(`
-				<svg height="15" width="15">
-					<circle cx="7" cy="7" r="7" stroke-width="1" fill="#cc0000" />
-			  	</svg>
-				`);
-				return marker[0];
-			}
+			this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
+			this.compile();
+		}
 
-			compile();
+		compile () {
+			this.markers.forEach(marker => marker.clear());
+			this.markers.length = 0;
+
+			try {
+				let result = this.compiler.parse(this.editor.getDoc().getValue());
+				this.outputElement.innerHTML = JSON.stringify(result, null, 2);
+
+			} catch (e) {
+				let err = (e as CompilerError);
+				let loc = err.location;
+				let from = {line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0)};
+				let to = {line: loc.end.line - 1, ch: loc.end.column - 1};
+				this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message}));
+				this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+			}
+		}
+
+		newBreakpointMarker () {
+			let marker = $(`
+			<svg height="15" width="15">
+				<circle cx="7" cy="7" r="7" stroke-width="1" fill="#cc0000" />
+			  </svg>
+			`);
+			return marker[0];
 		}
 	}
 
-	interface ImageAsset {
-		image: HTMLImageElement;
-		url: string;
-	}
-
-	class AssetManager {
-		private toLoad = new Array<ImageAsset>();
-		private loaded = {};
-		private error = {};
-
-		loadImage(url: string) {
-			var img = new Image();
-			var asset: ImageAsset = { image: img, url: url };
-			this.toLoad.push(asset);
-			img.onload = () => {
-				this.loaded[asset.url] = asset;
-				let idx = this.toLoad.indexOf(asset);
-				if (idx >= 0) this.toLoad.splice(idx, 1);
-				console.log("Loaded image " + url);
-			}
-			img.onerror = () => {
-				this.loaded[asset.url] = asset;
-				let idx = this.toLoad.indexOf(asset);
-				if (idx >= 0) this.toLoad.splice(idx, 1);
-				console.log("Couldn't load image " + url);
-			}
-			img.src = url;
-		}
-
-		getImage(url: string): HTMLImageElement {
-			return (this.loaded[url] as ImageAsset).image;
-		}
-
-		hasMoreToLoad() {
-			return this.toLoad.length;
-		}
-	}
-
-
-	export class Wall { }
-	export class NumberTile { constructor (public readonly value: number) { } }
-	export class LetterTile { constructor (public readonly value: string) { } }
-	export type WorldObject = Wall | NumberTile | LetterTile;
-
-	enum RobotAction {
+	export enum RobotAction {
 		Forward,
 		TurnLeft,
 		TurnRight,
@@ -141,7 +100,7 @@ export module paperbots {
 		startAngle = 0;
 		targetAngle = 0;
 
-		constructor(private world: World) { }
+		constructor() { }
 
 		turnLeft () {
 			this.angle = this.angle - 90;
@@ -150,7 +109,7 @@ export module paperbots {
 			this.dirY = temp;
 		}
 
-		setAction(action: RobotAction) {
+		setAction(world: World, action: RobotAction) {
 			if (this.action != RobotAction.None) {
 				throw new Error("Can't set action while robot is executing previous action.");
 			}
@@ -162,7 +121,7 @@ export module paperbots {
 				this.targetX = this.x + this.dirX;
 				this.targetY = this.y + this.dirY;
 				console.log(this.targetX + ", " + this.targetY);
-				if (this.world.getTile(this.targetX, this.targetY) instanceof Wall) {
+				if (world.getTile(this.targetX, this.targetY).kind == "wall") {
 					this.targetX = this.startX;
 					this.targetY = this.startY;
 				}
@@ -220,30 +179,38 @@ export module paperbots {
 		}
 	}
 
+	function assertNever(x: never): never {
+		throw new Error("Unexpected object: " + x);
+	}
+
+	export interface Wall { kind: "wall" }
+	export interface NumberTile { kind: "number"; value: number }
+	export interface LetterTile { kind: "letter"; value: string }
+	export type WorldObject = Wall | NumberTile | LetterTile;
+
 	export class World {
 		static WORLD_SIZE = 16;
 		tiles = Array<WorldObject>(16 * 16);
-		robot = new Robot(this);
-		private time = new TimeKeeper();
+		robot = new Robot();
 
 		constructor () {
 			for (var i = 0; i < 10; i++) {
-				this.setTile(i, 2, new Wall());
+				this.setTile(i, 2, World.newWall());
 			}
-			this.setTile(1, 0, new Wall());
-			this.setTile(2, 2, new NumberTile(12));
+			this.setTile(1, 0, World.newWall());
+			this.setTile(2, 2, World.newNumber(12));
 
 			let hello = "Hello world.";
 			for (var i = 0; i < hello.length; i++) {
-				this.setTile(4 + i, 4, new LetterTile(hello.charAt(i)));
+				this.setTile(4 + i, 4, World.newLetter(hello.charAt(i)));
 			}
 		}
 
 		getTile (x: number, y: number): WorldObject {
 			x = x | 0;
 			y = y | 0;
-			if (x < 0 || x >= World.WORLD_SIZE) return new Wall();
-			if (y < 0 || y >= World.WORLD_SIZE) return new Wall();
+			if (x < 0 || x >= World.WORLD_SIZE) return World.newWall();
+			if (y < 0 || y >= World.WORLD_SIZE) return World.newWall();
 			return this.tiles[x + y * World.WORLD_SIZE];
 		}
 
@@ -255,12 +222,13 @@ export module paperbots {
 			this.tiles[x + y * World.WORLD_SIZE] = tile;
 		}
 
-		lastWasTurn = false;
-		update () {
-			this.time.update();
-			let delta = this.time.delta;
+		update (delta: number) {
 			this.robot.update(delta);
 		}
+
+		static newWall(): Wall { return {kind: "wall"}; }
+		static newNumber(value: number): NumberTile { return {kind: "number", value: value}; }
+		static newLetter(value: string): LetterTile { return {kind: "letter", value: value}; }
 	}
 
 	class Canvas {
@@ -273,6 +241,7 @@ export module paperbots {
 		private lastWidth = 0;
 		private cellSize = 0;
 		private drawingSize = 0;
+		private time = new TimeKeeper();
 
 		constructor(private canvasContainer: HTMLElement) {
 			let container = $(canvasContainer);
@@ -301,7 +270,7 @@ export module paperbots {
 					y = ((this.drawingSize - y) / cellSize) | 0;
 
 					if (this.selectedTool == "Wall") {
-						this.world.setTile(x, y, new Wall());
+						this.world.setTile(x, y, World.newWall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					}
@@ -312,7 +281,7 @@ export module paperbots {
 					y = ((this.drawingSize - y) / cellSize) | 0;
 
 					if (this.selectedTool == "Wall") {
-						this.world.setTile(x, y, new Wall());
+						this.world.setTile(x, y, World.newWall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					} else if (this.selectedTool == "Number") {
@@ -331,7 +300,7 @@ export module paperbots {
 								number = null;
 							}
 						}
-						this.world.setTile(x, y, new NumberTile(number));
+						this.world.setTile(x, y, World.newNumber(number));
 					} else if (this.selectedTool == "Letter") {
 						var letter = null;
 						while (letter == null) {
@@ -344,7 +313,7 @@ export module paperbots {
 								letter = null;
 							}
 						}
-						this.world.setTile(x, y, new LetterTile(letter));
+						this.world.setTile(x, y, World.newLetter(letter));
 					} else if (this.selectedTool == "Robot") {
 						if (this.world.robot.x != x || this.world.robot.y != y) {
 							this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
@@ -365,7 +334,7 @@ export module paperbots {
 					y = ((this.drawingSize - y) / cellSize) | 0;
 
 					if (this.selectedTool == "Wall") {
-						this.world.setTile(x, y, new Wall());
+						this.world.setTile(x, y, World.newWall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					} else if (this.selectedTool == "Robot") {
@@ -386,8 +355,8 @@ export module paperbots {
 
 		draw () {
 			requestAnimationFrame(() => { this.draw(); });
-
-			this.world.update();
+			this.time.update();
+			this.world.update(this.time.delta);
 
 			let ctx = this.ctx;
 			let canvas = this.canvas;
@@ -442,12 +411,19 @@ export module paperbots {
 					let wx = (x / cellSize);
 					let wy = (y / cellSize);
 					let obj = this.world.getTile(wx, wy);
-					if (obj instanceof Wall) {
-						img = this.assets.getImage("img/wall.png");
-					} else if (obj instanceof NumberTile) {
-						this.drawText("" + obj.value, x, y);
-					} else if (obj instanceof LetterTile) {
-						this.drawText("" + obj.value, x, y);
+					if (!obj) continue;
+
+					switch(obj.kind) {
+						case "wall":
+							img = this.assets.getImage("img/wall.png");
+							break;
+						case "number":
+							this.drawText("" + obj.value, x, y);
+							break;
+						case "letter":
+							this.drawText("" + obj.value, x, y);
+							break;
+						default: assertNever(obj);
 					}
 
 					if (img) this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);

@@ -203,3 +203,41 @@ export class TimeKeeper {
 		}
 	}
 }
+
+export interface ImageAsset {
+	image: HTMLImageElement;
+	url: string;
+}
+
+export class AssetManager {
+	private toLoad = new Array<ImageAsset>();
+	private loaded = {};
+	private error = {};
+
+	loadImage(url: string) {
+		var img = new Image();
+		var asset: ImageAsset = { image: img, url: url };
+		this.toLoad.push(asset);
+		img.onload = () => {
+			this.loaded[asset.url] = asset;
+			let idx = this.toLoad.indexOf(asset);
+			if (idx >= 0) this.toLoad.splice(idx, 1);
+			console.log("Loaded image " + url);
+		}
+		img.onerror = () => {
+			this.loaded[asset.url] = asset;
+			let idx = this.toLoad.indexOf(asset);
+			if (idx >= 0) this.toLoad.splice(idx, 1);
+			console.log("Couldn't load image " + url);
+		}
+		img.src = url;
+	}
+
+	getImage(url: string): HTMLImageElement {
+		return (this.loaded[url] as ImageAsset).image;
+	}
+
+	hasMoreToLoad() {
+		return this.toLoad.length;
+	}
+}

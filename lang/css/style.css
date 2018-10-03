@@ -50,7 +50,6 @@ body {
 	height: 100%;
 	margin-bottom: 1empx;
 	position: relative;
-	border: 1px solid black;
 }
 
 #pb-editor-tools {
@@ -62,7 +61,6 @@ body {
 	color: black;
 	padding: 1em;
 	margin: 0;
-	border-radius: 5px;
 	white-space: pre-wrap;
 }
 

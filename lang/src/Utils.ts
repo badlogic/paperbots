@@ -154,6 +154,7 @@ export class Input {
 	}
 
 	addListener(listener: InputListener) {
+		if (this.hasListener(listener)) return;
 		this.listeners.push(listener);
 	}
 
@@ -162,6 +163,10 @@ export class Input {
 		if (idx > -1) {
 			this.listeners.splice(idx, 1);
 		}
+	}
+
+	hasListener(listener: InputListener) {
+		return this.listeners.indexOf(listener) >= 0;
 	}
 }
 

@@ -4158,6 +4158,8 @@ define("Utils", ["require", "exports"], function (require, exports) {
             }, false);
         };
         Input.prototype.addListener = function (listener) {
+            if (this.hasListener(listener))
+                return;
             this.listeners.push(listener);
         };
         Input.prototype.removeListener = function (listener) {
@@ -4165,6 +4167,9 @@ define("Utils", ["require", "exports"], function (require, exports) {
             if (idx > -1) {
                 this.listeners.splice(idx, 1);
             }
+        };
+        Input.prototype.hasListener = function (listener) {
+            return this.listeners.indexOf(listener) >= 0;
         };
         return Input;
     }());
@@ -4459,7 +4464,6 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
         var Canvas = (function () {
             function Canvas(canvasContainer) {
                 var _this = this;
-                this.canvasContainer = canvasContainer;
                 this.world = new World();
                 this.assets = new Utils_1.AssetManager();
                 this.selectedTool = "Robot";
@@ -4467,14 +4471,14 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.cellSize = 0;
                 this.drawingSize = 0;
                 this.time = new Utils_1.TimeKeeper();
-                var container = $(canvasContainer);
-                this.canvas = container.find("#pb-canvas")[0];
+                this.container = $(canvasContainer);
+                this.canvas = this.container.find("#pb-canvas")[0];
                 this.ctx = this.canvas.getContext("2d");
                 this.assets.loadImage("img/wall.png");
                 this.assets.loadImage("img/floor.png");
                 this.assets.loadImage("img/robot.png");
                 requestAnimationFrame(function () { _this.draw(); });
-                var tools = container.find("#pb-canvas-tools input");
+                var tools = this.container.find("#pb-canvas-tools input");
                 for (var i = 0; i < tools.length; i++) {
                     $(tools[i]).click(function (tool) {
                         var value = tool.target.value;
@@ -4484,7 +4488,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     });
                 }
                 this.input = new Utils_1.Input(this.canvas);
-                this.input.addListener({
+                this.toolsHandler = {
                     down: function (x, y) {
                         var cellSize = _this.cellSize;
                         x = ((x / cellSize) | 0) - 1;
@@ -4570,8 +4574,19 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                             _this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                         }
                     }
-                });
+                };
+                this.setToolsActive(true);
             }
+            Canvas.prototype.setToolsActive = function (active) {
+                if (active) {
+                    this.input.addListener(this.toolsHandler);
+                    this.container.find("#pb-canvas-tools input").removeAttr("disabled");
+                }
+                else {
+                    this.input.removeListener(this.toolsHandler);
+                    this.container.find("#pb-canvas-tools input").attr("disabled", "true");
+                }
+            };
             Canvas.prototype.setWorld = function (world) {
                 this.world = world;
             };

@@ -1,5 +1,5 @@
 import {TextMarker} from "../node_modules/@types/codemirror/index";
-import {AssetManager, Input, TimeKeeper} from "./Utils";
+import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import {Compiler, CompilerError} from "./Compiler";
 
 export namespace paperbots {
@@ -232,6 +232,7 @@ export namespace paperbots {
 	}
 
 	class Canvas {
+		private container: JQuery<HTMLElement>;
 		private canvas: HTMLCanvasElement;
 		private world = new World();
 		private ctx: CanvasRenderingContext2D;
@@ -242,17 +243,18 @@ export namespace paperbots {
 		private cellSize = 0;
 		private drawingSize = 0;
 		private time = new TimeKeeper();
+		private toolsHandler: InputListener;
 
-		constructor(private canvasContainer: HTMLElement) {
-			let container = $(canvasContainer);
-			this.canvas = container.find("#pb-canvas")[0] as HTMLCanvasElement;
+		constructor(canvasContainer: HTMLElement) {
+			this.container = $(canvasContainer);
+			this.canvas = this.container.find("#pb-canvas")[0] as HTMLCanvasElement;
 			this.ctx = this.canvas.getContext("2d");
 			this.assets.loadImage("img/wall.png");
 			this.assets.loadImage("img/floor.png");
 			this.assets.loadImage("img/robot.png");
 			requestAnimationFrame(() => { this.draw(); });
 
-			let tools = container.find("#pb-canvas-tools input");
+			let tools = this.container.find("#pb-canvas-tools input");
 			for (var i = 0; i < tools.length; i++) {
 				$(tools[i]).click((tool) => {
 					let value = (tool.target as HTMLInputElement).value;
@@ -263,7 +265,7 @@ export namespace paperbots {
 			}
 
 			this.input = new Input(this.canvas);
-			this.input.addListener({
+			this.toolsHandler = {
 				down: (x, y) => {
 					let cellSize = this.cellSize;
 					x = ((x / cellSize) | 0) - 1;
@@ -342,7 +344,19 @@ export namespace paperbots {
 						this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 					}
 				}
-			});
+			};
+
+			this.setToolsActive(true);
+		}
+
+		setToolsActive(active: boolean) {
+			if (active) {
+				this.input.addListener(this.toolsHandler);
+				this.container.find("#pb-canvas-tools input").removeAttr("disabled");
+			} else {
+				this.input.removeListener(this.toolsHandler);
+				this.container.find("#pb-canvas-tools input").attr("disabled", "true");
+			}
 		}
 
 		setWorld(world: World) {

@@ -4536,8 +4536,8 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                         }
                         else if (_this.selectedTool == "Robot") {
                             if (_this.world.robot.x != x || _this.world.robot.y != y) {
-                                _this.world.robot.x = x;
-                                _this.world.robot.y = y;
+                                _this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+                                _this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                             }
                             else {
                                 _this.world.robot.turnLeft();
@@ -4560,8 +4560,8 @@ define("Paperbots", ["require", "exports", "Parser", "Utils"], function (require
                             _this.world.setTile(x, y, null);
                         }
                         else if (_this.selectedTool == "Robot") {
-                            _this.world.robot.x = x;
-                            _this.world.robot.y = y;
+                            _this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+                            _this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                         }
                     }
                 });

@@ -347,8 +347,8 @@ export module paperbots {
 						this.world.setTile(x, y, new LetterTile(letter));
 					} else if (this.selectedTool == "Robot") {
 						if (this.world.robot.x != x || this.world.robot.y != y) {
-							this.world.robot.x = x;
-							this.world.robot.y = y;
+							this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+							this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 						} else {
 							this.world.robot.turnLeft();
 						}
@@ -369,8 +369,8 @@ export module paperbots {
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					} else if (this.selectedTool == "Robot") {
-						this.world.robot.x = x;
-						this.world.robot.y = y;
+						this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+						this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 					}
 				}
 			});

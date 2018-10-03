@@ -13,18 +13,9 @@
 </head>
 <body>
 
+	<h1>Paperbots</h1>
+
 	<div class="pb-container">
-		<h1>Paperbots</h1>
-		<div id="pb-canvas-container">
-			<canvas id="pb-canvas"></canvas>
-			<div id="pb-canvas-tools">
-				<input type="button" value="Robot" class="selected">
-				<input type="button" value="Floor">
-				<input type="button" value="Wall">
-				<input type="button" value="Number">
-				<input type="button" value="Letter">
-			</div>
-		</div>
 		<div id="pb-editor-container">
 			<div id="pb-editor-tools">
 				<input type="button" id="pb-run" value="Run">
@@ -32,8 +23,19 @@
 				<input type="button" id="pb-load" value="Load">
 			</div>
 			<div id="pb-editor"></div>
+			<pre id="pb-output" disabled></pre>
 		</div>
-		<pre id="pb-output" disabled></pre>
+		<div style="padding: 10px"></div>
+		<div id="pb-canvas-container">
+			<div id="pb-canvas-tools">
+				<input type="button" value="Robot" class="selected">
+				<input type="button" value="Floor">
+				<input type="button" value="Wall">
+				<input type="button" value="Number">
+				<input type="button" value="Letter">
+			</div>
+			<canvas id="pb-canvas"></canvas>
+		</div>
 	</div>
 
 	<script>

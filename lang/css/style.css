@@ -7,20 +7,22 @@ body {
 	background: #dddddd;
 	color: 333333;
 	margin: 0;
+	padding: 20px;
 }
 
 .pb-container {
 	display: flex;
-	flex-direction: column;
-	padding: 20px;
+	flex-direction: row;
 }
 
 #pb-canvas-container {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	margin-bottom: 20px;
+}
+
+#pb-canvas-tools {
+	margin-bottom: 0.5em;
 }
 
 #pb-canvas {
@@ -31,12 +33,6 @@ body {
   	image-rendering: -webkit-crisp-edges;
   	image-rendering: pixelated;
 	image-rendering: crisp-edges;
-	margin-bottom: 20px;
-}
-
-#pb-canvas-tools {
-	display: flex;
-	flex-direction: row;
 }
 
 #pb-canvas-tools .selected {
@@ -44,19 +40,30 @@ body {
 	color: #dddddd;
 }
 
+#pb-editor-container {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
 #pb-editor {
-	height: 20em;
-	margin-bottom: 20px;
+	height: 100%;
+	margin-bottom: 1empx;
 	position: relative;
 	border: 1px solid black;
+}
+
+#pb-editor-tools {
+	margin-bottom: 0.5em;
 }
 
 #pb-output {
 	background: lightgrey;
 	color: black;
-	margin-bottom: 20px;
-	padding: 20px;
+	padding: 1em;
+	margin: 0;
 	border-radius: 5px;
+	white-space: pre-wrap;
 }
 
 /* CodeMirror styles */

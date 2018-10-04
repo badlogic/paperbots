@@ -11,13 +11,13 @@ Program
 Comment
   = "#" (!"\n" .)* "\n"
   {
-    return "comment"
+    return { kind: "comment", value: text() }
   }
 
 Type
   = id:Identifier
   {
-    return id;
+    return { id: id };
   }
 
 Function "function"
@@ -28,7 +28,8 @@ Function "function"
       name: id,
       params: params,
       returnTypeName: returnType != null ? returnType[2] : null,
-      statements: stmts.map(function(element) { return element[1]; })
+      block: stmts.map(function(element) { return element[1]; }),
+      location: location()
     };
   }
 
@@ -36,7 +37,6 @@ Parameter
   = name:Identifier _ ":" _ typeName:Type
   {
     return {
-      kind: "parameter",
       name: name,
       typeName: typeName
     }
@@ -60,7 +60,8 @@ Record
     return {
       kind: "record",
       name: name,
-      fields: fields
+      fields: fields,
+      location: location()
     }
   }
 
@@ -68,7 +69,6 @@ Field
   = name:Identifier _ ":" _ typeName:Type
   {
     return {
-      kind: "field",
       name: name,
       typeName: typeName
     }
@@ -102,8 +102,9 @@ Variable
     return {
       kind: "variable",
       name: id,
-      typeName: typeof typeName === undefined ? typeName : null,
-      init: init
+      typeName: typeof typeName === undefined ? null : typeName[2],
+      value: init,
+      location: location()
     };
   }
 
@@ -112,8 +113,9 @@ Assignment
   {
     return {
       kind: "assignment",
-      variableName: id,
-      value: value
+      id: id,
+      value: value,
+      location: location();
     };
   }
 
@@ -123,7 +125,8 @@ Repeat
     return {
       kind: "repeat",
       count: count,
-      statements: stmts.map(function(element) { return element[1]; })
+      block: stmts.map(function(element) { return element[1]; }),
+      location: location()
     };
   }
 
@@ -133,7 +136,8 @@ While
     return {
       kind: "while",
       condition: cond,
-      statements: stmts.map(function(element) { return element[1]; })
+      block: stmts.map(function(element) { return element[1]; })
+      location: location()
     };
   }
 
@@ -152,10 +156,12 @@ If
 
     return {
     	kind: "if",
-        trueBlock: trueBlock.map(function(element) { return element[1]; }),
-        elseIfs: elseIfs,
-        falseBlock: falseBlock ? falseBlock[2].map(function(element) { return element[1]; }) : []
-	}
+      condition: cond,
+      trueBlock: trueBlock.map(function(element) { return element[1]; }),
+      elseIfs: elseIfs,
+      falseBlock: falseBlock ? falseBlock[2].map(function(element) { return element[1]; }) : [],
+      location: location()
+	  }
   }
 
 Expression
@@ -168,7 +174,8 @@ Expression
           kind: "binaryOp",
           operator: element[1],
           left: result,
-          right: element[3]
+          right: element[3],
+          location: location()
         }
     }, head);
   }
@@ -183,7 +190,8 @@ Relational
           kind: "binaryOp",
           operator: element[1],
           left: result,
-          right: element[3]
+          right: element[3],
+          location: location()
         }
     }, head);
   }
@@ -198,7 +206,8 @@ AddSubtract
           kind: "binaryOp",
           operator: element[1],
           left: result,
-          right: element[3]
+          right: element[3],
+          location: location()
         }
     }, head);
   }
@@ -213,7 +222,8 @@ MultiplyDivide
           kind: "binaryOp",
           operator: element[1],
           left: result,
-          right: element[3]
+          right: element[3],
+          location: location()
         }
     }, head);
   }
@@ -225,7 +235,8 @@ Unary
     return {
     	kind: "unaryOp",
         operator: op[0],
-        value: factor
+        value: factor,
+        location: op.location
     };
   }
 
@@ -242,13 +253,15 @@ VariableAccess "function call or variable name"
   	if (args === null) {
       return {
         kind: "variableAccess",
-        name: id
+        name: id,
+        location: location()
       }
     } else {
       return {
         kind: "functionCall",
         name: id,
-        args: args
+        args: args,
+        location: location()
       };
     }
   }
@@ -261,7 +274,7 @@ Arguments "arguments"
     args = args[1].map(function(element) {
       return element[3];
     })
-	args.unshift(head);
+	  args.unshift(head);
     return args;
   }
 
@@ -271,6 +284,7 @@ Number "number"
     return {
       kind: "number",
       value: parseFloat(text())
+      location: location()
     };
   }
 
@@ -279,7 +293,8 @@ Boolean "boolean"
  {
  	return {
     	kind: "boolean",
-        value: text() == "true"
+      value: text() == "true"
+      location: location()
     };
  }
 
@@ -289,6 +304,7 @@ String "string"
     return {
       kind: "string",
       value: JSON.stringify(chars.join(""))
+      location: location();
     };
   }
 
@@ -300,7 +316,7 @@ Identifier "identifier"
   = !Reserved IdentifierStart IdentifierPart*
   {
     return {
-      kind: "identifier",
+      location: location()
       value: text()
     };
   }

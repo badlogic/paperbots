@@ -1,6 +1,6 @@
 import {TextMarker} from "../node_modules/@types/codemirror/index";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
-import {Compiler, CompilerError} from "./Compiler";
+import {CompilerError, compile} from "./Compiler";
 
 export module paperbots {
 	export class Editor {
@@ -14,13 +14,10 @@ export module paperbots {
 	}
 
 	export class CodeEditor {
-		private compiler: Compiler;
 		private editor: CodeMirror.Editor;
 		private markers = Array<TextMarker>();
 
 		constructor (private editorElement: HTMLElement, private outputElement: HTMLElement) {
-			this.compiler = new Compiler();
-
 			this.editor = CodeMirror(editorElement, {
 				tabSize: 3,
 				indentUnit: 3,
@@ -52,8 +49,8 @@ export module paperbots {
 			this.markers.length = 0;
 
 			try {
-				let result = this.compiler.parse(this.editor.getDoc().getValue());
-				this.outputElement.innerHTML = JSON.stringify(result, null, 2);
+				let result = compile(this.editor.getDoc().getValue());
+				this.outputElement.innerHTML = "Success"; // JSON.stringify(result, null, 2);
 
 			} catch (e) {
 				let err = (e as CompilerError);

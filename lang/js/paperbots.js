@@ -4003,9 +4003,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     function assertNever(x) {
         throw new Error("This should never happen");
     }
-    exports.StringType = {
+    exports.NothingType = {
         declarationNode: null,
-        name: "string"
+        name: "nothing"
     };
     exports.BooleanType = {
         declarationNode: null,
@@ -4015,22 +4015,117 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         declarationNode: null,
         name: "number"
     };
-    var Compiler = (function () {
-        function Compiler() {
+    exports.StringType = {
+        declarationNode: null,
+        name: "string"
+    };
+    function compile(input) {
+        try {
+            var ast = Parser_1.parse(input);
+            var functions = ast.filter(function (element) { return element.kind == "function"; });
+            var records = ast.filter(function (element) { return element.kind == "record"; });
+            var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
+            var types = typeCheck(functions, records, mainProgram);
+            return {
+                types: types,
+                ast: ast
+            };
         }
-        Compiler.prototype.parse = function (input) {
-            try {
-                var ast = Parser_1.parse(input);
-                return ast;
+        catch (e) {
+            var error = e;
+            throw new CompilerError(error.message, error.location);
+        }
+    }
+    exports.compile = compile;
+    function debug(msg) {
+        throw new CompilerError(msg, null);
+    }
+    function functionSignature(fun) {
+        return fun.name.value + "(" + fun.params.map(function (param) { return param.typeName.id.value; }).join(",") + ")";
+    }
+    function typeCheck(functions, records, main) {
+        var types = {
+            all: {},
+            functions: {},
+            records: {}
+        };
+        types.all[exports.NothingType.name] = exports.NothingType;
+        types.all[exports.BooleanType.name] = exports.BooleanType;
+        types.all[exports.NumberType.name] = exports.NumberType;
+        types.all[exports.StringType.name] = exports.StringType;
+        functions.forEach(function (fun) {
+            var type = {
+                declarationNode: fun,
+                name: functionSignature(fun)
+            };
+            var other = types.all[type.name];
+            if (other) {
+                var otherLoc = other.declarationNode.location.start;
+                throw new CompilerError("Function '" + other.name + "' already defined in line " + otherLoc.line + ".", fun.name.location);
             }
-            catch (e) {
-                var error = e;
-                throw new CompilerError(error.message, error.location);
+            types.all[type.name] = type;
+            types.functions[type.name] = type;
+        });
+        records.forEach(function (rec) {
+            var type = {
+                declarationNode: rec,
+                name: rec.name.value
+            };
+            var other = types.all[type.name];
+            if (other) {
+                var otherLoc = other.declarationNode.location.start;
+                throw new CompilerError("Record '" + other.name + "' already defined in line " + otherLoc.line + ".", rec.name.location);
+            }
+            types.all[type.name] = type;
+            types.records[type.name] = type;
+        });
+        var _loop_1 = function (typeName) {
+            var type = types.all[typeName];
+            if (type.declarationNode && type.declarationNode.kind == "function") {
+                var decl = type.declarationNode;
+                var paramNames_1 = {};
+                decl.params.forEach(function (param) {
+                    var otherParam = paramNames_1[param.name.value];
+                    if (otherParam) {
+                        var otherLoc = otherParam.name.location.start;
+                        throw new CompilerError("Duplicate parameter name '" + param.name.value + "' in function '" + type.name + ", see line " + otherLoc.line + ", column " + otherLoc.column + ".", param.name.location);
+                    }
+                    var paramType = types.all[param.typeName.id.value];
+                    if (!paramType) {
+                        throw new CompilerError("Unknown type '" + param.typeName.id.value + "' for parameter '" + param.name.value + "' of function '" + type.name + ".", param.typeName.id.location);
+                    }
+                    param.type = paramType;
+                    paramNames_1[param.name.value] = param;
+                });
+                var returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
+                decl.returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
+                if (!decl.returnType) {
+                    throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
+                }
+            }
+            else if (type.declarationNode && type.declarationNode.kind == "record") {
+                var decl = type.declarationNode;
+                var fieldNames_1 = {};
+                decl.fields.forEach(function (field) {
+                    var otherField = fieldNames_1[field.name.value];
+                    if (otherField) {
+                        var otherLoc = otherField.name.location.start;
+                        throw new CompilerError("Duplicate field name '" + field.name.value + "' in record '" + type.name + "', see line " + otherLoc.line + ", column " + otherLoc.column + ".", field.name.location);
+                    }
+                    var fieldType = types.all[field.typeName.id.value];
+                    if (!fieldType) {
+                        throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.name + "'.", field.typeName.id.location);
+                    }
+                    field.type = type;
+                    fieldNames_1[field.name.value] = field;
+                });
             }
         };
-        return Compiler;
-    }());
-    exports.Compiler = Compiler;
+        for (var typeName in types.all) {
+            _loop_1(typeName);
+        }
+        return types;
+    }
 });
 define("Utils", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -4290,7 +4385,6 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.editorElement = editorElement;
                 this.outputElement = outputElement;
                 this.markers = Array();
-                this.compiler = new Compiler_1.Compiler();
                 this.editor = CodeMirror(editorElement, {
                     tabSize: 3,
                     indentUnit: 3,
@@ -4317,8 +4411,8 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.markers.forEach(function (marker) { return marker.clear(); });
                 this.markers.length = 0;
                 try {
-                    var result = this.compiler.parse(this.editor.getDoc().getValue());
-                    this.outputElement.innerHTML = JSON.stringify(result, null, 2);
+                    var result = Compiler_1.compile(this.editor.getDoc().getValue());
+                    this.outputElement.innerHTML = "Success";
                 }
                 catch (e) {
                     var err = e;

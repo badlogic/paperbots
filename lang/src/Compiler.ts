@@ -17,7 +17,9 @@ export interface BaseNode {
 	location: IFileRange;
 }
 
-export interface Expression extends BaseNode {}
+export interface Expression extends BaseNode {
+	type: Type;
+}
 
 export interface Statement extends BaseNode {}
 
@@ -93,23 +95,27 @@ export interface VariableDecl extends Statement {
 	kind: "variable",
 	name: Identifier,
 	typeName?: TypeName,
+	type?: Type,
 	value: Expression
 }
 
 export interface RecordField {
 	name: Identifier,
 	typeName: TypeName,
+	type?: Type,
 }
 
 export interface RecordDecl extends Statement {
 	kind: "record",
 	name: Identifier,
-	fields: Array<RecordField>
+	fields: Array<RecordField>,
+	type?: Type,
 }
 
 export interface Parameter {
 	name: Identifier,
-	typeName: TypeName
+	typeName: TypeName,
+	type?: Type,
 }
 
 export interface FunctionDecl extends Statement {
@@ -117,6 +123,7 @@ export interface FunctionDecl extends Statement {
 	name: Identifier,
 	params: Array<Parameter>,
 	returnTypeName?: TypeName,
+	returnType?: Type,
 	block: Array<Statement>
 }
 
@@ -142,10 +149,10 @@ export interface Type {
 	name: string
 }
 
-export const StringType: Type = {
+export const NothingType: Type = {
 	declarationNode: null,
-	name: "string"
-};
+	name: "nothing"
+}
 
 export const BooleanType: Type = {
 	declarationNode: null,
@@ -157,15 +164,164 @@ export const NumberType: Type = {
 	name: "number"
 }
 
-export class Compiler {
-	parse(input: string) {
-		try {
-			let ast = (parse(input) as Array<AstNode>);
-			return ast;
-		} catch (e) {
-			var error = (e as SyntaxError);
-			throw new CompilerError(error.message, error.location);
+export const StringType: Type = {
+	declarationNode: null,
+	name: "string"
+};
+
+export interface Map<T> {
+	[name: string] : T;
+}
+
+export interface Types {
+	all: Map<Type>,
+	functions: Map<Type>,
+	records: Map<Type>;
+}
+
+export interface Module {
+	types: Types
+	ast: Array<AstNode>,
+}
+
+export function compile(input: string): Module {
+	try {
+		// parse source to an AST
+		let ast = (parse(input) as Array<AstNode>);
+
+		// separate the main program statements from
+		// function and record declarations
+		let functions = ast.filter(element => { return element.kind == "function" }) as Array<FunctionDecl>;
+		let records = ast.filter(element => { return element.kind == "record" }) as Array<RecordDecl>;
+		let mainProgram = ast.filter(element => { return element.kind != "function" && element.kind != "record" });
+
+		let types = typeCheck(functions, records, mainProgram);
+		return {
+			types: types,
+			ast: ast
+		}
+	} catch (e) {
+		var error = (e as SyntaxError);
+		throw new CompilerError(error.message, error.location);
+	}
+}
+
+function debug(msg: string) {
+	throw new CompilerError(msg, null);
+}
+
+function functionSignature(fun: FunctionDecl): string {
+	return fun.name.value + "(" + fun.params.map(param => param.typeName.id.value).join(",") + ")";
+}
+
+function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, main: Array<AstNode>): Types {
+	let types: Types = {
+		all: {},
+		functions: {},
+		records: {}
+	}
+
+	// register built-in types
+	types.all[NothingType.name] = NothingType;
+	types.all[BooleanType.name] = BooleanType;
+	types.all[NumberType.name] = NumberType;
+	types.all[StringType.name] = StringType;
+
+	// gather all record and function types first and do some basic duplicate checking
+	functions.forEach(fun => {
+		let type: Type = {
+			declarationNode: fun,
+			name: functionSignature(fun)
+		}
+
+		let other = types.all[type.name];
+		if (other) {
+			let otherLoc = other.declarationNode.location.start;
+			throw new CompilerError(`Function '${other.name}' already defined in line ${otherLoc.line}.`, fun.name.location);
+		}
+
+		types.all[type.name] = type;
+		types.functions[type.name] = type;
+	});
+	records.forEach(rec => {
+		let type: Type = {
+			declarationNode: rec,
+			name: rec.name.value
+		}
+
+		let other = types.all[type.name];
+		if (other) {
+			let otherLoc = other.declarationNode.location.start;
+			throw new CompilerError(`Record '${other.name}' already defined in line ${otherLoc.line}.`, rec.name.location);
+		}
+
+		types.all[type.name] = type;
+		types.records[type.name] = type;
+	});
+
+
+	for(let typeName in types.all) {
+		let type = types.all[typeName];
+
+		// Assign function parameter types and return types, bail if a type is unknown
+		// Also check duplicate parameter names
+		if (type.declarationNode && type.declarationNode.kind == "function") {
+			let decl = type.declarationNode;
+
+			// Check and assign parameter types
+			let paramNames: Map<Parameter> = {};
+			decl.params.forEach(param => {
+				let otherParam = paramNames[param.name.value];
+				if (otherParam) {
+					let otherLoc = otherParam.name.location.start;
+					throw new CompilerError(`Duplicate parameter name '${param.name.value}' in function '${type.name}, see line ${otherLoc.line}, column ${otherLoc.column}.`, param.name.location);
+				}
+
+				let paramType = types.all[param.typeName.id.value];
+				if (!paramType) {
+					throw new CompilerError(`Unknown type '${param.typeName.id.value}' for parameter '${param.name.value}' of function '${type.name}.`, param.typeName.id.location);
+				}
+				param.type = paramType;
+				paramNames[param.name.value] = param;
+			});
+
+			// Check and assign return type
+			let returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
+			decl.returnType = returnTypeName ? types.all[returnTypeName] : NothingType;
+			if (!decl.returnType) {
+				throw new CompilerError(`Unknown return type '${returnTypeName}`, decl.returnTypeName.id.location);
+			}
+		}
+
+		// Assign field types, bail if a type is unknown
+		// Also check duplicate field names
+		// TODO check for recursive types
+		else if (type.declarationNode && type.declarationNode.kind == "record") {
+			let decl = type.declarationNode;
+
+			// Check and assign field types
+			let fieldNames: Map<RecordField> = {};
+			decl.fields.forEach(field => {
+				let otherField = fieldNames[field.name.value];
+				if (otherField) {
+					let otherLoc = otherField.name.location.start;
+					throw new CompilerError(`Duplicate field name '${field.name.value}' in record '${type.name}', see line ${otherLoc.line}, column ${otherLoc.column}.`, field.name.location);
+				}
+
+				let fieldType = types.all[field.typeName.id.value];
+				if (!fieldType) {
+					throw new CompilerError(`Unknown type '${field.typeName.id.value}' for field '${field.name.value}' of record '${type.name}'.`, field.typeName.id.location);
+				}
+				field.type = type;
+				fieldNames[field.name.value] = field;
+			});
 		}
 	}
+
+	// We now have all function and record types figured out
+	// time to traverse all main program and function statement blocks
+	// TODO implement this :D
+
+	return types;
 }
 

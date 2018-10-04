@@ -137,8 +137,24 @@ type AstNode =
 	|	FunctionDecl
 	;
 
-export class Module {
+export interface Type {
+	declarationNode?: RecordDecl | FunctionDecl
+	name: string
+}
 
+export const StringType: Type = {
+	declarationNode: null,
+	name: "string"
+};
+
+export const BooleanType: Type = {
+	declarationNode: null,
+	name: "boolean"
+}
+
+export const NumberType: Type = {
+	declarationNode: null,
+	name: "number"
 }
 
 export class Compiler {

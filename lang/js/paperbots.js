@@ -4003,12 +4003,18 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     function assertNever(x) {
         throw new Error("This should never happen");
     }
-    var Module = (function () {
-        function Module() {
-        }
-        return Module;
-    }());
-    exports.Module = Module;
+    exports.StringType = {
+        declarationNode: null,
+        name: "string"
+    };
+    exports.BooleanType = {
+        declarationNode: null,
+        name: "boolean"
+    };
+    exports.NumberType = {
+        declarationNode: null,
+        name: "number"
+    };
     var Compiler = (function () {
         function Compiler() {
         }
@@ -4717,6 +4723,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             };
             return Canvas;
         }());
+        paperbots.Canvas = Canvas;
     })(paperbots = exports.paperbots || (exports.paperbots = {}));
 });
 //# sourceMappingURL=paperbots.js.map

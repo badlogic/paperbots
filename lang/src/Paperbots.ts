@@ -2,7 +2,7 @@ import {TextMarker} from "../node_modules/@types/codemirror/index";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import {Compiler, CompilerError} from "./Compiler";
 
-export namespace paperbots {
+export module paperbots {
 	export class Editor {
 		private canvas: Canvas;
 		private codeEditor: CodeEditor;
@@ -231,7 +231,7 @@ export namespace paperbots {
 		static newLetter(value: string): LetterTile { return {kind: "letter", value: value}; }
 	}
 
-	class Canvas {
+	export class Canvas {
 		private container: JQuery<HTMLElement>;
 		private canvas: HTMLCanvasElement;
 		private world = new World();

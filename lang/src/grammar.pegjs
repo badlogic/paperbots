@@ -115,7 +115,7 @@ Assignment
       kind: "assignment",
       id: id,
       value: value,
-      location: location();
+      location: location()
     };
   }
 
@@ -136,7 +136,7 @@ While
     return {
       kind: "while",
       condition: cond,
-      block: stmts.map(function(element) { return element[1]; })
+      block: stmts.map(function(element) { return element[1]; }),
       location: location()
     };
   }
@@ -283,7 +283,7 @@ Number "number"
   {
     return {
       kind: "number",
-      value: parseFloat(text())
+      value: parseFloat(text()),
       location: location()
     };
   }
@@ -293,7 +293,7 @@ Boolean "boolean"
  {
  	return {
     	kind: "boolean",
-      value: text() == "true"
+      value: text() == "true",
       location: location()
     };
  }
@@ -303,8 +303,8 @@ String "string"
   {
     return {
       kind: "string",
-      value: JSON.stringify(chars.join(""))
-      location: location();
+      value: JSON.stringify(chars.join("")),
+      location: location()
     };
   }
 
@@ -316,7 +316,7 @@ Identifier "identifier"
   = !Reserved IdentifierStart IdentifierPart*
   {
     return {
-      location: location()
+      location: location(),
       value: text()
     };
   }

@@ -273,14 +273,14 @@ define("Parser", ["require", "exports"], function (require, exports) {
                 };
             }, head);
         };
-        var peg$c60 = "<";
-        var peg$c61 = peg$literalExpectation("<", false);
-        var peg$c62 = "<=";
-        var peg$c63 = peg$literalExpectation("<=", false);
-        var peg$c64 = ">";
-        var peg$c65 = peg$literalExpectation(">", false);
-        var peg$c66 = ">=";
-        var peg$c67 = peg$literalExpectation(">=", false);
+        var peg$c60 = "<=";
+        var peg$c61 = peg$literalExpectation("<=", false);
+        var peg$c62 = ">=";
+        var peg$c63 = peg$literalExpectation(">=", false);
+        var peg$c64 = "<";
+        var peg$c65 = peg$literalExpectation("<", false);
+        var peg$c66 = ">";
+        var peg$c67 = peg$literalExpectation(">", false);
         var peg$c68 = "==";
         var peg$c69 = peg$literalExpectation("==", false);
         var peg$c70 = "!=";
@@ -2483,9 +2483,9 @@ define("Parser", ["require", "exports"], function (require, exports) {
                 s3 = peg$currPos;
                 s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
-                    if (input.charCodeAt(peg$currPos) === 60) {
+                    if (input.substr(peg$currPos, 2) === peg$c60) {
                         s5 = peg$c60;
-                        peg$currPos++;
+                        peg$currPos += 2;
                     }
                     else {
                         s5 = peg$FAILED;
@@ -2505,7 +2505,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
                             }
                         }
                         if (s5 === peg$FAILED) {
-                            if (input.charCodeAt(peg$currPos) === 62) {
+                            if (input.charCodeAt(peg$currPos) === 60) {
                                 s5 = peg$c64;
                                 peg$currPos++;
                             }
@@ -2516,9 +2516,9 @@ define("Parser", ["require", "exports"], function (require, exports) {
                                 }
                             }
                             if (s5 === peg$FAILED) {
-                                if (input.substr(peg$currPos, 2) === peg$c66) {
+                                if (input.charCodeAt(peg$currPos) === 62) {
                                     s5 = peg$c66;
-                                    peg$currPos += 2;
+                                    peg$currPos++;
                                 }
                                 else {
                                     s5 = peg$FAILED;
@@ -2585,9 +2585,9 @@ define("Parser", ["require", "exports"], function (require, exports) {
                     s3 = peg$currPos;
                     s4 = peg$parse_();
                     if (s4 !== peg$FAILED) {
-                        if (input.charCodeAt(peg$currPos) === 60) {
+                        if (input.substr(peg$currPos, 2) === peg$c60) {
                             s5 = peg$c60;
-                            peg$currPos++;
+                            peg$currPos += 2;
                         }
                         else {
                             s5 = peg$FAILED;
@@ -2607,7 +2607,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
                                 }
                             }
                             if (s5 === peg$FAILED) {
-                                if (input.charCodeAt(peg$currPos) === 62) {
+                                if (input.charCodeAt(peg$currPos) === 60) {
                                     s5 = peg$c64;
                                     peg$currPos++;
                                 }
@@ -2618,9 +2618,9 @@ define("Parser", ["require", "exports"], function (require, exports) {
                                     }
                                 }
                                 if (s5 === peg$FAILED) {
-                                    if (input.substr(peg$currPos, 2) === peg$c66) {
+                                    if (input.charCodeAt(peg$currPos) === 62) {
                                         s5 = peg$c66;
-                                        peg$currPos += 2;
+                                        peg$currPos++;
                                     }
                                     else {
                                         s5 = peg$FAILED;
@@ -3107,14 +3107,14 @@ define("Parser", ["require", "exports"], function (require, exports) {
                     if (s0 === peg$FAILED) {
                         s0 = peg$parseString();
                         if (s0 === peg$FAILED) {
-                            s0 = peg$parseVariableAccess();
+                            s0 = peg$parseVariableAccessOrFunctionCall();
                         }
                     }
                 }
             }
             return s0;
         }
-        function peg$parseVariableAccess() {
+        function peg$parseVariableAccessOrFunctionCall() {
             var s0, s1, s2;
             peg$silentFails++;
             s0 = peg$currPos;
@@ -4027,7 +4027,6 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
             var types = typeCheck(functions, records, mainProgram);
             return {
-                types: types,
                 ast: ast
             };
         }
@@ -4098,8 +4097,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     paramNames_1[param.name.value] = param;
                 });
                 var returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
-                decl.returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
-                if (!decl.returnType) {
+                var returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
+                if (!returnType) {
                     throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
                 }
             }
@@ -4116,7 +4115,6 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     if (!fieldType) {
                         throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.name + "'.", field.typeName.id.location);
                     }
-                    field.type = type;
                     fieldNames_1[field.name.value] = field;
                 });
             }
@@ -4124,7 +4122,103 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         for (var typeName in types.all) {
             _loop_1(typeName);
         }
+        main.forEach(function (node) { return typeCheckRec(node); });
         return types;
+    }
+    function typeCheckRec(node) {
+        if (node.kind == "number") {
+            node.type = exports.NumberType;
+        }
+        else if (node.kind == "boolean") {
+            node.type = exports.BooleanType;
+        }
+        else if (node.kind == "string") {
+            node.type = exports.StringType;
+        }
+        else if (node.kind == "unaryOp") {
+            typeCheckRec(node.value);
+            switch (node.operator) {
+                case "not":
+                    if (node.value.type != exports.BooleanType)
+                        throw new CompilerError("Operand of " + node.operator + " operator is not a 'boolean', but a '" + node.value.type.name + "'.", node.value.location);
+                    node.type = exports.BooleanType;
+                    break;
+                case "-":
+                    if (node.value.type != exports.NumberType)
+                        throw new CompilerError("Operand of " + node.operator + " operator is not a 'number', but a '" + node.value.type.name + "'.", node.value.location);
+                    node.type = exports.NumberType;
+                    break;
+                default:
+                    throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
+            }
+        }
+        else if (node.kind == "binaryOp") {
+            typeCheckRec(node.left);
+            typeCheckRec(node.right);
+            switch (node.operator) {
+                case "+":
+                case "-":
+                case "*":
+                case "/":
+                    if (node.left.type != exports.NumberType)
+                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                    if (node.right.type != exports.NumberType)
+                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                    node.type = exports.NumberType;
+                    break;
+                case "<":
+                case "<=":
+                case ">":
+                case ">=":
+                    if (node.left.type != exports.NumberType)
+                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                    if (node.right.type != exports.NumberType)
+                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                    node.type = exports.BooleanType;
+                    break;
+                case "==":
+                case "!=":
+                    if (node.left.type != node.right.type)
+                        throw new CompilerError("Can not compare a '" + node.left.type.name + "' to a '" + node.right.type.name + "'.", node.location);
+                    break;
+                case "and":
+                case "or":
+                case "xor":
+                    if (node.left.type != exports.BooleanType)
+                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'boolean', but a '" + node.left.type.name + "'.", node.left.location);
+                    if (node.right.type != exports.BooleanType)
+                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'boolean', but a '" + node.right.type.name + "'.", node.right.location);
+                    node.type = exports.BooleanType;
+                    break;
+                default:
+                    throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
+            }
+        }
+        else if (node.kind == "variableAccess") {
+            throw new CompilerError("Variable access type checking has not been implemented yet.", node.location);
+        }
+        else if (node.kind == "functionCall") {
+            throw new CompilerError("Function call type checking has not been implemented yet.", node.location);
+        }
+        else if (node.kind == "if") {
+            typeCheckRec(node.condition);
+            if (node.condition.type != exports.BooleanType)
+                throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+            node.trueBlock.forEach(function (child) { return typeCheckRec(child); });
+            node.falseBlock.forEach(function (child) { return typeCheckRec(child); });
+        }
+        else if (node.kind == "while") {
+            typeCheckRec(node.condition);
+            if (node.condition.type != exports.BooleanType)
+                throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+            node.block.forEach(function (child) { return typeCheckRec(child); });
+        }
+        else if (node.kind == "repeat") {
+            typeCheckRec(node.count);
+            if (node.count.type != exports.NumberType)
+                throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
+            node.block.forEach(function (child) { return typeCheckRec(child); });
+        }
     }
 });
 define("Utils", ["require", "exports"], function (require, exports) {
@@ -4412,7 +4506,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.markers.length = 0;
                 try {
                     var result = Compiler_1.compile(this.editor.getDoc().getValue());
-                    this.outputElement.innerHTML = "Success";
+                    this.outputElement.innerHTML = JSON.stringify(result, null, 2);
                 }
                 catch (e) {
                     var err = e;

@@ -180,7 +180,7 @@ export interface Types {
 }
 
 export interface Module {
-	types: Types
+	// types: Types
 	ast: Array<AstNode>,
 }
 
@@ -197,7 +197,6 @@ export function compile(input: string): Module {
 
 		let types = typeCheck(functions, records, mainProgram);
 		return {
-			types: types,
 			ast: ast
 		}
 	} catch (e) {
@@ -287,10 +286,11 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 
 			// Check and assign return type
 			let returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
-			decl.returnType = returnTypeName ? types.all[returnTypeName] : NothingType;
-			if (!decl.returnType) {
+			let returnType =  returnTypeName ? types.all[returnTypeName] : NothingType;
+			if (!returnType) {
 				throw new CompilerError(`Unknown return type '${returnTypeName}`, decl.returnTypeName.id.location);
 			}
+			// decl.returnType = returnType;
 		}
 
 		// Assign field types, bail if a type is unknown
@@ -312,7 +312,7 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 				if (!fieldType) {
 					throw new CompilerError(`Unknown type '${field.typeName.id.value}' for field '${field.name.value}' of record '${type.name}'.`, field.typeName.id.location);
 				}
-				field.type = type;
+				// field.type = type;
 				fieldNames[field.name.value] = field;
 			});
 		}
@@ -321,7 +321,83 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
 	// TODO implement this :D
+	main.forEach(node => typeCheckRec(node));
 
 	return types;
+}
+
+function typeCheckRec(node: AstNode) {
+	if(node.kind == "number") {
+		node.type = NumberType;
+	} else if (node.kind == "boolean") {
+		node.type = BooleanType;
+	} else if (node.kind == "string") {
+		node.type = StringType;
+	} else if (node.kind == "unaryOp") {
+		typeCheckRec((node.value as AstNode));
+		switch(node.operator) {
+			case "not":
+				if (node.value.type != BooleanType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'boolean', but a '${node.value.type.name}'.`, node.value.location);
+				node.type = BooleanType;
+				break;
+			case "-":
+				if (node.value.type != NumberType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'number', but a '${node.value.type.name}'.`, node.value.location);
+				node.type = NumberType;
+				break;
+			default:
+				throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
+		}
+	} else if (node.kind == "binaryOp") {
+		typeCheckRec((node.left as AstNode));
+		typeCheckRec((node.right as AstNode));
+		switch (node.operator) {
+			case "+":
+			case "-":
+			case "*":
+			case "/":
+			if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
+			if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
+				node.type = NumberType;
+				break;
+			case "<":
+			case "<=":
+			case ">":
+			case ">=":
+				if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
+				if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
+				node.type = BooleanType;
+				break;
+			case "==":
+			case "!=":
+				if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.name}' to a '${node.right.type.name}'.`, node.location);
+				break;
+			case "and":
+			case "or":
+			case "xor":
+				if (node.left.type != BooleanType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'boolean', but a '${node.left.type.name}'.`, node.left.location);
+				if (node.right.type != BooleanType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'boolean', but a '${node.right.type.name}'.`, node.right.location);
+				node.type = BooleanType;
+				break;
+			default:
+				throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
+		}
+	} else if (node.kind == "variableAccess") {
+		throw new CompilerError(`Variable access type checking has not been implemented yet.`, node.location);
+	} else if (node.kind == "functionCall") {
+		throw new CompilerError(`Function call type checking has not been implemented yet.`, node.location);
+	} else if (node.kind == "if") {
+		typeCheckRec(node.condition as AstNode);
+		if (node.condition.type != BooleanType) throw new CompilerError(`Condition of if statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
+		node.trueBlock.forEach(child => typeCheckRec(child as AstNode));
+		node.falseBlock.forEach(child => typeCheckRec(child as AstNode));
+	} else if (node.kind == "while") {
+		typeCheckRec(node.condition as AstNode);
+		if (node.condition.type != BooleanType) throw new CompilerError(`Condition of while statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
+		node.block.forEach(child => typeCheckRec(child as AstNode));
+	} else if (node.kind == "repeat") {
+		typeCheckRec(node.count as AstNode);
+		if (node.count.type != NumberType) throw new CompilerError(`Condition of repeat statement must be a 'number', but is a '${node.count.type.name}`, node.count.location);
+		node.block.forEach(child => typeCheckRec(child as AstNode));
+	}
 }
 

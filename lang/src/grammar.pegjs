@@ -181,7 +181,7 @@ Expression
   }
 
 Relational
-  = head:AddSubtract tail:(_ ("<" / "<=" / ">" / ">=" / "==" / "!=") _ AddSubtract)*
+  = head:AddSubtract tail:(_ ("<=" / ">=" / "<" / ">" / "==" / "!=") _ AddSubtract)*
   {
     if (tail.length == 0) return head;
 
@@ -245,9 +245,9 @@ Factor
   / Number
   / Boolean
   / String
-  / VariableAccess
+  / VariableAccessOrFunctionCall
 
-VariableAccess "function call or variable name"
+VariableAccessOrFunctionCall "function call or variable name"
   = id:Identifier args:(Arguments)?
   {
   	if (args === null) {

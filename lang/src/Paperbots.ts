@@ -50,7 +50,7 @@ export module paperbots {
 
 			try {
 				let result = compile(this.editor.getDoc().getValue());
-				this.outputElement.innerHTML = "Success"; // JSON.stringify(result, null, 2);
+				this.outputElement.innerHTML = JSON.stringify(result, null, 2);
 
 			} catch (e) {
 				let err = (e as CompilerError);

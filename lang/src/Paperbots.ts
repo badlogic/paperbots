@@ -1,6 +1,6 @@
 import {TextMarker} from "../node_modules/@types/codemirror/index";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
-import {CompilerError, compile} from "./Compiler";
+import * as compiler from "./Compiler";
 
 export module paperbots {
 	export class Editor {
@@ -49,16 +49,21 @@ export module paperbots {
 			this.markers.length = 0;
 
 			try {
-				let result = compile(this.editor.getDoc().getValue());
-				this.outputElement.innerHTML = JSON.stringify(result, null, 2);
+				let result = compiler.compile(this.editor.getDoc().getValue());
+				this.outputElement.innerHTML = compiler.moduleToJson(result);
 
 			} catch (e) {
-				let err = (e as CompilerError);
-				let loc = err.location;
-				let from = {line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0)};
-				let to = {line: loc.end.line - 1, ch: loc.end.column - 1};
-				this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message}));
-				this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+				if (e["location"]) {
+					let err = (e as compiler.CompilerError);
+					let loc = err.location;
+					let from = {line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0)};
+					let to = {line: loc.end.line - 1, ch: loc.end.column - 1};
+					this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message}));
+					this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+				} else {
+					let err = e as Error;
+					this.outputElement.innerHTML = err.message + (err.stack ? err.stack : "");
+				}
 			}
 		}
 

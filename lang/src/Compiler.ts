@@ -95,7 +95,7 @@ export interface VariableDecl extends Statement {
 	kind: "variable",
 	name: Identifier,
 	typeName?: TypeName,
-	type?: Type,
+	type: Type,
 	value: Expression
 }
 
@@ -180,8 +180,43 @@ export interface Types {
 }
 
 export interface Module {
-	// types: Types
+	types: Types
 	ast: Array<AstNode>,
+}
+
+class Symbols {
+	stack = new Array<Map<VariableDecl | Parameter>>();
+
+	constructor() { this.push(); }
+
+	push() {
+		this.stack.push({});
+	}
+
+	pop() {
+		this.stack.pop();
+	}
+
+	addSymbol(node: VariableDecl | Parameter) {
+		this.stack.forEach(syms => {
+			let other = syms[node.name.value];
+			if (other) {
+				throw new CompilerError(`Variable ${node.name.value} already defined in line ${other.name.location.start.line}, column ${other.name.location.start.column}.`, node.name.location);
+			}
+			syms[node.name.value] = node;
+		});
+	}
+}
+
+export function moduleToJson(module: Module): string {
+	return JSON.stringify(module, (key, value) => {
+		if (key == "declarationNode") return undefined;
+		if (key == "location") {
+			let loc = value as IFileRange;
+			return `${loc.start.line}:${loc.start.column} - ${loc.end.line}:${loc.end.column}`;
+		}
+		return value;
+	}, 2);
 }
 
 export function compile(input: string): Module {
@@ -197,7 +232,8 @@ export function compile(input: string): Module {
 
 		let types = typeCheck(functions, records, mainProgram);
 		return {
-			ast: ast
+			ast: ast,
+			types: types
 		}
 	} catch (e) {
 		var error = (e as SyntaxError);
@@ -320,84 +356,128 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
-	// TODO implement this :D
-	main.forEach(node => typeCheckRec(node));
+	main.forEach(node => typeCheckRec(node, types, new Symbols()));
+	functions.forEach(node => typeCheckRec(node, types, new Symbols()));
 
 	return types;
 }
 
-function typeCheckRec(node: AstNode) {
-	if(node.kind == "number") {
-		node.type = NumberType;
-	} else if (node.kind == "boolean") {
-		node.type = BooleanType;
-	} else if (node.kind == "string") {
-		node.type = StringType;
-	} else if (node.kind == "unaryOp") {
-		typeCheckRec((node.value as AstNode));
-		switch(node.operator) {
-			case "not":
-				if (node.value.type != BooleanType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'boolean', but a '${node.value.type.name}'.`, node.value.location);
-				node.type = BooleanType;
-				break;
-			case "-":
-				if (node.value.type != NumberType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'number', but a '${node.value.type.name}'.`, node.value.location);
-				node.type = NumberType;
-				break;
-			default:
-				throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
-		}
-	} else if (node.kind == "binaryOp") {
-		typeCheckRec((node.left as AstNode));
-		typeCheckRec((node.right as AstNode));
-		switch (node.operator) {
-			case "+":
-			case "-":
-			case "*":
-			case "/":
-			if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
-			if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
-				node.type = NumberType;
-				break;
-			case "<":
-			case "<=":
-			case ">":
-			case ">=":
+function typeCheckRec(node: AstNode, types: Types, symbols: Symbols) {
+	switch(node.kind) {
+		case "number":
+			node.type = NumberType;
+			break;
+
+		case "boolean":
+			node.type = BooleanType;
+			break;
+
+		case "string":
+			node.type = StringType;
+			break;
+
+		case "unaryOp":
+			typeCheckRec((node.value as AstNode), types, symbols);
+			switch(node.operator) {
+				case "not":
+					if (node.value.type != BooleanType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'boolean', but a '${node.value.type.name}'.`, node.value.location);
+					node.type = BooleanType;
+					break;
+				case "-":
+					if (node.value.type != NumberType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'number', but a '${node.value.type.name}'.`, node.value.location);
+					node.type = NumberType;
+					break;
+				default:
+					throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
+			}
+			break;
+
+		case "binaryOp":
+			typeCheckRec((node.left as AstNode), types, symbols);
+			typeCheckRec((node.right as AstNode), types, symbols);
+			switch (node.operator) {
+				case "+":
+				case "-":
+				case "*":
+				case "/":
 				if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
 				if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
-				node.type = BooleanType;
-				break;
-			case "==":
-			case "!=":
-				if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.name}' to a '${node.right.type.name}'.`, node.location);
-				break;
-			case "and":
-			case "or":
-			case "xor":
-				if (node.left.type != BooleanType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'boolean', but a '${node.left.type.name}'.`, node.left.location);
-				if (node.right.type != BooleanType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'boolean', but a '${node.right.type.name}'.`, node.right.location);
-				node.type = BooleanType;
-				break;
-			default:
-				throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
-		}
-	} else if (node.kind == "variableAccess") {
-		throw new CompilerError(`Variable access type checking has not been implemented yet.`, node.location);
-	} else if (node.kind == "functionCall") {
-		throw new CompilerError(`Function call type checking has not been implemented yet.`, node.location);
-	} else if (node.kind == "if") {
-		typeCheckRec(node.condition as AstNode);
-		if (node.condition.type != BooleanType) throw new CompilerError(`Condition of if statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
-		node.trueBlock.forEach(child => typeCheckRec(child as AstNode));
-		node.falseBlock.forEach(child => typeCheckRec(child as AstNode));
-	} else if (node.kind == "while") {
-		typeCheckRec(node.condition as AstNode);
-		if (node.condition.type != BooleanType) throw new CompilerError(`Condition of while statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
-		node.block.forEach(child => typeCheckRec(child as AstNode));
-	} else if (node.kind == "repeat") {
-		typeCheckRec(node.count as AstNode);
-		if (node.count.type != NumberType) throw new CompilerError(`Condition of repeat statement must be a 'number', but is a '${node.count.type.name}`, node.count.location);
-		node.block.forEach(child => typeCheckRec(child as AstNode));
+					node.type = NumberType;
+					break;
+				case "<":
+				case "<=":
+				case ">":
+				case ">=":
+					if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
+					if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
+					node.type = BooleanType;
+					break;
+				case "==":
+				case "!=":
+					if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.name}' to a '${node.right.type.name}'.`, node.location);
+					break;
+				case "and":
+				case "or":
+				case "xor":
+					if (node.left.type != BooleanType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'boolean', but a '${node.left.type.name}'.`, node.left.location);
+					if (node.right.type != BooleanType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'boolean', but a '${node.right.type.name}'.`, node.right.location);
+					node.type = BooleanType;
+					break;
+				default:
+					throw new CompilerError(`Unknown operator ${node.operator}.`, node.location);
+			}
+			break;
+
+		case "if":
+			typeCheckRec(node.condition as AstNode, types, symbols);
+			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of if statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
+			symbols.push();
+			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, symbols));
+			symbols.pop();
+			symbols.push();
+			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, symbols));
+			symbols.pop();
+			break;
+
+		case "while":
+			typeCheckRec(node.condition as AstNode, types, symbols);
+			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of while statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
+			symbols.push();
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, symbols));
+			symbols.pop();
+			break;
+
+		case "repeat":
+			typeCheckRec(node.count as AstNode, types, symbols);
+			if (node.count.type != NumberType) throw new CompilerError(`Condition of repeat statement must be a 'number', but is a '${node.count.type.name}`, node.count.location);
+			symbols.push();
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, symbols));
+			symbols.pop();
+			break;
+
+		case "variable":
+			typeCheckRec(node.value as AstNode, types, symbols);
+			if (node.typeName) {
+				let type = types.all[node.typeName.id.value];
+				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
+				if (type != node.value.type) throw new CompilerError(`Can't assign a value of type '${node.value.type.name}' to variable '${node.name.value}' with type '${type.name}.`, node.location);
+				node.type = type;
+			} else {
+				node.type = node.value.type;
+			}
+			symbols.addSymbol(node);
+			break;
+
+		case "function":
+			break;
+		case "record":
+		case "assignment":
+		case "variableAccess":
+		case "functionCall":
+			throw new CompilerError(`Type checking for node type '${node.kind} not implemented.`, node.location);
+			break;
+		default:
+			assertNever(node);
 	}
 }
 

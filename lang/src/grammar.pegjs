@@ -102,7 +102,7 @@ Variable
     return {
       kind: "variable",
       name: id,
-      typeName: typeof typeName === undefined ? null : typeName[2],
+      typeName: typeName? typeName[2] : null,
       value: init,
       location: location()
     };

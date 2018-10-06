@@ -196,7 +196,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
             return {
                 kind: "variable",
                 name: id,
-                typeName: typeof typeName === undefined ? null : typeName[2],
+                typeName: typeName ? typeName[2] : null,
                 value: init,
                 location: location()
             };
@@ -4019,6 +4019,40 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         declarationNode: null,
         name: "string"
     };
+    var Symbols = (function () {
+        function Symbols() {
+            this.stack = new Array();
+            this.push();
+        }
+        Symbols.prototype.push = function () {
+            this.stack.push({});
+        };
+        Symbols.prototype.pop = function () {
+            this.stack.pop();
+        };
+        Symbols.prototype.addSymbol = function (node) {
+            this.stack.forEach(function (syms) {
+                var other = syms[node.name.value];
+                if (other) {
+                    throw new CompilerError("Variable " + node.name.value + " already defined in line " + other.name.location.start.line + ", column " + other.name.location.start.column + ".", node.name.location);
+                }
+                syms[node.name.value] = node;
+            });
+        };
+        return Symbols;
+    }());
+    function moduleToJson(module) {
+        return JSON.stringify(module, function (key, value) {
+            if (key == "declarationNode")
+                return undefined;
+            if (key == "location") {
+                var loc = value;
+                return loc.start.line + ":" + loc.start.column + " - " + loc.end.line + ":" + loc.end.column;
+            }
+            return value;
+        }, 2);
+    }
+    exports.moduleToJson = moduleToJson;
     function compile(input) {
         try {
             var ast = Parser_1.parse(input);
@@ -4027,7 +4061,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
             var types = typeCheck(functions, records, mainProgram);
             return {
-                ast: ast
+                ast: ast,
+                types: types
             };
         }
         catch (e) {
@@ -4122,102 +4157,132 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         for (var typeName in types.all) {
             _loop_1(typeName);
         }
-        main.forEach(function (node) { return typeCheckRec(node); });
+        main.forEach(function (node) { return typeCheckRec(node, types, new Symbols()); });
+        functions.forEach(function (node) { return typeCheckRec(node, types, new Symbols()); });
         return types;
     }
-    function typeCheckRec(node) {
-        if (node.kind == "number") {
-            node.type = exports.NumberType;
-        }
-        else if (node.kind == "boolean") {
-            node.type = exports.BooleanType;
-        }
-        else if (node.kind == "string") {
-            node.type = exports.StringType;
-        }
-        else if (node.kind == "unaryOp") {
-            typeCheckRec(node.value);
-            switch (node.operator) {
-                case "not":
-                    if (node.value.type != exports.BooleanType)
-                        throw new CompilerError("Operand of " + node.operator + " operator is not a 'boolean', but a '" + node.value.type.name + "'.", node.value.location);
-                    node.type = exports.BooleanType;
-                    break;
-                case "-":
-                    if (node.value.type != exports.NumberType)
-                        throw new CompilerError("Operand of " + node.operator + " operator is not a 'number', but a '" + node.value.type.name + "'.", node.value.location);
-                    node.type = exports.NumberType;
-                    break;
-                default:
-                    throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
-            }
-        }
-        else if (node.kind == "binaryOp") {
-            typeCheckRec(node.left);
-            typeCheckRec(node.right);
-            switch (node.operator) {
-                case "+":
-                case "-":
-                case "*":
-                case "/":
-                    if (node.left.type != exports.NumberType)
-                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
-                    if (node.right.type != exports.NumberType)
-                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
-                    node.type = exports.NumberType;
-                    break;
-                case "<":
-                case "<=":
-                case ">":
-                case ">=":
-                    if (node.left.type != exports.NumberType)
-                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
-                    if (node.right.type != exports.NumberType)
-                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
-                    node.type = exports.BooleanType;
-                    break;
-                case "==":
-                case "!=":
-                    if (node.left.type != node.right.type)
-                        throw new CompilerError("Can not compare a '" + node.left.type.name + "' to a '" + node.right.type.name + "'.", node.location);
-                    break;
-                case "and":
-                case "or":
-                case "xor":
-                    if (node.left.type != exports.BooleanType)
-                        throw new CompilerError("Left operand of " + node.operator + " operator is not a 'boolean', but a '" + node.left.type.name + "'.", node.left.location);
-                    if (node.right.type != exports.BooleanType)
-                        throw new CompilerError("Right operand of " + node.operator + " operator is not a 'boolean', but a '" + node.right.type.name + "'.", node.right.location);
-                    node.type = exports.BooleanType;
-                    break;
-                default:
-                    throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
-            }
-        }
-        else if (node.kind == "variableAccess") {
-            throw new CompilerError("Variable access type checking has not been implemented yet.", node.location);
-        }
-        else if (node.kind == "functionCall") {
-            throw new CompilerError("Function call type checking has not been implemented yet.", node.location);
-        }
-        else if (node.kind == "if") {
-            typeCheckRec(node.condition);
-            if (node.condition.type != exports.BooleanType)
-                throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
-            node.trueBlock.forEach(function (child) { return typeCheckRec(child); });
-            node.falseBlock.forEach(function (child) { return typeCheckRec(child); });
-        }
-        else if (node.kind == "while") {
-            typeCheckRec(node.condition);
-            if (node.condition.type != exports.BooleanType)
-                throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
-            node.block.forEach(function (child) { return typeCheckRec(child); });
-        }
-        else if (node.kind == "repeat") {
-            typeCheckRec(node.count);
-            if (node.count.type != exports.NumberType)
-                throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
-            node.block.forEach(function (child) { return typeCheckRec(child); });
+    function typeCheckRec(node, types, symbols) {
+        switch (node.kind) {
+            case "number":
+                node.type = exports.NumberType;
+                break;
+            case "boolean":
+                node.type = exports.BooleanType;
+                break;
+            case "string":
+                node.type = exports.StringType;
+                break;
+            case "unaryOp":
+                typeCheckRec(node.value, types, symbols);
+                switch (node.operator) {
+                    case "not":
+                        if (node.value.type != exports.BooleanType)
+                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'boolean', but a '" + node.value.type.name + "'.", node.value.location);
+                        node.type = exports.BooleanType;
+                        break;
+                    case "-":
+                        if (node.value.type != exports.NumberType)
+                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'number', but a '" + node.value.type.name + "'.", node.value.location);
+                        node.type = exports.NumberType;
+                        break;
+                    default:
+                        throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
+                }
+                break;
+            case "binaryOp":
+                typeCheckRec(node.left, types, symbols);
+                typeCheckRec(node.right, types, symbols);
+                switch (node.operator) {
+                    case "+":
+                    case "-":
+                    case "*":
+                    case "/":
+                        if (node.left.type != exports.NumberType)
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                        if (node.right.type != exports.NumberType)
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                        node.type = exports.NumberType;
+                        break;
+                    case "<":
+                    case "<=":
+                    case ">":
+                    case ">=":
+                        if (node.left.type != exports.NumberType)
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                        if (node.right.type != exports.NumberType)
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                        node.type = exports.BooleanType;
+                        break;
+                    case "==":
+                    case "!=":
+                        if (node.left.type != node.right.type)
+                            throw new CompilerError("Can not compare a '" + node.left.type.name + "' to a '" + node.right.type.name + "'.", node.location);
+                        break;
+                    case "and":
+                    case "or":
+                    case "xor":
+                        if (node.left.type != exports.BooleanType)
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'boolean', but a '" + node.left.type.name + "'.", node.left.location);
+                        if (node.right.type != exports.BooleanType)
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'boolean', but a '" + node.right.type.name + "'.", node.right.location);
+                        node.type = exports.BooleanType;
+                        break;
+                    default:
+                        throw new CompilerError("Unknown operator " + node.operator + ".", node.location);
+                }
+                break;
+            case "if":
+                typeCheckRec(node.condition, types, symbols);
+                if (node.condition.type != exports.BooleanType)
+                    throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+                symbols.push();
+                node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, symbols); });
+                symbols.pop();
+                symbols.push();
+                node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, symbols); });
+                symbols.pop();
+                break;
+            case "while":
+                typeCheckRec(node.condition, types, symbols);
+                if (node.condition.type != exports.BooleanType)
+                    throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+                symbols.push();
+                node.block.forEach(function (child) { return typeCheckRec(child, types, symbols); });
+                symbols.pop();
+                break;
+            case "repeat":
+                typeCheckRec(node.count, types, symbols);
+                if (node.count.type != exports.NumberType)
+                    throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
+                symbols.push();
+                node.block.forEach(function (child) { return typeCheckRec(child, types, symbols); });
+                symbols.pop();
+                break;
+            case "variable":
+                typeCheckRec(node.value, types, symbols);
+                if (node.typeName) {
+                    var type = types.all[node.typeName.id.value];
+                    if (!type)
+                        throw new CompilerError("Unknown type '" + node.typeName.id.value + "' for variable '" + node.name.value + "'.", node.typeName.id.location);
+                    if (type != node.value.type)
+                        throw new CompilerError("Can't assign a value of type '" + node.value.type.name + "' to variable '" + node.name.value + "' with type '" + type.name + ".", node.location);
+                    node.type = type;
+                }
+                else {
+                    node.type = node.value.type;
+                }
+                symbols.addSymbol(node);
+                break;
+            case "function":
+                break;
+            case "record":
+            case "assignment":
+            case "variableAccess":
+            case "functionCall":
+                throw new CompilerError("Type checking for node type '" + node.kind + " not implemented.", node.location);
+                break;
+            default:
+                assertNever(node);
         }
     }
 });
@@ -4460,7 +4525,7 @@ define("Utils", ["require", "exports"], function (require, exports) {
     }());
     exports.AssetManager = AssetManager;
 });
-define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (require, exports, Utils_1, Compiler_1) {
+define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (require, exports, Utils_1, compiler) {
     "use strict";
     exports.__esModule = true;
     var paperbots;
@@ -4505,16 +4570,22 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.markers.forEach(function (marker) { return marker.clear(); });
                 this.markers.length = 0;
                 try {
-                    var result = Compiler_1.compile(this.editor.getDoc().getValue());
-                    this.outputElement.innerHTML = JSON.stringify(result, null, 2);
+                    var result = compiler.compile(this.editor.getDoc().getValue());
+                    this.outputElement.innerHTML = compiler.moduleToJson(result);
                 }
                 catch (e) {
-                    var err = e;
-                    var loc = err.location;
-                    var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
-                    var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
-                    this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
-                    this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+                    if (e["location"]) {
+                        var err = e;
+                        var loc = err.location;
+                        var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
+                        var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
+                        this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
+                        this.outputElement.innerHTML = loc.start.line + ":" + loc.start.column + ": " + err.message;
+                    }
+                    else {
+                        var err = e;
+                        this.outputElement.innerHTML = err.message + (err.stack ? err.stack : "");
+                    }
                 }
             };
             CodeEditor.prototype.newBreakpointMarker = function () {

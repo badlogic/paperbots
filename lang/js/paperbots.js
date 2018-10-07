@@ -302,7 +302,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
                 kind: "unaryOp",
                 operator: op[0],
                 value: factor,
-                location: op.location
+                location: location()
             };
         };
         var peg$c83 = function (expr) { return expr; };
@@ -4019,27 +4019,40 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         declarationNode: null,
         name: "string"
     };
-    var Symbols = (function () {
-        function Symbols() {
-            this.stack = new Array();
+    var Scopes = (function () {
+        function Scopes() {
+            this.scopes = new Array();
             this.push();
         }
-        Symbols.prototype.push = function () {
-            this.stack.push({});
+        Scopes.prototype.push = function () {
+            this.scopes.push({});
         };
-        Symbols.prototype.pop = function () {
-            this.stack.pop();
+        Scopes.prototype.pop = function () {
+            this.scopes.pop();
         };
-        Symbols.prototype.addSymbol = function (node) {
-            this.stack.forEach(function (syms) {
-                var other = syms[node.name.value];
+        Scopes.prototype.findSymbol = function (id) {
+            var scopes = this.scopes;
+            for (var i = scopes.length - 1; i >= 0; i--) {
+                var scope = scopes[i];
+                var symbol = scope[id.value];
+                if (symbol) {
+                    return symbol;
+                }
+            }
+            return null;
+        };
+        Scopes.prototype.addSymbol = function (node) {
+            var scopes = this.scopes;
+            for (var i = scopes.length - 1; i >= 0; i--) {
+                var scope = scopes[i];
+                var other = scope[node.name.value];
                 if (other) {
                     throw new CompilerError("Variable " + node.name.value + " already defined in line " + other.name.location.start.line + ", column " + other.name.location.start.column + ".", node.name.location);
                 }
-                syms[node.name.value] = node;
-            });
+            }
+            scopes[scopes.length - 1][node.name.value] = node;
         };
-        return Symbols;
+        return Scopes;
     }());
     function moduleToJson(module) {
         return JSON.stringify(module, function (key, value) {
@@ -4060,7 +4073,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var records = ast.filter(function (element) { return element.kind == "record"; });
             var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
             var types = typeCheck(functions, records, mainProgram);
+            var codes = emitProgramCode(mainProgram, functions);
             return {
+                code: codes,
                 ast: ast,
                 types: types
             };
@@ -4075,7 +4090,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         throw new CompilerError(msg, null);
     }
     function functionSignature(fun) {
-        return fun.name.value + "(" + fun.params.map(function (param) { return param.typeName.id.value; }).join(",") + ")";
+        switch (fun.kind) {
+            case "function":
+                return fun.name.value + "(" + fun.params.map(function (param) { return param.typeName.id.value; }).join(",") + ")";
+            case "functionCall":
+                return fun.name.value + "(" + fun.args.map(function (arg) { return arg.type.name; }).join(",") + ")";
+        }
     }
     function typeCheck(functions, records, main) {
         var types = {
@@ -4136,6 +4156,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 if (!returnType) {
                     throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
                 }
+                decl.returnType = returnType;
             }
             else if (type.declarationNode && type.declarationNode.kind == "record") {
                 var decl = type.declarationNode;
@@ -4150,6 +4171,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     if (!fieldType) {
                         throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.name + "'.", field.typeName.id.location);
                     }
+                    field.type = type;
                     fieldNames_1[field.name.value] = field;
                 });
             }
@@ -4157,11 +4179,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         for (var typeName in types.all) {
             _loop_1(typeName);
         }
-        main.forEach(function (node) { return typeCheckRec(node, types, new Symbols()); });
-        functions.forEach(function (node) { return typeCheckRec(node, types, new Symbols()); });
+        var mainSymbols = new Scopes();
+        main.forEach(function (node) { return typeCheckRec(node, types, mainSymbols); });
+        functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes()); });
         return types;
     }
-    function typeCheckRec(node, types, symbols) {
+    function typeCheckRec(node, types, scopes) {
         switch (node.kind) {
             case "number":
                 node.type = exports.NumberType;
@@ -4173,7 +4196,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 node.type = exports.StringType;
                 break;
             case "unaryOp":
-                typeCheckRec(node.value, types, symbols);
+                typeCheckRec(node.value, types, scopes);
                 switch (node.operator) {
                     case "not":
                         if (node.value.type != exports.BooleanType)
@@ -4190,8 +4213,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
                 break;
             case "binaryOp":
-                typeCheckRec(node.left, types, symbols);
-                typeCheckRec(node.right, types, symbols);
+                typeCheckRec(node.left, types, scopes);
+                typeCheckRec(node.right, types, scopes);
                 switch (node.operator) {
                     case "+":
                     case "-":
@@ -4232,59 +4255,160 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
                 break;
             case "if":
-                typeCheckRec(node.condition, types, symbols);
+                typeCheckRec(node.condition, types, scopes);
                 if (node.condition.type != exports.BooleanType)
                     throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
-                symbols.push();
-                node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, symbols); });
-                symbols.pop();
-                symbols.push();
-                node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, symbols); });
-                symbols.pop();
+                scopes.push();
+                node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes); });
+                scopes.pop();
+                scopes.push();
+                node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, scopes); });
+                scopes.pop();
                 break;
             case "while":
-                typeCheckRec(node.condition, types, symbols);
+                typeCheckRec(node.condition, types, scopes);
                 if (node.condition.type != exports.BooleanType)
                     throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
-                symbols.push();
-                node.block.forEach(function (child) { return typeCheckRec(child, types, symbols); });
-                symbols.pop();
+                scopes.push();
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes); });
+                scopes.pop();
                 break;
             case "repeat":
-                typeCheckRec(node.count, types, symbols);
+                typeCheckRec(node.count, types, scopes);
                 if (node.count.type != exports.NumberType)
                     throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
-                symbols.push();
-                node.block.forEach(function (child) { return typeCheckRec(child, types, symbols); });
-                symbols.pop();
+                scopes.push();
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes); });
+                scopes.pop();
                 break;
             case "variable":
-                typeCheckRec(node.value, types, symbols);
+                typeCheckRec(node.value, types, scopes);
                 if (node.typeName) {
                     var type = types.all[node.typeName.id.value];
                     if (!type)
                         throw new CompilerError("Unknown type '" + node.typeName.id.value + "' for variable '" + node.name.value + "'.", node.typeName.id.location);
                     if (type != node.value.type)
-                        throw new CompilerError("Can't assign a value of type '" + node.value.type.name + "' to variable '" + node.name.value + "' with type '" + type.name + ".", node.location);
+                        throw new CompilerError("Can't assign a value of type '" + node.value.type.name + "' to variable '" + node.name.value + "' with type '" + type.name + ".", node.value.location);
                     node.type = type;
                 }
                 else {
                     node.type = node.value.type;
                 }
-                symbols.addSymbol(node);
+                scopes.addSymbol(node);
                 break;
             case "function":
+                scopes.push();
+                node.params.forEach(function (param) {
+                    scopes.addSymbol(param);
+                });
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes); });
+                scopes.pop();
                 break;
+            case "assignment": {
+                typeCheckRec(node.value, types, scopes);
+                var symbol = scopes.findSymbol(node.id);
+                if (!symbol)
+                    throw new CompilerError("Can not find variable or parameter with name '" + node.id + "'.", node.id.location);
+                if (symbol.type != node.value.type)
+                    throw new CompilerError("Can not assign a value of type '" + node.value.type.name + "' to a variable of type '" + symbol.type.name + ".", node.location);
+                break;
+            }
+            case "variableAccess": {
+                var symbol = scopes.findSymbol(node.name);
+                if (!symbol)
+                    throw new CompilerError("Can not find variable or parameter with name '" + node.name + "'.", node.name.location);
+                node.type = symbol.type;
+                break;
+            }
+            case "functionCall": {
+                node.args.forEach(function (arg) { return typeCheckRec(arg, types, scopes); });
+                var signature = functionSignature(node);
+                var funType = types.functions[signature];
+                if (!funType)
+                    throw new CompilerError("Can not find function '" + signature + "'.", node.location);
+                var returnType = funType.declarationNode.returnType;
+                node.type = returnType;
+                break;
+            }
             case "record":
-            case "assignment":
-            case "variableAccess":
-            case "functionCall":
-                throw new CompilerError("Type checking for node type '" + node.kind + " not implemented.", node.location);
-                break;
+                throw new CompilerError("Type checking of node type " + node.kind + " implemented", node.location);
             default:
                 assertNever(node);
         }
     }
+    function emitProgramCode(mainProgram, functions) {
+        var functionCodes = Array();
+        var functionLookup = {};
+        var mainFunction = {
+            ast: mainProgram,
+            code: new Array(),
+            locals: new Array(),
+            index: 0
+        };
+        functionCodes.push(mainFunction);
+        functionLookup["$main()"] = mainFunction;
+        functions.forEach(function (fun) {
+            var funCode = {
+                ast: fun,
+                code: new Array(),
+                locals: new Array(),
+                index: functions.length
+            };
+            functionCodes.push(funCode);
+            functionLookup[functionSignature(fun)] = funCode;
+        });
+        functionCodes.forEach(function (fun) { return emitFunctionCode(fun, functionLookup); });
+        return functionCodes;
+    }
+    function emitFunctionCode(fun, functionLookup) {
+        var statements = fun.index == 0 ? fun.ast : fun.ast.block;
+        if (fun.index != 0) {
+            var funDecl = fun.ast;
+            funDecl.params.forEach(function (param) { return fun.locals.push(param); });
+        }
+        statements.forEach(function (node) { return emitAstCode(node, fun, functionLookup); });
+    }
+    function emitAstCode(node, fun, functionLookup) {
+        switch (node.kind) {
+            case "number":
+            case "boolean":
+            case "string":
+                fun.code.push({ kind: "push", value: node.value });
+                break;
+            case "binaryOp":
+                emitAstCode(node.left, fun, functionLookup);
+                emitAstCode(node.right, fun, functionLookup);
+                fun.code.push({ kind: "op", operator: node.operator });
+                break;
+            case "unaryOp":
+                emitAstCode(node.value, fun, functionLookup);
+                fun.code.push({ kind: "op", operator: node.operator });
+                break;
+            default:
+                throw new CompilerError("Emission of code for ast node of type '" + node.kind + "' not implemented.", node.location);
+        }
+    }
+    var Slot = (function () {
+        function Slot() {
+        }
+        return Slot;
+    }());
+    exports.Slot = Slot;
+    var Frame = (function () {
+        function Frame() {
+        }
+        return Frame;
+    }());
+    exports.Frame = Frame;
+    var VirtualMachine = (function () {
+        function VirtualMachine(functions) {
+            this.functions = functions;
+        }
+        VirtualMachine.prototype.run = function (steps) {
+        };
+        return VirtualMachine;
+    }());
+    exports.VirtualMachine = VirtualMachine;
 });
 define("Utils", ["require", "exports"], function (require, exports) {
     "use strict";

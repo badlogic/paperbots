@@ -236,7 +236,7 @@ Unary
     	kind: "unaryOp",
         operator: op[0],
         value: factor,
-        location: op.location
+        location: location() // TODO should use location of op
     };
   }
 

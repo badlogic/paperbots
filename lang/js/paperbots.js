@@ -268,7 +268,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
         var peg$c58 = function () {
             return {
                 kind: "break",
-                location: location
+                location: location()
             };
         };
         var peg$c59 = "continue";
@@ -276,7 +276,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
         var peg$c61 = function () {
             return {
                 kind: "continue",
-                location: location
+                location: location()
             };
         };
         var peg$c62 = "and";
@@ -4233,7 +4233,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var records = ast.filter(function (element) { return element.kind == "record"; });
             var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
             var types = typeCheck(functions, records, mainProgram);
-            var codes = emitProgramCode(mainProgram, functions);
+            var codes = emitProgram(mainProgram, functions);
             return {
                 code: codes,
                 ast: ast,
@@ -4510,12 +4510,14 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 break;
             case "break":
             case "continue":
+                if (!enclosingLoop)
+                    throw new CompilerError("'" + node.kind + "' can only be used inside a 'while' or 'repeat' loop.", node.location);
                 break;
             default:
                 assertNever(node);
         }
     }
-    function emitProgramCode(mainProgram, functions) {
+    function emitProgram(mainProgram, functions) {
         var functionCodes = Array();
         var functionLookup = {};
         var mainFunction = {
@@ -4536,10 +4538,10 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             functionCodes.push(funCode);
             functionLookup[functionSignature(fun)] = funCode;
         });
-        functionCodes.forEach(function (fun) { return emitFunctionCode(fun, functionLookup); });
+        functionCodes.forEach(function (fun) { return emitFunction(fun, functionLookup); });
         return functionCodes;
     }
-    function emitFunctionCode(fun, functionLookup) {
+    function emitFunction(fun, functionLookup) {
         var statements = fun.index == 0 ? fun.ast : fun.ast.block;
         var scopes = new Scopes();
         if (fun.index != 0) {
@@ -4553,7 +4555,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     }
     function emitStatementList(statements, fun, functionLookup, scopes) {
         statements.forEach(function (stmt) {
-            emitAstCode(stmt, fun, functionLookup, scopes);
+            emitAstNode(stmt, fun, functionLookup, scopes);
             switch (stmt.kind) {
                 case "number":
                 case "boolean":
@@ -4584,7 +4586,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             }
         });
     }
-    function emitAstCode(node, fun, functionLookup, scopes) {
+    function emitAstNode(node, fun, functionLookup, scopes) {
         switch (node.kind) {
             case "number":
             case "boolean":
@@ -4592,12 +4594,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 fun.code.push({ kind: "push", value: node.value });
                 break;
             case "binaryOp":
-                emitAstCode(node.left, fun, functionLookup, scopes);
-                emitAstCode(node.right, fun, functionLookup, scopes);
+                emitAstNode(node.left, fun, functionLookup, scopes);
+                emitAstNode(node.right, fun, functionLookup, scopes);
                 fun.code.push({ kind: "op", operator: node.operator });
                 break;
             case "unaryOp":
-                emitAstCode(node.value, fun, functionLookup, scopes);
+                emitAstNode(node.value, fun, functionLookup, scopes);
                 fun.code.push({ kind: "op", operator: node.operator });
                 break;
             case "variableAccess":
@@ -4606,27 +4608,72 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             case "variable":
                 fun.locals.push(node);
                 scopes.addSymbol(node);
-                emitAstCode(node.value, fun, functionLookup, scopes);
+                emitAstNode(node.value, fun, functionLookup, scopes);
                 fun.code.push({ kind: "store", slotIndex: node.slotIndex });
                 break;
             case "assignment":
-                emitAstCode(node.value, fun, functionLookup, scopes);
+                emitAstNode(node.value, fun, functionLookup, scopes);
                 fun.code.push({ kind: "store", slotIndex: scopes.findSymbol(node.id).slotIndex });
                 break;
             case "functionCall":
-                node.args.forEach(function (arg) { return emitAstCode(arg, fun, functionLookup, scopes); });
+                node.args.forEach(function (arg) { return emitAstNode(arg, fun, functionLookup, scopes); });
                 fun.code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
                 break;
             case "if":
+                emitAstNode(node.condition, fun, functionLookup, scopes);
+                var jumpToFalse = { kind: "jumpIfFalse", offset: 0 };
+                var jumpPastFalse = { kind: "jump", offset: 0 };
+                fun.code.push(jumpToFalse);
+                scopes.push();
+                emitStatementList(node.trueBlock, fun, functionLookup, scopes);
+                scopes.pop();
+                fun.code.push(jumpPastFalse);
+                jumpToFalse.offset = fun.code.length;
+                scopes.push();
+                emitStatementList(node.falseBlock, fun, functionLookup, scopes);
+                scopes.pop();
+                jumpPastFalse.offset = fun.code.length;
+                break;
             case "while":
-            case "repeat":
+                var conditionIndex = fun.code.length;
+                emitAstNode(node.condition, fun, functionLookup, scopes);
+                var jumpPastBlock = { kind: "jumpIfFalse", offset: 0 };
+                fun.code.push(jumpPastBlock);
+                scopes.push();
+                emitStatementList(node.block, fun, functionLookup, scopes);
+                scopes.pop();
+                fun.code.push({ kind: "jump", offset: conditionIndex });
+                jumpPastBlock.offset = fun.code.length;
+                break;
+            case "repeat": {
+                emitAstNode(node.count, fun, functionLookup, scopes);
+                var conditionIndex_1 = fun.code.length;
+                fun.code.push({ kind: "dup" });
+                fun.code.push({ kind: "push", value: 0 });
+                fun.code.push({ kind: "op", operator: ">=" });
+                var jumpPastBlock_1 = { kind: "jumpIfFalse", offset: 0 };
+                fun.code.push(jumpPastBlock_1);
+                scopes.push();
+                emitStatementList(node.block, fun, functionLookup, scopes);
+                scopes.pop();
+                fun.code.push({ kind: "push", value: 1 });
+                fun.code.push({ kind: "op", operator: "-" });
+                fun.code.push({ kind: "jump", offset: conditionIndex_1 });
+                jumpPastBlock_1.offset = fun.code.length;
+                fun.code.push({ kind: "pop" });
+                break;
+            }
             case "return":
+                if (node.value)
+                    emitAstNode(node.value, fun, functionLookup, scopes);
+                fun.code.push({ kind: "return" });
+                break;
             case "break":
             case "continue":
                 throw new CompilerError("Emission of code for ast node of type '" + node.kind + "' not implemented.", node.location);
             case "record":
             case "function":
-                throw new CompilerError("THis should never happen", node.location);
+                throw new CompilerError("This should never happen", node.location);
             default:
                 assertNever(node);
         }

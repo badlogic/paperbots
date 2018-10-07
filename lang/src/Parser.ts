@@ -328,7 +328,7 @@ function peg$parse(input: string, options?: IParseOptions) {
   const peg$c58 = function() {
       return {
         kind: "break",
-        location: location
+        location: location()
       }
     };
   const peg$c59 = "continue";
@@ -336,7 +336,7 @@ function peg$parse(input: string, options?: IParseOptions) {
   const peg$c61 = function() {
       return {
         kind: "continue",
-        location: location
+        location: location()
       }
     };
   const peg$c62 = "and";

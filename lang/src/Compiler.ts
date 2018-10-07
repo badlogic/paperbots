@@ -266,7 +266,7 @@ export function compile(input: string): Module {
 		let mainProgram = ast.filter(element => { return element.kind != "function" && element.kind != "record" });
 
 		let types = typeCheck(functions, records, mainProgram);
-		let codes = emitProgramCode(mainProgram, functions);
+		let codes = emitProgram(mainProgram, functions);
 
 		return {
 			code: codes,
@@ -559,13 +559,14 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 		case "break":
 		case "continue":
+			if (!enclosingLoop) throw new CompilerError(`'${node.kind}' can only be used inside a 'while' or 'repeat' loop.`, node.location);
 			break;
 		default:
 			assertNever(node);
 	}
 }
 
-function emitProgramCode (mainProgram: Array<AstNode>, functions: Array<FunctionDecl>): Array<FunctionCode> {
+function emitProgram (mainProgram: Array<AstNode>, functions: Array<FunctionDecl>): Array<FunctionCode> {
 	let functionCodes = Array<FunctionCode>()
 	let functionLookup: Map<FunctionCode> = {};
 
@@ -589,11 +590,11 @@ function emitProgramCode (mainProgram: Array<AstNode>, functions: Array<Function
 		functionLookup[functionSignature(fun as FunctionDecl)] = funCode;
 	});
 
-	functionCodes.forEach(fun => emitFunctionCode(fun, functionLookup));
+	functionCodes.forEach(fun => emitFunction(fun, functionLookup));
 	return functionCodes;
 }
 
-function emitFunctionCode(fun: FunctionCode, functionLookup: Map<FunctionCode>) {
+function emitFunction(fun: FunctionCode, functionLookup: Map<FunctionCode>) {
 	let statements = fun.index == 0 ? (fun.ast as Array<AstNode>) : (fun.ast as FunctionDecl).block;
 	let scopes = new Scopes();
 	if (fun.index != 0) {
@@ -612,7 +613,7 @@ function emitFunctionCode(fun: FunctionCode, functionLookup: Map<FunctionCode>) 
 // pop instructions when necessary
 function emitStatementList (statements: Array<AstNode>, fun: FunctionCode, functionLookup: Map<FunctionCode>, scopes: Scopes) {
 	statements.forEach(stmt => {
-		emitAstCode(stmt as AstNode, fun, functionLookup, scopes);
+		emitAstNode(stmt as AstNode, fun, functionLookup, scopes);
 
 		// Check if this is a node that leaves a value on the stack
 		// so we can insert a pop
@@ -652,7 +653,7 @@ function emitStatementList (statements: Array<AstNode>, fun: FunctionCode, funct
 	});
 }
 
-function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<FunctionCode>, scopes: Scopes) {
+function emitAstNode(node: AstNode, fun: FunctionCode, functionLookup: Map<FunctionCode>, scopes: Scopes) {
 	switch(node.kind) {
 		case "number":
 		case "boolean":
@@ -660,12 +661,12 @@ function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<Funct
 			fun.code.push({kind: "push", value: node.value});
 			break;
 		case "binaryOp":
-			emitAstCode(node.left as AstNode, fun, functionLookup, scopes);
-			emitAstCode(node.right as AstNode, fun, functionLookup, scopes);
+			emitAstNode(node.left as AstNode, fun, functionLookup, scopes);
+			emitAstNode(node.right as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "op", operator: node.operator});
 			break;
 		case "unaryOp":
-			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
+			emitAstNode(node.value as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "op", operator: node.operator});
 			break;
 		case "variableAccess":
@@ -674,22 +675,96 @@ function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<Funct
 		case "variable":
 			fun.locals.push(node);
 			scopes.addSymbol(node);
-			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
+			emitAstNode(node.value as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "store", slotIndex: node.slotIndex});
 			break;
 		case "assignment":
-			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
+			emitAstNode(node.value as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "store", slotIndex: scopes.findSymbol(node.id).slotIndex});
 			break;
 		case "functionCall":
 			// push all arguments onto the stack, left to right
-			node.args.forEach(arg => emitAstCode(arg as AstNode, fun, functionLookup, scopes));
+			node.args.forEach(arg => emitAstNode(arg as AstNode, fun, functionLookup, scopes));
 			fun.code.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
 			break;
 		case "if":
+			emitAstNode(node.condition as AstNode, fun, functionLookup, scopes);
+
+			// Setup jumps. There's a boolean value on the top of the stack
+			// for the conditional which will be consumed by jumpIfFalse
+			let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
+			let jumpPastFalse: Instruction = { kind: "jump", offset: 0 };
+			fun.code.push(jumpToFalse);
+
+			// Emit the true block and a jump to after the false block
+			scopes.push();
+			emitStatementList(node.trueBlock as Array<AstNode>, fun, functionLookup, scopes);
+			scopes.pop()
+			fun.code.push(jumpPastFalse);
+
+			// Patch in the address of the first instruction of the false block
+			jumpToFalse.offset = fun.code.length;
+
+			// Emit the false block
+			scopes.push();
+			emitStatementList(node.falseBlock as Array<AstNode>, fun, functionLookup, scopes);
+			scopes.pop()
+
+			// Patch in the address of the first instruction after the false block
+			jumpPastFalse.offset = fun.code.length;
+			break;
 		case "while":
-		case "repeat":
+			// save the index of the start of the condition code
+			let conditionIndex = fun.code.length;
+
+			// emit the condition and setup a jump to after
+			// the while block.
+			emitAstNode(node.condition as AstNode, fun, functionLookup, scopes);
+			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0 };
+			fun.code.push(jumpPastBlock);
+			scopes.push();
+			emitStatementList(node.block as Array<AstNode>, fun, functionLookup, scopes);
+			scopes.pop();
+
+			// Emit jump to the loop header
+			fun.code.push({ kind: "jump", offset: conditionIndex });
+
+			// Patch in the address of the first instruction after the false block
+			jumpPastBlock.offset = fun.code.length;
+			break;
+		case "repeat": {
+			// Emit the count, which leaves a value on the stack
+			emitAstNode(node.count as AstNode, fun, functionLookup, scopes);
+
+			// Emit check for count >= 0: duplicate count,
+			// push 0, compare, jump past block if false.
+			let conditionIndex = fun.code.length;
+			fun.code.push({ kind: "dup"})
+			fun.code.push({ kind: "push", value: 0 });
+			fun.code.push({ kind: "op", operator: ">=" });
+			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0};
+			fun.code.push(jumpPastBlock);
+
+			scopes.push();
+			emitStatementList(node.block as Array<AstNode>, fun, functionLookup, scopes);
+			scopes.pop();
+
+			// decrease the count and jump to the loop header
+			fun.code.push({ kind: "push", value: 1});
+			fun.code.push({ kind: "op", operator: "-" });
+			fun.code.push({ kind: "jump", offset: conditionIndex });
+
+			// Patch in the address of the first instruction after the false block
+			jumpPastBlock.offset = fun.code.length;
+
+			// Remove the count from the
+			fun.code.push({ kind: "pop" });
+			break;
+		}
 		case "return":
+			if (node.value) emitAstNode(node.value as AstNode, fun, functionLookup, scopes);
+			fun.code.push({ kind: "return" });
+			break;
 		case "break":
 		case "continue":
 			throw new CompilerError(`Emission of code for ast node of type '${node.kind}' not implemented.`, node.location);
@@ -697,7 +772,7 @@ function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<Funct
 		case "function":
 			// No code emission for function and type declarations
 			// this path should never be hit.
-			throw new CompilerError("THis should never happen", node.location);
+			throw new CompilerError("This should never happen", node.location);
 		default:
 			assertNever(node);
 	}
@@ -734,13 +809,27 @@ export interface CallIns {
 	functionIndex: number
 }
 
+export interface JumpIfTrueIns {
+	kind: "jumpIfTrue"
+	offset: number
+}
+
+export interface JumpIfFalseIns {
+	kind: "jumpIfFalse"
+	offset: number
+}
+
 export interface JumpIns {
 	kind: "jump"
 	offset: number
 }
 
-export interface Return {
+export interface ReturnIns {
 	kind: "return"
+}
+
+export interface DupIns {
+	kind: "dup"
 }
 
 type Instruction =
@@ -750,8 +839,12 @@ type Instruction =
 	|	LoadIns
 	|	StoreIns
 	| 	CallIns
+	|	JumpIfTrueIns
+	|	JumpIfFalseIns
 	|	JumpIns
-	|	Return
+	|	ReturnIns
+	|	DupIns
+	;
 
 export class Slot {
 	symbol: VariableDecl | Parameter

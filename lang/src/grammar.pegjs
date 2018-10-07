@@ -182,7 +182,7 @@ Break
   {
     return {
       kind: "break",
-      location: location
+      location: location()
     }
   }
 
@@ -191,7 +191,7 @@ Continue
   {
     return {
       kind: "continue",
-      location: location
+      location: location()
     }
   }
 

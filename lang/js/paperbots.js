@@ -4995,9 +4995,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     lineNumbers: true,
                     gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
                     fixedGutter: true,
-                    extraKeys: {
-                        "Tab": "indentAuto"
-                    }
+                    extraKeys: {}
                 });
                 this.editor.on("change", function (instance, change) {
                     _this.compile();

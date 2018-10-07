@@ -26,7 +26,7 @@ export module paperbots {
 				gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
 				fixedGutter: true,
 				extraKeys: {
-					"Tab": "indentAuto"
+					// "Tab": "indentAuto"
 				}
 			});
 

@@ -96,20 +96,21 @@ export interface VariableDecl extends Statement {
 	name: Identifier,
 	typeName?: TypeName,
 	type: Type,
-	value: Expression
+	value: Expression,
+	slotIndex: number;
 }
 
 export interface RecordField {
 	name: Identifier,
 	typeName: TypeName,
-	type?: Type,
+	type: Type,
 }
 
 export interface RecordDecl extends Statement {
 	kind: "record",
 	name: Identifier,
 	fields: Array<RecordField>,
-	type?: Type,
+	type: Type,
 }
 
 export interface Return extends Statement {
@@ -128,7 +129,8 @@ export interface Continue extends Statement {
 export interface Parameter {
 	name: Identifier,
 	typeName: TypeName,
-	type?: Type,
+	type: Type,
+	slotIndex: number
 }
 
 export interface FunctionDecl extends Statement {
@@ -203,6 +205,7 @@ export interface Module {
 
 class Scopes {
 	scopes = new Array<Map<VariableDecl | Parameter>>();
+	nextSlotIndex = 0;
 
 	constructor() { this.push(); }
 
@@ -235,6 +238,7 @@ class Scopes {
 				throw new CompilerError(`Variable ${node.name.value} already defined in line ${other.name.location.start.line}, column ${other.name.location.start.column}.`, node.name.location);
 			}
 		}
+		node.slotIndex = this.nextSlotIndex++;
 		scopes[scopes.length - 1][node.name.value] = node;
 	}
 }
@@ -396,13 +400,13 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
 	let mainSymbols = new Scopes();
-	main.forEach(node => typeCheckRec(node, types, mainSymbols, null));
-	functions.forEach(node => typeCheckRec(node, types, new Scopes(), node));
+	main.forEach(node => typeCheckRec(node, types, mainSymbols, null, null));
+	functions.forEach(node => typeCheckRec(node, types, new Scopes(), node, null));
 
 	return types;
 }
 
-function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun: FunctionDecl) {
+function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun: FunctionDecl, enclosingLoop: While | Repeat) {
 	switch(node.kind) {
 		case "number":
 			node.type = NumberType;
@@ -417,7 +421,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 
 		case "unaryOp":
-			typeCheckRec((node.value as AstNode), types, scopes, enclosingFun);
+			typeCheckRec((node.value as AstNode), types, scopes, enclosingFun, enclosingLoop);
 			switch(node.operator) {
 				case "not":
 					if (node.value.type != BooleanType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'boolean', but a '${node.value.type.name}'.`, node.value.location);
@@ -433,8 +437,8 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 
 		case "binaryOp":
-			typeCheckRec((node.left as AstNode), types, scopes, enclosingFun);
-			typeCheckRec((node.right as AstNode), types, scopes, enclosingFun);
+			typeCheckRec((node.left as AstNode), types, scopes, enclosingFun, enclosingLoop);
+			typeCheckRec((node.right as AstNode), types, scopes, enclosingFun, enclosingLoop);
 			switch (node.operator) {
 				case "+":
 				case "-":
@@ -469,34 +473,34 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 
 		case "if":
-			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun);
+			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of if statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
 			scopes.push();
-			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
+			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
 			scopes.push();
-			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
+			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
 			break;
 
 		case "while":
-			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun);
+			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of while statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
 			scopes.push();
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, node));
 			scopes.pop();
 			break;
 
 		case "repeat":
-			typeCheckRec(node.count as AstNode, types, scopes, enclosingFun);
+			typeCheckRec(node.count as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.count.type != NumberType) throw new CompilerError(`Condition of repeat statement must be a 'number', but is a '${node.count.type.name}`, node.count.location);
 			scopes.push();
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, node));
 			scopes.pop();
 			break;
 
 		case "variable":
-			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
+			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.typeName) {
 				let type = types.all[node.typeName.id.value];
 				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
@@ -513,24 +517,24 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			node.params.forEach(param => {
 				scopes.addSymbol(param)
 			});
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
 			break;
 		case "assignment": {
-			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
+			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			let symbol = scopes.findSymbol(node.id);
-			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.id}'.`, node.id.location);
+			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.id.value}'.`, node.id.location);
 			if (symbol.type != node.value.type) throw new CompilerError(`Can not assign a value of type '${node.value.type.name}' to a variable of type '${symbol.type.name}.`, node.location);
 			break;
 		}
 		case "variableAccess": {
 			let symbol = scopes.findSymbol(node.name);
-			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.name}'.`, node.name.location);
+			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.name.value}'.`, node.name.location);
 			node.type = symbol.type;
 			break;
 		}
 		case "functionCall": {
-			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes, enclosingFun));
+			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			let signature = functionSignature(node);
 			let funType = types.functions[signature];
 			if (!funType) throw new CompilerError(`Can not find function '${signature}'.`, node.location);
@@ -544,7 +548,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			if (enclosingFun == null) {
 				if (node.value) throw new CompilerError("Can not return a value from the main program.", node.location);
 			} else {
-				if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
+				if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 				// function returns a value, but no value given
 				if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must return a value of type '${enclosingFun.returnType.name}'.`, node.location);
 				// function returns no value, but value given
@@ -591,14 +595,64 @@ function emitProgramCode (mainProgram: Array<AstNode>, functions: Array<Function
 
 function emitFunctionCode(fun: FunctionCode, functionLookup: Map<FunctionCode>) {
 	let statements = fun.index == 0 ? (fun.ast as Array<AstNode>) : (fun.ast as FunctionDecl).block;
+	let scopes = new Scopes();
 	if (fun.index != 0) {
 		let funDecl = fun.ast as FunctionDecl;
-		funDecl.params.forEach(param => fun.locals.push(param));
+		funDecl.params.forEach(param => {
+			scopes.addSymbol(param)
+			fun.locals.push(param)
+		});
 	}
-	statements.forEach(node => emitAstCode(node as AstNode, fun, functionLookup));
+	emitStatementList(statements as Array<AstNode>, fun, functionLookup, scopes);
 }
 
-function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<FunctionCode>) {
+// Some "statements" like 12 * 23 may leave a value on the stack which
+// we need to pop, while others like assignments or if/while/... do
+// not. We thus need to know the statement boundaries to insert
+// pop instructions when necessary
+function emitStatementList (statements: Array<AstNode>, fun: FunctionCode, functionLookup: Map<FunctionCode>, scopes: Scopes) {
+	statements.forEach(stmt => {
+		emitAstCode(stmt as AstNode, fun, functionLookup, scopes);
+
+		// Check if this is a node that leaves a value on the stack
+		// so we can insert a pop
+		switch(stmt.kind) {
+			case "number":
+			case "boolean":
+			case "string":
+			case "unaryOp":
+			case "binaryOp":
+			case "variableAccess":
+				// all of the above leave a value on the stack
+				// when used as a statement, so we insert a pop()
+				fun.code.push({kind: "pop"});
+				break;
+			case "functionCall":
+				// function calls may leave a value on the stack if
+				// they return a value.
+				let calledFun = functionLookup[functionSignature(stmt)].ast as FunctionDecl;
+				if (calledFun.returnType)
+					fun.code.push({kind: "pop"});
+				break;
+			case "if":
+			case "while":
+			case "repeat":
+			case "variable":
+			case "function":
+			case "assignment":
+			case "record":
+			case "return":
+			case "break":
+			case "continue":
+				// none of these leave a value on the stack
+				break;
+			default:
+				assertNever(stmt);
+		}
+	});
+}
+
+function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<FunctionCode>, scopes: Scopes) {
 	switch(node.kind) {
 		case "number":
 		case "boolean":
@@ -606,16 +660,46 @@ function emitAstCode(node: AstNode, fun: FunctionCode, functionLookup: Map<Funct
 			fun.code.push({kind: "push", value: node.value});
 			break;
 		case "binaryOp":
-			emitAstCode(node.left as AstNode, fun, functionLookup);
-			emitAstCode(node.right as AstNode, fun, functionLookup);
+			emitAstCode(node.left as AstNode, fun, functionLookup, scopes);
+			emitAstCode(node.right as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "op", operator: node.operator});
 			break;
 		case "unaryOp":
-			emitAstCode(node.value as AstNode, fun, functionLookup);
+			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
 			fun.code.push({kind: "op", operator: node.operator});
 			break;
-		default:
+		case "variableAccess":
+			fun.code.push({kind: "load", slotIndex: scopes.findSymbol(node.name).slotIndex});
+			break;
+		case "variable":
+			fun.locals.push(node);
+			scopes.addSymbol(node);
+			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
+			fun.code.push({kind: "store", slotIndex: node.slotIndex});
+			break;
+		case "assignment":
+			emitAstCode(node.value as AstNode, fun, functionLookup, scopes);
+			fun.code.push({kind: "store", slotIndex: scopes.findSymbol(node.id).slotIndex});
+			break;
+		case "functionCall":
+			// push all arguments onto the stack, left to right
+			node.args.forEach(arg => emitAstCode(arg as AstNode, fun, functionLookup, scopes));
+			fun.code.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
+			break;
+		case "if":
+		case "while":
+		case "repeat":
+		case "return":
+		case "break":
+		case "continue":
 			throw new CompilerError(`Emission of code for ast node of type '${node.kind}' not implemented.`, node.location);
+		case "record":
+		case "function":
+			// No code emission for function and type declarations
+			// this path should never be hit.
+			throw new CompilerError("THis should never happen", node.location);
+		default:
+			assertNever(node);
 	}
 }
 

@@ -4180,6 +4180,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     var Scopes = (function () {
         function Scopes() {
             this.scopes = new Array();
+            this.nextSlotIndex = 0;
             this.push();
         }
         Scopes.prototype.push = function () {
@@ -4208,6 +4209,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     throw new CompilerError("Variable " + node.name.value + " already defined in line " + other.name.location.start.line + ", column " + other.name.location.start.column + ".", node.name.location);
                 }
             }
+            node.slotIndex = this.nextSlotIndex++;
             scopes[scopes.length - 1][node.name.value] = node;
         };
         return Scopes;
@@ -4338,11 +4340,11 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             _loop_1(typeName);
         }
         var mainSymbols = new Scopes();
-        main.forEach(function (node) { return typeCheckRec(node, types, mainSymbols, null); });
-        functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes(), node); });
+        main.forEach(function (node) { return typeCheckRec(node, types, mainSymbols, null, null); });
+        functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes(), node, null); });
         return types;
     }
-    function typeCheckRec(node, types, scopes, enclosingFun) {
+    function typeCheckRec(node, types, scopes, enclosingFun, enclosingLoop) {
         switch (node.kind) {
             case "number":
                 node.type = exports.NumberType;
@@ -4354,7 +4356,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 node.type = exports.StringType;
                 break;
             case "unaryOp":
-                typeCheckRec(node.value, types, scopes, enclosingFun);
+                typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 switch (node.operator) {
                     case "not":
                         if (node.value.type != exports.BooleanType)
@@ -4371,8 +4373,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
                 break;
             case "binaryOp":
-                typeCheckRec(node.left, types, scopes, enclosingFun);
-                typeCheckRec(node.right, types, scopes, enclosingFun);
+                typeCheckRec(node.left, types, scopes, enclosingFun, enclosingLoop);
+                typeCheckRec(node.right, types, scopes, enclosingFun, enclosingLoop);
                 switch (node.operator) {
                     case "+":
                     case "-":
@@ -4413,34 +4415,34 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
                 break;
             case "if":
-                typeCheckRec(node.condition, types, scopes, enclosingFun);
+                typeCheckRec(node.condition, types, scopes, enclosingFun, enclosingLoop);
                 if (node.condition.type != exports.BooleanType)
                     throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
                 scopes.push();
-                node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun); });
+                node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
                 scopes.push();
-                node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun); });
+                node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
                 break;
             case "while":
-                typeCheckRec(node.condition, types, scopes, enclosingFun);
+                typeCheckRec(node.condition, types, scopes, enclosingFun, enclosingLoop);
                 if (node.condition.type != exports.BooleanType)
                     throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
                 scopes.push();
-                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun); });
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, node); });
                 scopes.pop();
                 break;
             case "repeat":
-                typeCheckRec(node.count, types, scopes, enclosingFun);
+                typeCheckRec(node.count, types, scopes, enclosingFun, enclosingLoop);
                 if (node.count.type != exports.NumberType)
                     throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
                 scopes.push();
-                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun); });
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, node); });
                 scopes.pop();
                 break;
             case "variable":
-                typeCheckRec(node.value, types, scopes, enclosingFun);
+                typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 if (node.typeName) {
                     var type = types.all[node.typeName.id.value];
                     if (!type)
@@ -4459,14 +4461,14 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 node.params.forEach(function (param) {
                     scopes.addSymbol(param);
                 });
-                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun); });
+                node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
                 break;
             case "assignment": {
-                typeCheckRec(node.value, types, scopes, enclosingFun);
+                typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 var symbol = scopes.findSymbol(node.id);
                 if (!symbol)
-                    throw new CompilerError("Can not find variable or parameter with name '" + node.id + "'.", node.id.location);
+                    throw new CompilerError("Can not find variable or parameter with name '" + node.id.value + "'.", node.id.location);
                 if (symbol.type != node.value.type)
                     throw new CompilerError("Can not assign a value of type '" + node.value.type.name + "' to a variable of type '" + symbol.type.name + ".", node.location);
                 break;
@@ -4474,12 +4476,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             case "variableAccess": {
                 var symbol = scopes.findSymbol(node.name);
                 if (!symbol)
-                    throw new CompilerError("Can not find variable or parameter with name '" + node.name + "'.", node.name.location);
+                    throw new CompilerError("Can not find variable or parameter with name '" + node.name.value + "'.", node.name.location);
                 node.type = symbol.type;
                 break;
             }
             case "functionCall": {
-                node.args.forEach(function (arg) { return typeCheckRec(arg, types, scopes, enclosingFun); });
+                node.args.forEach(function (arg) { return typeCheckRec(arg, types, scopes, enclosingFun, enclosingLoop); });
                 var signature = functionSignature(node);
                 var funType = types.functions[signature];
                 if (!funType)
@@ -4497,7 +4499,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
                 else {
                     if (node.value)
-                        typeCheckRec(node.value, types, scopes, enclosingFun);
+                        typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                     if (enclosingFun.returnType != exports.NothingType && !node.value)
                         throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.name + "'.", node.location);
                     if (enclosingFun.returnType == exports.NothingType && node.value)
@@ -4539,13 +4541,50 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     }
     function emitFunctionCode(fun, functionLookup) {
         var statements = fun.index == 0 ? fun.ast : fun.ast.block;
+        var scopes = new Scopes();
         if (fun.index != 0) {
             var funDecl = fun.ast;
-            funDecl.params.forEach(function (param) { return fun.locals.push(param); });
+            funDecl.params.forEach(function (param) {
+                scopes.addSymbol(param);
+                fun.locals.push(param);
+            });
         }
-        statements.forEach(function (node) { return emitAstCode(node, fun, functionLookup); });
+        emitStatementList(statements, fun, functionLookup, scopes);
     }
-    function emitAstCode(node, fun, functionLookup) {
+    function emitStatementList(statements, fun, functionLookup, scopes) {
+        statements.forEach(function (stmt) {
+            emitAstCode(stmt, fun, functionLookup, scopes);
+            switch (stmt.kind) {
+                case "number":
+                case "boolean":
+                case "string":
+                case "unaryOp":
+                case "binaryOp":
+                case "variableAccess":
+                    fun.code.push({ kind: "pop" });
+                    break;
+                case "functionCall":
+                    var calledFun = functionLookup[functionSignature(stmt)].ast;
+                    if (calledFun.returnType)
+                        fun.code.push({ kind: "pop" });
+                    break;
+                case "if":
+                case "while":
+                case "repeat":
+                case "variable":
+                case "function":
+                case "assignment":
+                case "record":
+                case "return":
+                case "break":
+                case "continue":
+                    break;
+                default:
+                    assertNever(stmt);
+            }
+        });
+    }
+    function emitAstCode(node, fun, functionLookup, scopes) {
         switch (node.kind) {
             case "number":
             case "boolean":
@@ -4553,16 +4592,43 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 fun.code.push({ kind: "push", value: node.value });
                 break;
             case "binaryOp":
-                emitAstCode(node.left, fun, functionLookup);
-                emitAstCode(node.right, fun, functionLookup);
+                emitAstCode(node.left, fun, functionLookup, scopes);
+                emitAstCode(node.right, fun, functionLookup, scopes);
                 fun.code.push({ kind: "op", operator: node.operator });
                 break;
             case "unaryOp":
-                emitAstCode(node.value, fun, functionLookup);
+                emitAstCode(node.value, fun, functionLookup, scopes);
                 fun.code.push({ kind: "op", operator: node.operator });
                 break;
-            default:
+            case "variableAccess":
+                fun.code.push({ kind: "load", slotIndex: scopes.findSymbol(node.name).slotIndex });
+                break;
+            case "variable":
+                fun.locals.push(node);
+                scopes.addSymbol(node);
+                emitAstCode(node.value, fun, functionLookup, scopes);
+                fun.code.push({ kind: "store", slotIndex: node.slotIndex });
+                break;
+            case "assignment":
+                emitAstCode(node.value, fun, functionLookup, scopes);
+                fun.code.push({ kind: "store", slotIndex: scopes.findSymbol(node.id).slotIndex });
+                break;
+            case "functionCall":
+                node.args.forEach(function (arg) { return emitAstCode(arg, fun, functionLookup, scopes); });
+                fun.code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                break;
+            case "if":
+            case "while":
+            case "repeat":
+            case "return":
+            case "break":
+            case "continue":
                 throw new CompilerError("Emission of code for ast node of type '" + node.kind + "' not implemented.", node.location);
+            case "record":
+            case "function":
+                throw new CompilerError("THis should never happen", node.location);
+            default:
+                assertNever(node);
         }
     }
     var Slot = (function () {

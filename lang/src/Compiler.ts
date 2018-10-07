@@ -605,11 +605,10 @@ function emitProgram (mainProgram: Array<AstNode>, functions: Array<FunctionDecl
 function emitFunction(context: EmitterContext) {
 	let fun = context.fun;
 	let statements = fun.index == 0 ? (fun.ast as Array<AstNode>) : (fun.ast as FunctionDecl).block;
-	let scopes = new Scopes();
 	if (fun.index != 0) {
 		let funDecl = fun.ast as FunctionDecl;
 		funDecl.params.forEach(param => {
-			scopes.addSymbol(param)
+			context.scopes.addSymbol(param)
 			fun.locals.push(param)
 		});
 	}

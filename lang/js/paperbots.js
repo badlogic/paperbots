@@ -4554,11 +4554,10 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     function emitFunction(context) {
         var fun = context.fun;
         var statements = fun.index == 0 ? fun.ast : fun.ast.block;
-        var scopes = new Scopes();
         if (fun.index != 0) {
             var funDecl = fun.ast;
             funDecl.params.forEach(function (param) {
-                scopes.addSymbol(param);
+                context.scopes.addSymbol(param);
                 fun.locals.push(param);
             });
         }

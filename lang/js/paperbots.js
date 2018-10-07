@@ -4517,6 +4517,16 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 assertNever(node);
         }
     }
+    var EmitterContext = (function () {
+        function EmitterContext(fun, functionLookup) {
+            this.fun = fun;
+            this.functionLookup = functionLookup;
+            this.scopes = new Scopes();
+            this.continues = new Array();
+            this.breaks = new Array();
+        }
+        return EmitterContext;
+    }());
     function emitProgram(mainProgram, functions) {
         var functionCodes = Array();
         var functionLookup = {};
@@ -4538,10 +4548,11 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             functionCodes.push(funCode);
             functionLookup[functionSignature(fun)] = funCode;
         });
-        functionCodes.forEach(function (fun) { return emitFunction(fun, functionLookup); });
+        functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup)); });
         return functionCodes;
     }
-    function emitFunction(fun, functionLookup) {
+    function emitFunction(context) {
+        var fun = context.fun;
         var statements = fun.index == 0 ? fun.ast : fun.ast.block;
         var scopes = new Scopes();
         if (fun.index != 0) {
@@ -4551,11 +4562,11 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 fun.locals.push(param);
             });
         }
-        emitStatementList(statements, fun, functionLookup, scopes);
+        emitStatementList(statements, context);
     }
-    function emitStatementList(statements, fun, functionLookup, scopes) {
+    function emitStatementList(statements, context) {
         statements.forEach(function (stmt) {
-            emitAstNode(stmt, fun, functionLookup, scopes);
+            emitAstNode(stmt, context);
             switch (stmt.kind) {
                 case "number":
                 case "boolean":
@@ -4563,12 +4574,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 case "unaryOp":
                 case "binaryOp":
                 case "variableAccess":
-                    fun.code.push({ kind: "pop" });
+                    context.fun.code.push({ kind: "pop" });
                     break;
                 case "functionCall":
-                    var calledFun = functionLookup[functionSignature(stmt)].ast;
+                    var calledFun = context.functionLookup[functionSignature(stmt)].ast;
                     if (calledFun.returnType)
-                        fun.code.push({ kind: "pop" });
+                        context.fun.code.push({ kind: "pop" });
                     break;
                 case "if":
                 case "while":
@@ -4586,91 +4597,110 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             }
         });
     }
-    function emitAstNode(node, fun, functionLookup, scopes) {
+    function emitAstNode(node, context) {
+        var fun = context.fun;
+        var code = fun.code;
+        var functionLookup = context.functionLookup;
+        var scopes = context.scopes;
         switch (node.kind) {
             case "number":
             case "boolean":
             case "string":
-                fun.code.push({ kind: "push", value: node.value });
+                code.push({ kind: "push", value: node.value });
                 break;
             case "binaryOp":
-                emitAstNode(node.left, fun, functionLookup, scopes);
-                emitAstNode(node.right, fun, functionLookup, scopes);
-                fun.code.push({ kind: "op", operator: node.operator });
+                emitAstNode(node.left, context);
+                emitAstNode(node.right, context);
+                code.push({ kind: "op", operator: node.operator });
                 break;
             case "unaryOp":
-                emitAstNode(node.value, fun, functionLookup, scopes);
-                fun.code.push({ kind: "op", operator: node.operator });
+                emitAstNode(node.value, context);
+                code.push({ kind: "op", operator: node.operator });
                 break;
             case "variableAccess":
-                fun.code.push({ kind: "load", slotIndex: scopes.findSymbol(node.name).slotIndex });
+                code.push({ kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex });
                 break;
             case "variable":
                 fun.locals.push(node);
                 scopes.addSymbol(node);
-                emitAstNode(node.value, fun, functionLookup, scopes);
-                fun.code.push({ kind: "store", slotIndex: node.slotIndex });
+                emitAstNode(node.value, context);
+                code.push({ kind: "store", slotIndex: node.slotIndex });
                 break;
             case "assignment":
-                emitAstNode(node.value, fun, functionLookup, scopes);
-                fun.code.push({ kind: "store", slotIndex: scopes.findSymbol(node.id).slotIndex });
+                emitAstNode(node.value, context);
+                code.push({ kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex });
                 break;
             case "functionCall":
-                node.args.forEach(function (arg) { return emitAstNode(arg, fun, functionLookup, scopes); });
-                fun.code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                node.args.forEach(function (arg) { return emitAstNode(arg, context); });
+                code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
                 break;
             case "if":
-                emitAstNode(node.condition, fun, functionLookup, scopes);
+                emitAstNode(node.condition, context);
                 var jumpToFalse = { kind: "jumpIfFalse", offset: 0 };
                 var jumpPastFalse = { kind: "jump", offset: 0 };
-                fun.code.push(jumpToFalse);
+                code.push(jumpToFalse);
                 scopes.push();
-                emitStatementList(node.trueBlock, fun, functionLookup, scopes);
+                emitStatementList(node.trueBlock, context);
                 scopes.pop();
-                fun.code.push(jumpPastFalse);
-                jumpToFalse.offset = fun.code.length;
+                code.push(jumpPastFalse);
+                jumpToFalse.offset = code.length;
                 scopes.push();
-                emitStatementList(node.falseBlock, fun, functionLookup, scopes);
+                emitStatementList(node.falseBlock, context);
                 scopes.pop();
-                jumpPastFalse.offset = fun.code.length;
+                jumpPastFalse.offset = code.length;
                 break;
             case "while":
-                var conditionIndex = fun.code.length;
-                emitAstNode(node.condition, fun, functionLookup, scopes);
+                var conditionIndex_1 = code.length;
+                emitAstNode(node.condition, context);
                 var jumpPastBlock = { kind: "jumpIfFalse", offset: 0 };
-                fun.code.push(jumpPastBlock);
+                code.push(jumpPastBlock);
                 scopes.push();
-                emitStatementList(node.block, fun, functionLookup, scopes);
+                emitStatementList(node.block, context);
                 scopes.pop();
-                fun.code.push({ kind: "jump", offset: conditionIndex });
-                jumpPastBlock.offset = fun.code.length;
+                context.continues.forEach(function (cont) { return cont.offset = conditionIndex_1; });
+                context.continues.length = 0;
+                code.push({ kind: "jump", offset: conditionIndex_1 });
+                jumpPastBlock.offset = code.length;
+                context.breaks.forEach(function (br) { return br.offset = code.length; });
+                context.breaks.length = 0;
                 break;
             case "repeat": {
-                emitAstNode(node.count, fun, functionLookup, scopes);
-                var conditionIndex_1 = fun.code.length;
-                fun.code.push({ kind: "dup" });
-                fun.code.push({ kind: "push", value: 0 });
-                fun.code.push({ kind: "op", operator: ">=" });
+                emitAstNode(node.count, context);
+                var conditionIndex_2 = code.length;
+                code.push({ kind: "dup" });
+                code.push({ kind: "push", value: 0 });
+                code.push({ kind: "op", operator: ">=" });
                 var jumpPastBlock_1 = { kind: "jumpIfFalse", offset: 0 };
-                fun.code.push(jumpPastBlock_1);
+                code.push(jumpPastBlock_1);
                 scopes.push();
-                emitStatementList(node.block, fun, functionLookup, scopes);
+                emitStatementList(node.block, context);
                 scopes.pop();
-                fun.code.push({ kind: "push", value: 1 });
-                fun.code.push({ kind: "op", operator: "-" });
-                fun.code.push({ kind: "jump", offset: conditionIndex_1 });
-                jumpPastBlock_1.offset = fun.code.length;
-                fun.code.push({ kind: "pop" });
+                context.continues.forEach(function (cont) { return cont.offset = code.length; });
+                context.continues.length = 0;
+                code.push({ kind: "push", value: 1 });
+                code.push({ kind: "op", operator: "-" });
+                code.push({ kind: "jump", offset: conditionIndex_2 });
+                jumpPastBlock_1.offset = code.length;
+                context.breaks.forEach(function (br) { return br.offset = code.length; });
+                context.breaks.length = 0;
+                code.push({ kind: "pop" });
                 break;
             }
             case "return":
                 if (node.value)
-                    emitAstNode(node.value, fun, functionLookup, scopes);
-                fun.code.push({ kind: "return" });
+                    emitAstNode(node.value, context);
+                code.push({ kind: "return" });
                 break;
             case "break":
+                var breakIns = { kind: "jump", offset: 0 };
+                code.push(breakIns);
+                context.breaks.push(breakIns);
+                break;
             case "continue":
-                throw new CompilerError("Emission of code for ast node of type '" + node.kind + "' not implemented.", node.location);
+                var continueIns = { kind: "jump", offset: 0 };
+                code.push(continueIns);
+                context.continues.push(continueIns);
+                break;
             case "record":
             case "function":
                 throw new CompilerError("This should never happen", node.location);

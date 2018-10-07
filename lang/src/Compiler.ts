@@ -112,6 +112,19 @@ export interface RecordDecl extends Statement {
 	type?: Type,
 }
 
+export interface Return extends Statement {
+	kind: "return",
+	value?: Expression
+}
+
+export interface Break extends Statement {
+	kind: "break",
+}
+
+export interface Continue extends Statement {
+	kind: "continue",
+}
+
 export interface Parameter {
 	name: Identifier,
 	typeName: TypeName,
@@ -142,6 +155,9 @@ type AstNode =
 	|	VariableDecl
 	|	RecordDecl
 	|	FunctionDecl
+	|	Return
+	|	Break
+	|	Continue
 	;
 
 export interface Type {
@@ -380,13 +396,13 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
 	let mainSymbols = new Scopes();
-	main.forEach(node => typeCheckRec(node, types, mainSymbols));
-	functions.forEach(node => typeCheckRec(node, types, new Scopes()));
+	main.forEach(node => typeCheckRec(node, types, mainSymbols, null));
+	functions.forEach(node => typeCheckRec(node, types, new Scopes(), node));
 
 	return types;
 }
 
-function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
+function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun: FunctionDecl) {
 	switch(node.kind) {
 		case "number":
 			node.type = NumberType;
@@ -401,7 +417,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 			break;
 
 		case "unaryOp":
-			typeCheckRec((node.value as AstNode), types, scopes);
+			typeCheckRec((node.value as AstNode), types, scopes, enclosingFun);
 			switch(node.operator) {
 				case "not":
 					if (node.value.type != BooleanType) throw new CompilerError(`Operand of ${node.operator} operator is not a 'boolean', but a '${node.value.type.name}'.`, node.value.location);
@@ -417,8 +433,8 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 			break;
 
 		case "binaryOp":
-			typeCheckRec((node.left as AstNode), types, scopes);
-			typeCheckRec((node.right as AstNode), types, scopes);
+			typeCheckRec((node.left as AstNode), types, scopes, enclosingFun);
+			typeCheckRec((node.right as AstNode), types, scopes, enclosingFun);
 			switch (node.operator) {
 				case "+":
 				case "-":
@@ -453,34 +469,34 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 			break;
 
 		case "if":
-			typeCheckRec(node.condition as AstNode, types, scopes);
+			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun);
 			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of if statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
 			scopes.push();
-			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes));
+			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
 			scopes.pop();
 			scopes.push();
-			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes));
+			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
 			scopes.pop();
 			break;
 
 		case "while":
-			typeCheckRec(node.condition as AstNode, types, scopes);
+			typeCheckRec(node.condition as AstNode, types, scopes, enclosingFun);
 			if (node.condition.type != BooleanType) throw new CompilerError(`Condition of while statement must be a 'boolean', but is a '${node.condition.type.name}`, node.condition.location);
 			scopes.push();
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
 			scopes.pop();
 			break;
 
 		case "repeat":
-			typeCheckRec(node.count as AstNode, types, scopes);
+			typeCheckRec(node.count as AstNode, types, scopes, enclosingFun);
 			if (node.count.type != NumberType) throw new CompilerError(`Condition of repeat statement must be a 'number', but is a '${node.count.type.name}`, node.count.location);
 			scopes.push();
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
 			scopes.pop();
 			break;
 
 		case "variable":
-			typeCheckRec(node.value as AstNode, types, scopes);
+			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
 			if (node.typeName) {
 				let type = types.all[node.typeName.id.value];
 				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
@@ -497,11 +513,11 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 			node.params.forEach(param => {
 				scopes.addSymbol(param)
 			});
-			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes));
+			node.block.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun));
 			scopes.pop();
 			break;
 		case "assignment": {
-			typeCheckRec(node.value as AstNode, types, scopes);
+			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
 			let symbol = scopes.findSymbol(node.id);
 			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.id}'.`, node.id.location);
 			if (symbol.type != node.value.type) throw new CompilerError(`Can not assign a value of type '${node.value.type.name}' to a variable of type '${symbol.type.name}.`, node.location);
@@ -514,7 +530,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 			break;
 		}
 		case "functionCall": {
-			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes));
+			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes, enclosingFun));
 			let signature = functionSignature(node);
 			let funType = types.functions[signature];
 			if (!funType) throw new CompilerError(`Can not find function '${signature}'.`, node.location);
@@ -524,6 +540,22 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes) {
 		}
 		case "record":
 			throw new CompilerError(`Type checking of node type ${node.kind} implemented`, node.location);
+		case "return":
+			if (enclosingFun == null) {
+				if (node.value) throw new CompilerError("Can not return a value from the main program.", node.location);
+			} else {
+				if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun);
+				// function returns a value, but no value given
+				if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must return a value of type '${enclosingFun.returnType.name}'.`, node.location);
+				// function returns no value, but value given
+				if (enclosingFun.returnType == NothingType && node.value) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must not return a value.`, node.location);
+				// function returns a value, value given, but type don't match
+				if (enclosingFun.returnType != NothingType && node.value && enclosingFun.returnType != node.value.type) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must return a value of type '${enclosingFun.returnType.name}', but a value of type '${node.value.type.name}' is returned.`, node.location);
+			}
+			break;
+		case "break":
+		case "continue":
+			break;
 		default:
 			assertNever(node);
 	}

@@ -95,6 +95,9 @@ Statement
   / If
   / Expression
   / Comment
+  / Return
+  / Break
+  / Continue
 
 Variable
   = "var" _ id:Identifier _ typeName:(":" _ Type _)? "=" _ init: Expression
@@ -162,6 +165,34 @@ If
       falseBlock: falseBlock ? falseBlock[2].map(function(element) { return element[1]; }) : [],
       location: location()
 	  }
+  }
+
+Return
+  = "return" _ value:Expression? _
+  {
+    return {
+      kind: "return",
+      value: value,
+      location: location()
+    }
+  }
+
+Break
+  = "break"
+  {
+    return {
+      kind: "break",
+      location: location
+    }
+  }
+
+Continue
+  = "continue"
+  {
+    return {
+      kind: "continue",
+      location: location
+    }
   }
 
 Expression
@@ -343,6 +374,9 @@ Reserved
   / "and"
   / "or"
   / "end"
+  / "return"
+  / "break"
+  / "continue"
   / "not"
   / "record" ) !IdentifierPart
 

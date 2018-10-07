@@ -29,7 +29,7 @@ CodeMirror.defineMode("paperbots", function(config, parserConfig) {
   // long list of standard functions from lua manual
   var builtins = wordRE([
   ]);
-  var keywords = wordRE(["var", "fun", "elseif", "else", "if", "repeat", "while", "do", "then", "times", "true", "false", "xor", "and", "or", "end", "not", "record"]);
+  var keywords = wordRE(["var", "fun", "elseif", "else", "if", "repeat", "while", "do", "then", "times", "true", "false", "xor", "and", "or", "end", "not", "record", "return", "continue", "break"]);
 
   var indentTokens = wordRE(["fun", "if","repeat","do", "while", "record", "\\(", "{"]);
   var dedentTokens = wordRE(["end", "until", "\\)", "}"]);

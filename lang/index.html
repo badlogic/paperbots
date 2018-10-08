@@ -5,6 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="js/jquery.js"></script>
 	<script src="js/codemirror.js"></script>
+	<script src="js/active-line.js"></script>
 	<script src="js/paperbots-cm.js"></script>
 	<script src="js/require.js"></script>
 	<script src="js/paperbots.js"></script>
@@ -18,9 +19,14 @@
 	<div class="pb-container">
 		<div id="pb-editor-container">
 			<div id="pb-editor-tools">
-				<input type="button" id="pb-run" value="Run">
-				<input type="button" id="pb-save" value="Save">
-				<input type="button" id="pb-load" value="Load">
+				<div id="pb-editor-tools-editing">
+					<input type="button" id="pb-run" value="Run">
+					<!-- <input type="button" id="pb-save" value="Save">
+					<input type="button" id="pb-load" value="Load"> -->
+				</div>
+				<div id="pb-editor-tools-running" style="display:none;">
+					<input type="button" id="pb-stop" value="Stop">
+				</div>
 			</div>
 			<div id="pb-editor"></div>
 			<pre id="pb-output" disabled></pre>
@@ -28,11 +34,20 @@
 		<div style="padding: 10px"></div>
 		<div id="pb-canvas-container">
 			<div id="pb-canvas-tools">
-				<input type="button" value="Robot" class="selected">
-				<input type="button" value="Floor">
-				<input type="button" value="Wall">
-				<input type="button" value="Number">
-				<input type="button" value="Letter">
+				<div id="pb-canvas-tools-editing">
+					<input type="button" value="Robot" class="selected">
+					<input type="button" value="Floor">
+					<input type="button" value="Wall">
+					<input type="button" value="Number">
+					<input type="button" value="Letter">
+				</div>
+				<div id="pb-canvas-tools-running" style="display:none;">
+					<input type="button" value="forward()">
+					<input type="button" value="turnLeft()">
+					<input type="button" value="turnRight()">
+					<input type="button" value="print()">
+					<input type="button" value="scan()">
+				</div>
 			</div>
 			<canvas id="pb-canvas"></canvas>
 		</div>
@@ -41,7 +56,7 @@
 	<script>
 		require(["Paperbots"], function(module) {
 			var paperbots = module.paperbots;
-			var editor = new paperbots.Editor(
+			var editor = new paperbots.Paperbots(
 				document.getElementById("pb-canvas-container"),
 				document.getElementById("pb-editor"),
 				document.getElementById("pb-output")

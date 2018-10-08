@@ -12,14 +12,14 @@
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
 <body style="height: 100vh; padding: 0;">
-	<div class="pb-container" style="height: 100%;">
+	<div class="pb-container" style="height: 100%; max-width: none;">
 		<div id="pb-editor-tools">
 			<!--<input type="button" id="pb-run" value="Run">
 			<input type="button" id="pb-save" value="Save">
 			<input type="button" id="pb-load" value="Load">-->
 		</div>
-		<div id="pb-editor-container" style="flex-direction: row;">
-			<div id="pb-editor" style="width: 100%;"></div>
+		<div id="pb-editor-container" style="flex-direction: row; max-width: none; height: 100%;">
+			<div id="pb-editor" style="width: 100%; max-height: none;"></div>
 			<pre id="pb-output" style="width: 100%; overflow: auto;" disabled></pre>
 		</div>
 	</div>
@@ -28,6 +28,7 @@
 		require(["Paperbots"], function(module) {
 			var paperbots = module.paperbots;
 			var editor = new paperbots.CodeEditor(
+				null,
 				document.getElementById("pb-editor"),
 				document.getElementById("pb-output")
 			);

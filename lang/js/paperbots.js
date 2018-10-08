@@ -4972,18 +4972,34 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
     "use strict";
     exports.__esModule = true;
     var paperbots;
-    (function (paperbots) {
-        var Editor = (function () {
-            function Editor(canvasElement, editorElement, outputElement) {
-                this.canvas = new Canvas(canvasElement);
-                this.codeEditor = new CodeEditor(editorElement, outputElement);
+    (function (paperbots_1) {
+        var EditorMode;
+        (function (EditorMode) {
+            EditorMode[EditorMode["Editing"] = 0] = "Editing";
+            EditorMode[EditorMode["Running"] = 1] = "Running";
+        })(EditorMode = paperbots_1.EditorMode || (paperbots_1.EditorMode = {}));
+        var Paperbots = (function () {
+            function Paperbots(canvasElement, editorElement, outputElement) {
+                this.mode = EditorMode.Editing;
+                this.canvas = new Canvas(this, canvasElement);
+                this.codeEditor = new CodeEditor(this, editorElement, outputElement);
+                this.setMode(EditorMode.Editing);
             }
-            return Editor;
+            Paperbots.prototype.setMode = function (mode) {
+                this.mode = mode;
+                this.canvas.setMode(mode);
+                this.codeEditor.setMode(mode);
+            };
+            Paperbots.prototype.getMode = function () {
+                return this.mode;
+            };
+            return Paperbots;
         }());
-        paperbots.Editor = Editor;
+        paperbots_1.Paperbots = Paperbots;
         var CodeEditor = (function () {
-            function CodeEditor(editorElement, outputElement) {
+            function CodeEditor(paperbots, editorElement, outputElement) {
                 var _this = this;
+                this.paperbots = paperbots;
                 this.editorElement = editorElement;
                 this.outputElement = outputElement;
                 this.markers = Array();
@@ -4991,6 +5007,8 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     tabSize: 3,
                     indentUnit: 3,
                     indentWithTabs: true,
+                    styleActiveLine: true,
+                    styleActiveSelected: true,
                     lineNumbers: true,
                     gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
                     fixedGutter: true,
@@ -5003,6 +5021,12 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.editor.on("gutterClick", function (cm, n) {
                     var info = cm.lineInfo(n);
                     cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : this.newBreakpointMarker());
+                });
+                $("#pb-run").click(function () {
+                    paperbots.setMode(EditorMode.Running);
+                });
+                $("#pb-stop").click(function () {
+                    paperbots.setMode(EditorMode.Editing);
                 });
                 this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
                 this.compile();
@@ -5033,23 +5057,47 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 var marker = $("\n\t\t\t<svg height=\"15\" width=\"15\">\n\t\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t\t  </svg>\n\t\t\t");
                 return marker[0];
             };
+            CodeEditor.prototype.setMode = function (mode) {
+                if (mode == EditorMode.Editing) {
+                    this.editor.setOption("readOnly", false);
+                    $("#pb-editor-tools-editing").show();
+                    $("#pb-editor-tools-running").hide();
+                }
+                else {
+                    this.editor.setOption("readOnly", true);
+                    $("#pb-editor-tools-editing").hide();
+                    $("#pb-editor-tools-running").show();
+                }
+            };
             return CodeEditor;
         }());
-        paperbots.CodeEditor = CodeEditor;
+        paperbots_1.CodeEditor = CodeEditor;
         var RobotAction;
         (function (RobotAction) {
             RobotAction[RobotAction["Forward"] = 0] = "Forward";
             RobotAction[RobotAction["TurnLeft"] = 1] = "TurnLeft";
             RobotAction[RobotAction["TurnRight"] = 2] = "TurnRight";
             RobotAction[RobotAction["None"] = 3] = "None";
-        })(RobotAction = paperbots.RobotAction || (paperbots.RobotAction = {}));
+        })(RobotAction = paperbots_1.RobotAction || (paperbots_1.RobotAction = {}));
+        var RobotData = (function () {
+            function RobotData(x, y, dirX, dirY, angle) {
+                if (x === void 0) { x = 0; }
+                if (y === void 0) { y = 15; }
+                if (dirX === void 0) { dirX = 1; }
+                if (dirY === void 0) { dirY = 0; }
+                if (angle === void 0) { angle = 0; }
+                this.x = x;
+                this.y = y;
+                this.dirX = dirX;
+                this.dirY = dirY;
+                this.angle = angle;
+            }
+            return RobotData;
+        }());
+        paperbots_1.RobotData = RobotData;
         var Robot = (function () {
-            function Robot() {
-                this.x = 0;
-                this.y = 15;
-                this.dirX = 1;
-                this.dirY = 0;
-                this.angle = 0;
+            function Robot(data) {
+                this.data = data;
                 this.action = RobotAction.None;
                 this.actionTime = 0;
                 this.startX = 0;
@@ -5060,10 +5108,10 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.targetAngle = 0;
             }
             Robot.prototype.turnLeft = function () {
-                this.angle = this.angle - 90;
-                var temp = this.dirX;
-                this.dirX = -this.dirY;
-                this.dirY = temp;
+                this.data.angle = this.data.angle - 90;
+                var temp = this.data.dirX;
+                this.data.dirX = -this.data.dirY;
+                this.data.dirY = temp;
             };
             Robot.prototype.setAction = function (world, action) {
                 if (this.action != RobotAction.None) {
@@ -5072,31 +5120,32 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.action = action;
                 switch (action) {
                     case RobotAction.Forward:
-                        this.startX = this.x;
-                        this.startY = this.y;
-                        this.targetX = this.x + this.dirX;
-                        this.targetY = this.y + this.dirY;
+                        this.startX = this.data.x;
+                        this.startY = this.data.y;
+                        this.targetX = this.data.x + this.data.dirX;
+                        this.targetY = this.data.y + this.data.dirY;
                         console.log(this.targetX + ", " + this.targetY);
-                        if (world.getTile(this.targetX, this.targetY).kind == "wall") {
+                        var tile = world.getTile(this.targetX, this.targetY);
+                        if (tile && tile.kind == "wall") {
                             this.targetX = this.startX;
                             this.targetY = this.startY;
                         }
                         break;
                     case RobotAction.TurnLeft: {
-                        this.startAngle = this.angle;
-                        this.targetAngle = this.angle - 90;
-                        var temp = this.dirX;
-                        this.dirX = -this.dirY;
-                        this.dirY = temp;
+                        this.startAngle = this.data.angle;
+                        this.targetAngle = this.data.angle - 90;
+                        var temp = this.data.dirX;
+                        this.data.dirX = -this.data.dirY;
+                        this.data.dirY = temp;
                         console.log(this.targetAngle);
                         break;
                     }
                     case RobotAction.TurnRight: {
-                        this.startAngle = this.angle;
-                        this.targetAngle = this.angle + 90;
-                        var temp = this.dirX;
-                        this.dirX = this.dirY;
-                        this.dirY = -temp;
+                        this.startAngle = this.data.angle;
+                        this.targetAngle = this.data.angle + 90;
+                        var temp = this.data.dirX;
+                        this.data.dirX = this.data.dirY;
+                        this.data.dirY = -temp;
                         console.log(this.targetAngle);
                         break;
                     }
@@ -5110,12 +5159,12 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         var percentage = this.actionTime / Robot.FORWARD_DURATION;
                         if (percentage >= 1) {
                             this.action = RobotAction.None;
-                            this.x = this.targetX;
-                            this.y = this.targetY;
+                            this.data.x = this.targetX;
+                            this.data.y = this.targetY;
                         }
                         else {
-                            this.x = this.startX + (this.targetX - this.startX) * percentage;
-                            this.y = this.startY + (this.targetY - this.startY) * percentage;
+                            this.data.x = this.startX + (this.targetX - this.startX) * percentage;
+                            this.data.y = this.startY + (this.targetY - this.startY) * percentage;
                         }
                         break;
                     }
@@ -5124,37 +5173,38 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         var percentage = this.actionTime / Robot.TURN_DURATION;
                         if (percentage >= 1) {
                             this.action = RobotAction.None;
-                            this.angle = this.targetAngle;
+                            this.data.angle = this.targetAngle;
                         }
                         else {
-                            this.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
+                            this.data.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
                         }
                         break;
                     }
                 }
                 return this.action == RobotAction.None;
             };
-            Robot.FORWARD_DURATION = 1;
-            Robot.TURN_DURATION = 1;
+            Robot.FORWARD_DURATION = 0.25;
+            Robot.TURN_DURATION = 0.25;
             return Robot;
         }());
-        paperbots.Robot = Robot;
+        paperbots_1.Robot = Robot;
         function assertNever(x) {
             throw new Error("Unexpected object: " + x);
         }
+        var WorldData = (function () {
+            function WorldData(tiles, robot) {
+                if (tiles === void 0) { tiles = Array(16 * 16); }
+                if (robot === void 0) { robot = new RobotData(); }
+                this.tiles = tiles;
+                this.robot = robot;
+            }
+            return WorldData;
+        }());
+        paperbots_1.WorldData = WorldData;
         var World = (function () {
-            function World() {
-                this.tiles = Array(16 * 16);
-                this.robot = new Robot();
-                for (var i = 0; i < 10; i++) {
-                    this.setTile(i, 2, World.newWall());
-                }
-                this.setTile(1, 0, World.newWall());
-                this.setTile(2, 2, World.newNumber(12));
-                var hello = "Hello world.";
-                for (var i = 0; i < hello.length; i++) {
-                    this.setTile(4 + i, 4, World.newLetter(hello.charAt(i)));
-                }
+            function World(data) {
+                this.data = data;
+                this.robot = new Robot(data.robot);
             }
             World.prototype.getTile = function (x, y) {
                 x = x | 0;
@@ -5163,7 +5213,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     return World.newWall();
                 if (y < 0 || y >= World.WORLD_SIZE)
                     return World.newWall();
-                return this.tiles[x + y * World.WORLD_SIZE];
+                return this.data.tiles[x + y * World.WORLD_SIZE];
             };
             World.prototype.setTile = function (x, y, tile) {
                 x = x | 0;
@@ -5172,7 +5222,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     return;
                 if (y < 0 || y >= World.WORLD_SIZE)
                     return;
-                this.tiles[x + y * World.WORLD_SIZE] = tile;
+                this.data.tiles[x + y * World.WORLD_SIZE] = tile;
             };
             World.prototype.update = function (delta) {
                 this.robot.update(delta);
@@ -5183,11 +5233,11 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             World.WORLD_SIZE = 16;
             return World;
         }());
-        paperbots.World = World;
+        paperbots_1.World = World;
         var Canvas = (function () {
-            function Canvas(canvasContainer) {
+            function Canvas(paperbots, canvasContainer) {
                 var _this = this;
-                this.world = new World();
+                this.paperbots = paperbots;
                 this.assets = new Utils_1.AssetManager();
                 this.selectedTool = "Robot";
                 this.lastWidth = 0;
@@ -5201,7 +5251,14 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.assets.loadImage("img/floor.png");
                 this.assets.loadImage("img/robot.png");
                 requestAnimationFrame(function () { _this.draw(); });
-                var tools = this.container.find("#pb-canvas-tools input");
+                var worldJson = window.localStorage.getItem("world-content");
+                if (worldJson) {
+                    this.worldData = JSON.parse(worldJson);
+                }
+                else {
+                    this.worldData = new WorldData();
+                }
+                var tools = this.container.find("#pb-canvas-tools-editing input");
                 for (var i = 0; i < tools.length; i++) {
                     $(tools[i]).click(function (tool) {
                         var value = tool.target.value;
@@ -5210,23 +5267,78 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         _this.selectedTool = value;
                     });
                 }
+                var functions = this.container.find("#pb-canvas-tools-running input");
+                for (var i = 0; i < functions.length; i++) {
+                    $(functions[i]).click(function (fun) {
+                        var value = fun.target.value;
+                        if (value == "forward()") {
+                            _this.world.robot.setAction(_this.world, RobotAction.Forward);
+                            _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                        }
+                        if (value == "turnLeft()") {
+                            _this.world.robot.setAction(_this.world, RobotAction.TurnLeft);
+                            _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                        }
+                        if (value == "turnRight()") {
+                            _this.world.robot.setAction(_this.world, RobotAction.TurnRight);
+                            _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                        }
+                        if (value == "print()") {
+                            var number = null;
+                            while (number == null) {
+                                number = prompt("Please enter a number between 0-99.", "0");
+                                if (!number)
+                                    return;
+                                try {
+                                    number = parseInt(number, 10);
+                                    if (number < 0 || number > 99 || isNaN(number)) {
+                                        alert("The number must be between 0-99.");
+                                        number = null;
+                                    }
+                                }
+                                catch (e) {
+                                    alert("The number must be between 0-99.");
+                                    number = null;
+                                }
+                            }
+                            var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                            var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                            var tile = _this.world.getTile(x, y);
+                            if (!tile || tile.kind != "wall") {
+                                _this.world.setTile(x, y, World.newNumber(number));
+                            }
+                        }
+                        if (value == "scan()") {
+                            var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                            var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                            var tile = _this.world.getTile(x, y);
+                            if (!tile || tile.kind != "number") {
+                                alert("There is no number on the cell in front of the robot.\n\nAssume value of 0.");
+                            }
+                            else {
+                                alert("Number in cell in front of the robot: " + tile.value);
+                            }
+                        }
+                    });
+                }
                 this.input = new Utils_1.Input(this.canvas);
                 this.toolsHandler = {
                     down: function (x, y) {
-                        var cellSize = _this.cellSize;
+                        var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                         x = ((x / cellSize) | 0) - 1;
-                        y = ((_this.drawingSize - y) / cellSize) | 0;
+                        y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, World.newWall());
                         }
                         else if (_this.selectedTool == "Floor") {
                             _this.world.setTile(x, y, null);
                         }
+                        window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                     },
                     up: function (x, y) {
-                        var cellSize = _this.cellSize;
+                        var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                         x = ((x / cellSize) | 0) - 1;
-                        y = ((_this.drawingSize - y) / cellSize) | 0;
+                        y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, World.newWall());
                         }
@@ -5241,7 +5353,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                                     return;
                                 try {
                                     number = parseInt(number, 10);
-                                    if (number < 0 || number > 99) {
+                                    if (number < 0 || number > 99 || isNaN(number)) {
                                         alert("The number must be between 0-99.");
                                         number = null;
                                     }
@@ -5268,24 +5380,22 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                             _this.world.setTile(x, y, World.newLetter(letter));
                         }
                         else if (_this.selectedTool == "Robot") {
-                            if (_this.world.robot.x != x || _this.world.robot.y != y) {
-                                _this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
-                                _this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
+                            if (_this.world.robot.data.x != x || _this.world.robot.data.y != y) {
+                                _this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+                                _this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                             }
                             else {
                                 _this.world.robot.turnLeft();
                             }
                         }
+                        window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                     },
                     moved: function (x, y) {
-                        var cellSize = _this.cellSize;
-                        x = ((x / cellSize) | 0) - 1;
-                        y = ((_this.drawingSize - y) / cellSize) | 0;
                     },
                     dragged: function (x, y) {
-                        var cellSize = _this.cellSize;
+                        var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                         x = ((x / cellSize) | 0) - 1;
-                        y = ((_this.drawingSize - y) / cellSize) | 0;
+                        y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
                         if (_this.selectedTool == "Wall") {
                             _this.world.setTile(x, y, World.newWall());
                         }
@@ -5293,21 +5403,26 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                             _this.world.setTile(x, y, null);
                         }
                         else if (_this.selectedTool == "Robot") {
-                            _this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
-                            _this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
+                            _this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+                            _this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                         }
+                        window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                     }
                 };
-                this.setToolsActive(true);
             }
-            Canvas.prototype.setToolsActive = function (active) {
-                if (active) {
+            Canvas.prototype.setMode = function (mode) {
+                if (mode == EditorMode.Editing) {
                     this.input.addListener(this.toolsHandler);
-                    this.container.find("#pb-canvas-tools input").removeAttr("disabled");
+                    $("#pb-canvas-tools-editing").show();
+                    $("#pb-canvas-tools-running").hide();
+                    this.world = new World(this.worldData);
                 }
                 else {
                     this.input.removeListener(this.toolsHandler);
-                    this.container.find("#pb-canvas-tools input").attr("disabled", "true");
+                    $("#pb-canvas-tools-editing").hide();
+                    $("#pb-canvas-tools-running").show();
+                    this.worldData = JSON.parse(JSON.stringify(this.world.data));
+                    this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
                 }
             };
             Canvas.prototype.setWorld = function (world) {
@@ -5316,20 +5431,30 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             Canvas.prototype.getWorld = function () {
                 return this.world;
             };
+            Canvas.prototype.resize = function () {
+                var canvas = this.canvas;
+                var realToCSSPixels = window.devicePixelRatio;
+                var displayWidth = Math.floor(canvas.clientWidth * realToCSSPixels);
+                if (canvas.width !== displayWidth) {
+                    canvas.width = displayWidth;
+                    canvas.height = displayWidth;
+                }
+                this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
+                this.drawingSize = this.cellSize * World.WORLD_SIZE;
+            };
             Canvas.prototype.draw = function () {
                 var _this = this;
                 requestAnimationFrame(function () { _this.draw(); });
                 this.time.update();
-                this.world.update(this.time.delta);
+                if (this.paperbots.getMode() == EditorMode.Running) {
+                    this.world.update(this.time.delta);
+                    if (this.world.robot.action == RobotAction.None) {
+                        this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
+                    }
+                }
                 var ctx = this.ctx;
                 var canvas = this.canvas;
-                if (this.lastWidth != canvas.clientWidth) {
-                    canvas.width = canvas.clientWidth;
-                    canvas.height = canvas.clientWidth;
-                    this.lastWidth = canvas.width;
-                    this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
-                    this.drawingSize = this.cellSize * World.WORLD_SIZE;
-                }
+                this.resize();
                 ctx.fillStyle = "#eeeeee";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 this.drawGrid();
@@ -5338,9 +5463,17 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 }
             };
             Canvas.prototype.drawImage = function (img, x, y, w, h) {
+                x |= 0;
+                y |= 0;
+                w |= 0;
+                h |= 0;
                 this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
             };
             Canvas.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
+                x |= 0;
+                y |= 0;
+                w |= 0;
+                h |= 0;
                 this.ctx.save();
                 this.ctx.translate(x + w / 2, this.drawingSize - y - h + h / 2);
                 this.ctx.rotate(Math.PI / 180 * angle);
@@ -5349,6 +5482,8 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             };
             Canvas.prototype.drawText = function (text, x, y, color) {
                 if (color === void 0) { color = "#000000"; }
+                x |= 0;
+                y |= 0;
                 var ctx = this.ctx;
                 ctx.fillStyle = color;
                 ctx.font = this.cellSize * 0.5 + "pt monospace";
@@ -5387,12 +5522,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     }
                 }
                 var robot = this.world.robot;
-                this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
-                ctx.beginPath();
-                ctx.strokeStyle = "#ff0000";
-                ctx.moveTo((robot.x + 0.5) * cellSize, drawingSize - (robot.y + 0.5) * cellSize);
-                ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, drawingSize - (robot.y + robot.dirY + 0.5) * cellSize);
-                ctx.stroke();
+                this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
                 ctx.restore();
             };
             Canvas.prototype.drawGrid = function () {
@@ -5423,7 +5553,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             };
             return Canvas;
         }());
-        paperbots.Canvas = Canvas;
+        paperbots_1.Canvas = Canvas;
     })(paperbots = exports.paperbots || (exports.paperbots = {}));
 });
 //# sourceMappingURL=paperbots.js.map

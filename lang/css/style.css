@@ -13,6 +13,7 @@ body {
 .pb-container {
 	display: flex;
 	flex-direction: row;
+	max-width: 1200px;
 }
 
 #pb-canvas-container {
@@ -42,13 +43,16 @@ body {
 
 #pb-editor-container {
 	width: 100%;
+	max-width: 590px;
 	display: flex;
 	flex-direction: column;
 }
 
 #pb-editor {
 	height: 100%;
-	margin-bottom: 1empx;
+	min-height: 512px;
+	max-height: 512px;
+	margin-bottom: 1px;
 	position: relative;
 }
 

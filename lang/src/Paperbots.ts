@@ -2,14 +2,31 @@ import {TextMarker} from "../node_modules/@types/codemirror/index";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import * as compiler from "./Compiler";
 
-export module paperbots {
-	export class Editor {
+export namespace paperbots {
+	export enum EditorMode {
+		Editing,
+		Running
+	}
+
+	export class Paperbots {
 		private canvas: Canvas;
 		private codeEditor: CodeEditor;
+		private mode = EditorMode.Editing;
 
 		constructor(canvasElement: HTMLCanvasElement, editorElement: HTMLElement, outputElement: HTMLElement) {
-			this.canvas = new Canvas(canvasElement);
-			this.codeEditor = new CodeEditor(editorElement, outputElement);
+			this.canvas = new Canvas(this, canvasElement);
+			this.codeEditor = new CodeEditor(this, editorElement, outputElement);
+			this.setMode(EditorMode.Editing);
+		}
+
+		setMode(mode: EditorMode) {
+			this.mode = mode;
+			this.canvas.setMode(mode);
+			this.codeEditor.setMode(mode);
+		}
+
+		getMode (): EditorMode {
+			return this.mode;
 		}
 	}
 
@@ -17,11 +34,13 @@ export module paperbots {
 		private editor: CodeMirror.Editor;
 		private markers = Array<TextMarker>();
 
-		constructor (private editorElement: HTMLElement, private outputElement: HTMLElement) {
+		constructor (private paperbots: Paperbots, private editorElement: HTMLElement, private outputElement: HTMLElement) {
 			this.editor = CodeMirror(editorElement, {
 				tabSize: 3,
 				indentUnit: 3,
 				indentWithTabs: true,
+				styleActiveLine: true,
+				styleActiveSelected: true,
 				lineNumbers: true,
 				gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
 				fixedGutter: true,
@@ -38,6 +57,13 @@ export module paperbots {
 			this.editor.on("gutterClick", function(cm, n) {
 				let info = cm.lineInfo(n);
 				cm.setGutterMarker(n, "gutter-breakpoints", info.gutterMarkers ? null : this.newBreakpointMarker());
+			});
+
+			$("#pb-run").click(function () {
+				paperbots.setMode(EditorMode.Running);
+			});
+			$("#pb-stop").click(function () {
+				paperbots.setMode(EditorMode.Editing);
 			});
 
 			this.editor.getDoc().setValue(window.localStorage.getItem("editor-content") || "");
@@ -75,6 +101,18 @@ export module paperbots {
 			`);
 			return marker[0];
 		}
+
+		setMode(mode: EditorMode) {
+			if (mode == EditorMode.Editing) {
+				this.editor.setOption("readOnly", false);
+				$("#pb-editor-tools-editing").show();
+				$("#pb-editor-tools-running").hide();
+			} else {
+				this.editor.setOption("readOnly", true);
+				$("#pb-editor-tools-editing").hide();
+				$("#pb-editor-tools-running").show();
+			}
+		}
 	}
 
 	export enum RobotAction {
@@ -84,16 +122,20 @@ export module paperbots {
 		None
 	}
 
-	export class Robot {
-		static readonly FORWARD_DURATION = 1;
-		static readonly TURN_DURATION = 1;
-		x = 0;
-		y = 15;
-		dirX = 1;
-		dirY = 0;
-		angle = 0;
-		action = RobotAction.None;
+	export class RobotData {
+		constructor(
+		public x = 0,
+		public y = 15,
+		public dirX = 1,
+		public dirY = 0,
+		public angle = 0) {}
+	}
 
+	export class Robot {
+		static readonly FORWARD_DURATION = 0.25;
+		static readonly TURN_DURATION = 0.25;
+
+		action = RobotAction.None;
 		actionTime = 0;
 		startX = 0;
 		startY = 0
@@ -102,13 +144,13 @@ export module paperbots {
 		startAngle = 0;
 		targetAngle = 0;
 
-		constructor() { }
+		constructor(public data: RobotData) { }
 
 		turnLeft () {
-			this.angle = this.angle - 90;
-			let temp = this.dirX;
-			this.dirX = -this.dirY;
-			this.dirY = temp;
+			this.data.angle = this.data.angle - 90;
+			let temp = this.data.dirX;
+			this.data.dirX = -this.data.dirY;
+			this.data.dirY = temp;
 		}
 
 		setAction(world: World, action: RobotAction) {
@@ -118,31 +160,32 @@ export module paperbots {
 			this.action = action;
 			switch (action) {
 			case RobotAction.Forward:
-				this.startX = this.x;
-				this.startY = this.y;
-				this.targetX = this.x + this.dirX;
-				this.targetY = this.y + this.dirY;
+				this.startX = this.data.x;
+				this.startY = this.data.y;
+				this.targetX = this.data.x + this.data.dirX;
+				this.targetY = this.data.y + this.data.dirY;
 				console.log(this.targetX + ", " + this.targetY);
-				if (world.getTile(this.targetX, this.targetY).kind == "wall") {
+				let tile = world.getTile(this.targetX, this.targetY);
+				if (tile && tile.kind == "wall") {
 					this.targetX = this.startX;
 					this.targetY = this.startY;
 				}
 				break;
 			case RobotAction.TurnLeft: {
-				this.startAngle = this.angle;
-				this.targetAngle = this.angle - 90;
-				let temp = this.dirX;
-				this.dirX = -this.dirY;
-				this.dirY = temp;
+				this.startAngle = this.data.angle;
+				this.targetAngle = this.data.angle - 90;
+				let temp = this.data.dirX;
+				this.data.dirX = -this.data.dirY;
+				this.data.dirY = temp;
 				console.log(this.targetAngle);
 				break;
 			}
 			case RobotAction.TurnRight: {
-				this.startAngle = this.angle;
-				this.targetAngle = this.angle + 90;
-				let temp = this.dirX;
-				this.dirX = this.dirY;
-				this.dirY = -temp;
+				this.startAngle = this.data.angle;
+				this.targetAngle = this.data.angle + 90;
+				let temp = this.data.dirX;
+				this.data.dirX = this.data.dirY;
+				this.data.dirY = -temp;
 				console.log(this.targetAngle);
 				break;
 			}
@@ -157,11 +200,11 @@ export module paperbots {
 					let percentage = this.actionTime / Robot.FORWARD_DURATION;
 					if (percentage >= 1) {
 						this.action = RobotAction.None;
-						this.x = this.targetX;
-						this.y = this.targetY;
+						this.data.x = this.targetX;
+						this.data.y = this.targetY;
 					} else {
-						this.x = this.startX + (this.targetX - this.startX) * percentage;
-						this.y = this.startY + (this.targetY - this.startY) * percentage;
+						this.data.x = this.startX + (this.targetX - this.startX) * percentage;
+						this.data.y = this.startY + (this.targetY - this.startY) * percentage;
 					}
 					break;
 				}
@@ -170,9 +213,9 @@ export module paperbots {
 					let percentage = this.actionTime / Robot.TURN_DURATION;
 					if (percentage >= 1) {
 						this.action = RobotAction.None;
-						this.angle = this.targetAngle;
+						this.data.angle = this.targetAngle;
 					} else {
-						this.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
+						this.data.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
 					}
 					break;
 				}
@@ -190,22 +233,18 @@ export module paperbots {
 	export interface LetterTile { kind: "letter"; value: string }
 	export type WorldObject = Wall | NumberTile | LetterTile;
 
+	export class WorldData {
+		constructor (public tiles = Array<WorldObject>(16 * 16), public robot = new RobotData()) {}
+	}
+
 	export class World {
 		static WORLD_SIZE = 16;
-		tiles = Array<WorldObject>(16 * 16);
-		robot = new Robot();
+		data: WorldData;
+		robot: Robot;
 
-		constructor () {
-			for (var i = 0; i < 10; i++) {
-				this.setTile(i, 2, World.newWall());
-			}
-			this.setTile(1, 0, World.newWall());
-			this.setTile(2, 2, World.newNumber(12));
-
-			let hello = "Hello world.";
-			for (var i = 0; i < hello.length; i++) {
-				this.setTile(4 + i, 4, World.newLetter(hello.charAt(i)));
-			}
+		constructor (data: WorldData) {
+			this.data = data;
+			this.robot = new Robot(data.robot);
 		}
 
 		getTile (x: number, y: number): WorldObject {
@@ -213,7 +252,7 @@ export module paperbots {
 			y = y | 0;
 			if (x < 0 || x >= World.WORLD_SIZE) return World.newWall();
 			if (y < 0 || y >= World.WORLD_SIZE) return World.newWall();
-			return this.tiles[x + y * World.WORLD_SIZE];
+			return this.data.tiles[x + y * World.WORLD_SIZE];
 		}
 
 		setTile (x: number, y: number, tile: WorldObject) {
@@ -221,7 +260,7 @@ export module paperbots {
 			y = y | 0;
 			if (x < 0 || x >= World.WORLD_SIZE) return;
 			if (y < 0 || y >= World.WORLD_SIZE) return;
-			this.tiles[x + y * World.WORLD_SIZE] = tile;
+			this.data.tiles[x + y * World.WORLD_SIZE] = tile;
 		}
 
 		update (delta: number) {
@@ -236,7 +275,8 @@ export module paperbots {
 	export class Canvas {
 		private container: JQuery<HTMLElement>;
 		private canvas: HTMLCanvasElement;
-		private world = new World();
+		private world: World;
+		private worldData; WorldData;
 		private ctx: CanvasRenderingContext2D;
 		private assets = new AssetManager();
 		private selectedTool = "Robot";
@@ -247,7 +287,7 @@ export module paperbots {
 		private time = new TimeKeeper();
 		private toolsHandler: InputListener;
 
-		constructor(canvasContainer: HTMLElement) {
+		constructor(private paperbots: Paperbots, canvasContainer: HTMLElement) {
 			this.container = $(canvasContainer);
 			this.canvas = this.container.find("#pb-canvas")[0] as HTMLCanvasElement;
 			this.ctx = this.canvas.getContext("2d");
@@ -256,7 +296,14 @@ export module paperbots {
 			this.assets.loadImage("img/robot.png");
 			requestAnimationFrame(() => { this.draw(); });
 
-			let tools = this.container.find("#pb-canvas-tools input");
+			let worldJson = window.localStorage.getItem("world-content");
+			if (worldJson) {
+				this.worldData = JSON.parse(worldJson);
+			} else {
+				this.worldData = new WorldData();
+			}
+
+			let tools = this.container.find("#pb-canvas-tools-editing input");
 			for (var i = 0; i < tools.length; i++) {
 				$(tools[i]).click((tool) => {
 					let value = (tool.target as HTMLInputElement).value;
@@ -266,23 +313,76 @@ export module paperbots {
 				});
 			}
 
+			let functions = this.container.find("#pb-canvas-tools-running input");
+			for (var i = 0; i < functions.length; i++) {
+				$(functions[i]).click((fun) => {
+					let value = (fun.target as HTMLInputElement).value;
+					if (value == "forward()") {
+						this.world.robot.setAction(this.world, RobotAction.Forward);
+						this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+					}
+					if (value == "turnLeft()") {
+						this.world.robot.setAction(this.world, RobotAction.TurnLeft);
+						this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+					}
+					if (value == "turnRight()") {
+						this.world.robot.setAction(this.world, RobotAction.TurnRight);
+						this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+					}
+					if (value == "print()") {
+						var number = null;
+						while (number == null) {
+							number = prompt("Please enter a number between 0-99.", "0");
+							if (!number) return;
+							try {
+								number = parseInt(number, 10);
+								if (number < 0 || number > 99 || isNaN(number)) {
+									alert("The number must be between 0-99.");
+									number = null;
+								}
+							} catch (e) {
+								alert("The number must be between 0-99.");
+								number = null;
+							}
+						}
+						let x = this.world.robot.data.x + this.world.robot.data.dirX;
+						let y = this.world.robot.data.y + this.world.robot.data.dirY;
+						let tile = this.world.getTile(x, y);
+						if (!tile || tile.kind != "wall") {
+							this.world.setTile(x, y, World.newNumber(number));
+						}
+					}
+					if (value == "scan()") {
+						let x = this.world.robot.data.x + this.world.robot.data.dirX;
+						let y = this.world.robot.data.y + this.world.robot.data.dirY;
+						let tile = this.world.getTile(x, y);
+						if (!tile || tile.kind != "number") {
+							alert("There is no number on the cell in front of the robot.\n\nAssume value of 0.")
+						} else {
+							alert("Number in cell in front of the robot: " + tile.value)
+						}
+					}
+				});
+			}
+
 			this.input = new Input(this.canvas);
 			this.toolsHandler = {
 				down: (x, y) => {
-					let cellSize = this.cellSize;
+					let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 					x = ((x / cellSize) | 0) - 1;
-					y = ((this.drawingSize - y) / cellSize) | 0;
+					y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
 
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, World.newWall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					}
+					window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 				},
 				up: (x, y) => {
-					let cellSize = this.cellSize;
+					let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 					x = ((x / cellSize) | 0) - 1;
-					y = ((this.drawingSize - y) / cellSize) | 0;
+					y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
 
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, World.newWall());
@@ -295,7 +395,7 @@ export module paperbots {
 							if (!number) return;
 							try {
 								number = parseInt(number, 10);
-								if (number < 0 || number > 99) {
+								if (number < 0 || number > 99 || isNaN(number)) {
 									alert("The number must be between 0-99.");
 									number = null;
 								}
@@ -319,45 +419,47 @@ export module paperbots {
 						}
 						this.world.setTile(x, y, World.newLetter(letter));
 					} else if (this.selectedTool == "Robot") {
-						if (this.world.robot.x != x || this.world.robot.y != y) {
-							this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
-							this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
+						if (this.world.robot.data.x != x || this.world.robot.data.y != y) {
+							this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+							this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 						} else {
 							this.world.robot.turnLeft();
 						}
 					}
+					window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 				},
 				moved: (x, y) => {
-					let cellSize = this.cellSize;
-					x = ((x / cellSize) | 0) - 1;
-					y = ((this.drawingSize - y) / cellSize) | 0;
 				},
 				dragged: (x, y) => {
-					let cellSize = this.cellSize;
+					let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 					x = ((x / cellSize) | 0) - 1;
-					y = ((this.drawingSize - y) / cellSize) | 0;
+					y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
 
 					if (this.selectedTool == "Wall") {
 						this.world.setTile(x, y, World.newWall());
 					} else if (this.selectedTool == "Floor") {
 						this.world.setTile(x, y, null);
 					} else if (this.selectedTool == "Robot") {
-						this.world.robot.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
-						this.world.robot.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
+						this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
+						this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 					}
+					window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 				}
 			};
-
-			this.setToolsActive(true);
 		}
 
-		setToolsActive(active: boolean) {
-			if (active) {
+		setMode(mode: EditorMode) {
+			if (mode == EditorMode.Editing) {
 				this.input.addListener(this.toolsHandler);
-				this.container.find("#pb-canvas-tools input").removeAttr("disabled");
-			} else {
+				$("#pb-canvas-tools-editing").show();
+				$("#pb-canvas-tools-running").hide();
+				this.world = new World(this.worldData);
+			} else {
 				this.input.removeListener(this.toolsHandler);
-				this.container.find("#pb-canvas-tools input").attr("disabled", "true");
+				$("#pb-canvas-tools-editing").hide();
+				$("#pb-canvas-tools-running").show();
+				this.worldData = JSON.parse(JSON.stringify(this.world.data));
+				this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
 			}
 		}
 
@@ -369,20 +471,34 @@ export module paperbots {
 			return this.world;
 		}
 
+		resize () {
+			let canvas = this.canvas;
+			let realToCSSPixels = window.devicePixelRatio;
+			let displayWidth  = Math.floor(canvas.clientWidth  * realToCSSPixels);
+
+			if (canvas.width  !== displayWidth) {
+				canvas.width  = displayWidth;
+				canvas.height  = displayWidth;
+			}
+			this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
+			this.drawingSize = this.cellSize * World.WORLD_SIZE;
+		}
+
 		draw () {
 			requestAnimationFrame(() => { this.draw(); });
 			this.time.update();
-			this.world.update(this.time.delta);
+
+			if (this.paperbots.getMode() == EditorMode.Running) {
+				this.world.update(this.time.delta);
+				if (this.world.robot.action == RobotAction.None) {
+					this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
+				}
+			}
 
 			let ctx = this.ctx;
 			let canvas = this.canvas;
-			if (this.lastWidth != canvas.clientWidth) {
-				canvas.width = canvas.clientWidth;
-				canvas.height = canvas.clientWidth;
-				this.lastWidth = canvas.width;
-				this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
-				this.drawingSize = this.cellSize * World.WORLD_SIZE;
-			}
+			this.resize();
+
 
 			ctx.fillStyle = "#eeeeee";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -394,9 +510,17 @@ export module paperbots {
 		}
 
 		drawImage (img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+			x |= 0;
+			y |= 0;
+			w |= 0;
+			h |= 0;
 			this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
 		}
 		drawRotatedImage (img: HTMLImageElement, x: number, y: number, w: number, h: number, angle: number) {
+			x |= 0;
+			y |= 0;
+			w |= 0;
+			h |= 0;
 			this.ctx.save();
 			this.ctx.translate(x + w / 2, this.drawingSize - y - h + h / 2);
 			this.ctx.rotate(Math.PI / 180 * angle);
@@ -405,6 +529,8 @@ export module paperbots {
 		}
 
 		drawText(text: string, x: number, y: number, color = "#000000") {
+			x |= 0;
+			y |= 0;
 			let ctx = this.ctx;
 			ctx.fillStyle = color;
 			ctx.font = this.cellSize * 0.5 + "pt monospace";
@@ -447,12 +573,14 @@ export module paperbots {
 			}
 
 			let robot = this.world.robot;
-			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.x * cellSize + cellSize * 0.05, robot.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.angle);
-			ctx.beginPath();
+			this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
+
+			/*ctx.beginPath();
 			ctx.strokeStyle = "#ff0000";
-			ctx.moveTo((robot.x + 0.5) * cellSize, drawingSize - (robot.y + 0.5) * cellSize);
-			ctx.lineTo((robot.x + 0.5 + robot.dirX) * cellSize, drawingSize - (robot.y + robot.dirY + 0.5) * cellSize);
-			ctx.stroke();
+			ctx.moveTo((robot.data.x + 0.5) * cellSize, drawingSize - (robot.data.y + 0.5) * cellSize);
+			ctx.lineTo((robot.data.x + 0.5 + robot.data.dirX) * cellSize, drawingSize - (robot.data.y + robot.data.dirY + 0.5) * cellSize);
+			ctx.stroke();*/
+
 			ctx.restore();
 		}
 

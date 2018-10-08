@@ -283,7 +283,7 @@ function debug(msg: string) {
 	throw new CompilerError(msg, null);
 }
 
-function functionSignature(fun: FunctionDecl | FunctionCall): string {
+export function functionSignature(fun: FunctionDecl | FunctionCall): string {
 	switch(fun.kind) {
 		case "function":
 			return fun.name.value + "(" + fun.params.map(param => param.typeName.id.value).join(",") + ")";
@@ -613,6 +613,10 @@ function emitFunction(context: EmitterContext) {
 		});
 	}
 	emitStatementList(statements as Array<AstNode>, context);
+
+	// if there's no return instruction at the end of the function, add one.
+	if (fun.code.length == 0 || fun.code[fun.code.length - 1].kind != "return")
+		context.fun.code.push({kind: "return"});
 }
 
 // Some "statements" like 12 * 23 may leave a value on the stack which
@@ -676,11 +680,11 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 		case "binaryOp":
 			emitAstNode(node.left as AstNode, context);
 			emitAstNode(node.right as AstNode, context);
-			code.push({kind: "op", operator: node.operator});
+			code.push({kind: "binaryOp", operator: node.operator});
 			break;
 		case "unaryOp":
 			emitAstNode(node.value as AstNode, context);
-			code.push({kind: "op", operator: node.operator});
+			code.push({kind: "unaryOp", operator: node.operator});
 			break;
 		case "variableAccess":
 			code.push({kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex});
@@ -762,7 +766,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			let conditionIndex = code.length;
 			code.push({ kind: "dup"})
 			code.push({ kind: "push", value: 0 });
-			code.push({ kind: "op", operator: ">=" });
+			code.push({ kind: "binaryOp", operator: ">=" });
 			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0};
 			code.push(jumpPastBlock);
 
@@ -777,7 +781,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 
 			// decrease the count and jump to the loop header
 			code.push({ kind: "push", value: 1});
-			code.push({ kind: "op", operator: "-" });
+			code.push({ kind: "binaryOp", operator: "-" });
 			code.push({ kind: "jump", offset: conditionIndex });
 
 			// Patch in the address of the first instruction after the loop body
@@ -828,8 +832,13 @@ export interface PopIns {
 	kind: "pop"
 }
 
-export interface OpIns {
-	kind: "op"
+export interface BinaryOpIns {
+	kind: "binaryOp"
+	operator: string
+}
+
+export interface UnaryOpIns {
+	kind: "unaryOp"
 	operator: string
 }
 
@@ -874,7 +883,8 @@ export interface DupIns {
 type Instruction =
 		PushIns
 	|	PopIns
-	|	OpIns
+	|	BinaryOpIns
+	|	UnaryOpIns
 	|	LoadIns
 	|	StoreIns
 	| 	CallIns
@@ -886,8 +896,7 @@ type Instruction =
 	;
 
 export class Slot {
-	symbol: VariableDecl | Parameter
-	value: Value
+	constructor(public symbol: VariableDecl | Parameter, public value: Value) { }
 }
 
 export interface FunctionCode {
@@ -898,17 +907,149 @@ export interface FunctionCode {
 }
 
 export class Frame {
-	code: FunctionCode
-	slots: Array<Slot>
-	pc: number
+	constructor(
+		public code: FunctionCode,
+		public slots = new Array<Slot>(),
+		public pc = 0) {
+		code.locals.forEach(v => slots.push(new Slot(v, null)));
+	}
+}
+
+export enum VMState {
+	Running,
+	Completed
 }
 
 export class VirtualMachine {
-	frames: Array<Frame>
-	stack: Array<Value>
+	state = VMState.Running;
+	frames = Array<Frame>()
+	stack = Array<Value>()
 
-	constructor(public functions: Array<FunctionCode>) { }
+	constructor(public functions: Array<FunctionCode>) {
+		this.frames.push(new Frame(this.functions[0]));
+		this.state = VMState.Running;
+	}
 
-	run(steps: number) {
+	run(numInstructions: number) {
+		if (this.state == VMState.Completed) return;
+
+		let {functions, frames, stack} = this;
+
+		while(numInstructions-- > 0) {
+			if (frames.length == 0) {
+				this.state = VMState.Completed;
+				break;
+			}
+
+			let frame = frames[frames.length - 1];
+			let ins = frame.code.code[frame.pc];
+			frame.pc++;
+			switch(ins.kind) {
+				case "pop":
+					stack.pop();
+					break;
+				case "push":
+					stack.push(ins.value);
+					break;
+				case "dup":
+					let value = stack.pop();
+					stack.push(value);
+					stack.push(value);
+					break;
+				case "store":
+					frame.slots[ins.slotIndex].value = stack.pop();
+					break;
+				case "load":
+					stack.push(frame.slots[ins.slotIndex].value);
+					break;
+				case "jump":
+					frame.pc = ins.offset;
+					break;
+				case "jumpIfTrue":
+					if(stack.pop()) frame.pc = ins.offset;
+					break;
+				case "jumpIfFalse":
+					if(!stack.pop()) frame.pc = ins.offset;
+					break;
+				case "call": {
+					let fun = functions[ins.functionIndex];
+					let newFrame = new Frame(fun);
+					newFrame.slots.length = fun.locals.length;
+					for (var i = fun.locals.length - 1; i >= 0 ; i--) {
+						newFrame.slots[i].value = stack.pop();
+					}
+					frames.push(newFrame);
+					break;
+				}
+				case "return":
+					frames.pop();
+					break
+				case "unaryOp": {
+					let value = stack.pop() as boolean;
+					switch(ins.operator) {
+						case "not":
+							stack.push(!value);
+							break;
+						case "-":
+							stack.push(-value);
+							break;
+						default:
+							// TODO: throw a nice error for this impossible case
+							throw new Error(`Unknown unary operator ${ins.operator}`, )
+					}
+					break;
+				}
+				case "binaryOp": {
+					let right = stack.pop();
+					let left = stack.pop();
+
+					switch(ins.operator) {
+						case "+":
+							stack.push((left as number) + (right as number));
+							break;
+						case "-":
+							stack.push((left as number) - (right as number));
+							break;
+						case "*":
+							stack.push((left as number) * (right as number));
+							break;
+						case "/":
+							stack.push((left as number) / (right as number));
+							break;
+						case "<=":
+							stack.push((left as number) <= (right as number));
+							break;
+						case ">=":
+							stack.push((left as number) >= (right as number));
+							break;
+						case "<":
+							stack.push((left as number) < (right as number));
+							break;
+						case ">":
+							stack.push((left as number) > (right as number));
+							break;
+						case "==":
+							stack.push(left === right);
+							break;
+						case "!=":
+							stack.push(left !== right);
+							break;
+						case "and":
+							stack.push(left as boolean && right as boolean);
+							break;
+						case "or":
+							stack.push(left as boolean || right as boolean);
+							break;
+						case "xor":
+							stack.push(!(left as boolean && right as boolean));
+							break;
+					}
+
+					break;
+				}
+				default:
+					assertNever(ins);
+			}
+		}
 	}
 }

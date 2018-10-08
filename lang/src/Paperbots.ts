@@ -11,11 +11,13 @@ export namespace paperbots {
 	export class Paperbots {
 		private canvas: Canvas;
 		private codeEditor: CodeEditor;
+		private debugger: Debugger;
 		private mode = EditorMode.Editing;
 
-		constructor(canvasElement: HTMLCanvasElement, editorElement: HTMLElement, outputElement: HTMLElement) {
+		constructor(canvasElement: HTMLCanvasElement, editorElement: HTMLElement, outputElement: HTMLElement, debuggerElement: HTMLElement) {
 			this.canvas = new Canvas(this, canvasElement);
 			this.codeEditor = new CodeEditor(this, editorElement, outputElement);
+			this.debugger = new Debugger(this, this.codeEditor, debuggerElement);
 			this.setMode(EditorMode.Editing);
 		}
 
@@ -27,6 +29,38 @@ export namespace paperbots {
 
 		getMode (): EditorMode {
 			return this.mode;
+		}
+	}
+
+	export class Debugger {
+		vm?: compiler.VirtualMachine;
+
+		constructor(private paperbots: Paperbots, editor: CodeEditor, debuggerElement: HTMLElement) {
+			$("#pb-debug-run").click(() => {
+				let module = editor.compile();
+				let vm = this.vm = new compiler.VirtualMachine(module.code);
+				$("#pb-debugger-callstack")[0].innerHTML = "";
+			});
+
+			$("#pb-debug-step").click(() => {
+				if (this.vm.frames.length > 0) {
+					let frame = this.vm.frames[this.vm.frames.length - 1];
+					$("#pb-debugger-callstack")[0].innerHTML = JSON.stringify(frame.code.code[frame.pc]);
+				}
+				this.vm.run(1);
+				var output = "";
+				this.vm.frames.slice(0).reverse().forEach(frame => {
+					output += frame.code.index == 0 ? "$main()" : compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
+					output += "<br>"
+					frame.slots.forEach(slot => {
+						output += slot.symbol.name.value + ": " + slot.value + "<br>";
+					});
+				});
+				output += $("#pb-debugger-callstack")[0].innerHTML;
+				$("#pb-debugger-callstack")[0].innerHTML = output;
+
+				$("#pb-debugger-valuestack")[0].innerHTML = JSON.stringify(this.vm.stack);
+			});
 		}
 	}
 
@@ -77,7 +111,7 @@ export namespace paperbots {
 			try {
 				let result = compiler.compile(this.editor.getDoc().getValue());
 				this.outputElement.innerHTML = compiler.moduleToJson(result);
-
+				return result;
 			} catch (e) {
 				if (e["location"]) {
 					let err = (e as compiler.CompilerError);

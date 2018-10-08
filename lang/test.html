@@ -11,6 +11,46 @@
 	<link rel="stylesheet" type="text/css" href="css/codemirror.css" />
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
+<style>
+	.pb-container {
+		flex-direction: column;
+	}
+
+	#pb-debugger {
+		display: flex;
+		height: 50%;
+		width: 100%;
+		flex-direction: column;
+	}
+
+	#pb-debugger-tools {
+		display: flex;
+		flex-direction: row;
+	}
+
+	#pb-debugger-output {
+		width: 100%;
+		height: 100%;
+		background: #f0f;
+		display: flex;
+		flex-direction: row;
+	}
+
+	#pb-debugger-callstack {
+		background: yellow;
+		width: 50%;
+		height: 100%;
+		overflow: auto;
+	}
+
+	#pb-debugger-valuestack {
+		background: green;
+		width: 50%;
+		height: 100%;
+		overflow: auto;
+	}
+
+</style>
 <body style="height: 100vh; padding: 0;">
 	<div class="pb-container" style="height: 100%; max-width: none;">
 		<div id="pb-editor-tools">
@@ -22,6 +62,16 @@
 			<div id="pb-editor" style="width: 100%; max-height: none;"></div>
 			<pre id="pb-output" style="width: 100%; overflow: auto;" disabled></pre>
 		</div>
+		<div id="pb-debugger">
+			<div id="pb-debugger-tools">
+				<input type="button" id="pb-debug-run" value="Run">
+				<input type="button" id="pb-debug-step" value="step">
+			</div>
+			<div id="pb-debugger-output">
+				<div id="pb-debugger-callstack"></div>
+				<div id="pb-debugger-valuestack"></div>
+			</div>
+		</div>
 	</div>
 
 	<script>
@@ -31,6 +81,11 @@
 				null,
 				document.getElementById("pb-editor"),
 				document.getElementById("pb-output")
+			);
+			var debug = new paperbots.Debugger(
+				null,
+				editor,
+				document.getElementById("pb-debugger")
 			);
 		});
 	</script>

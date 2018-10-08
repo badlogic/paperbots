@@ -4257,6 +4257,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 return fun.name.value + "(" + fun.args.map(function (arg) { return arg.type.name; }).join(",") + ")";
         }
     }
+    exports.functionSignature = functionSignature;
     function typeCheck(functions, records, main) {
         var types = {
             all: {},
@@ -4562,6 +4563,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             });
         }
         emitStatementList(statements, context);
+        if (fun.code.length == 0 || fun.code[fun.code.length - 1].kind != "return")
+            context.fun.code.push({ kind: "return" });
     }
     function emitStatementList(statements, context) {
         statements.forEach(function (stmt) {
@@ -4610,11 +4613,11 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             case "binaryOp":
                 emitAstNode(node.left, context);
                 emitAstNode(node.right, context);
-                code.push({ kind: "op", operator: node.operator });
+                code.push({ kind: "binaryOp", operator: node.operator });
                 break;
             case "unaryOp":
                 emitAstNode(node.value, context);
-                code.push({ kind: "op", operator: node.operator });
+                code.push({ kind: "unaryOp", operator: node.operator });
                 break;
             case "variableAccess":
                 code.push({ kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex });
@@ -4668,7 +4671,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 var conditionIndex_2 = code.length;
                 code.push({ kind: "dup" });
                 code.push({ kind: "push", value: 0 });
-                code.push({ kind: "op", operator: ">=" });
+                code.push({ kind: "binaryOp", operator: ">=" });
                 var jumpPastBlock_1 = { kind: "jumpIfFalse", offset: 0 };
                 code.push(jumpPastBlock_1);
                 scopes.push();
@@ -4677,7 +4680,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 context.continues.forEach(function (cont) { return cont.offset = code.length; });
                 context.continues.length = 0;
                 code.push({ kind: "push", value: 1 });
-                code.push({ kind: "op", operator: "-" });
+                code.push({ kind: "binaryOp", operator: "-" });
                 code.push({ kind: "jump", offset: conditionIndex_2 });
                 jumpPastBlock_1.offset = code.length;
                 context.breaks.forEach(function (br) { return br.offset = code.length; });
@@ -4708,22 +4711,157 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }
     }
     var Slot = (function () {
-        function Slot() {
+        function Slot(symbol, value) {
+            this.symbol = symbol;
+            this.value = value;
         }
         return Slot;
     }());
     exports.Slot = Slot;
     var Frame = (function () {
-        function Frame() {
+        function Frame(code, slots, pc) {
+            if (slots === void 0) { slots = new Array(); }
+            if (pc === void 0) { pc = 0; }
+            this.code = code;
+            this.slots = slots;
+            this.pc = pc;
+            code.locals.forEach(function (v) { return slots.push(new Slot(v, null)); });
         }
         return Frame;
     }());
     exports.Frame = Frame;
+    var VMState;
+    (function (VMState) {
+        VMState[VMState["Running"] = 0] = "Running";
+        VMState[VMState["Completed"] = 1] = "Completed";
+    })(VMState = exports.VMState || (exports.VMState = {}));
     var VirtualMachine = (function () {
         function VirtualMachine(functions) {
             this.functions = functions;
+            this.state = VMState.Running;
+            this.frames = Array();
+            this.stack = Array();
+            this.frames.push(new Frame(this.functions[0]));
+            this.state = VMState.Running;
         }
-        VirtualMachine.prototype.run = function (steps) {
+        VirtualMachine.prototype.run = function (numInstructions) {
+            if (this.state == VMState.Completed)
+                return;
+            var _a = this, functions = _a.functions, frames = _a.frames, stack = _a.stack;
+            while (numInstructions-- > 0) {
+                if (frames.length == 0) {
+                    this.state = VMState.Completed;
+                    break;
+                }
+                var frame = frames[frames.length - 1];
+                var ins = frame.code.code[frame.pc];
+                frame.pc++;
+                switch (ins.kind) {
+                    case "pop":
+                        stack.pop();
+                        break;
+                    case "push":
+                        stack.push(ins.value);
+                        break;
+                    case "dup":
+                        var value = stack.pop();
+                        stack.push(value);
+                        stack.push(value);
+                        break;
+                    case "store":
+                        frame.slots[ins.slotIndex].value = stack.pop();
+                        break;
+                    case "load":
+                        stack.push(frame.slots[ins.slotIndex].value);
+                        break;
+                    case "jump":
+                        frame.pc = ins.offset;
+                        break;
+                    case "jumpIfTrue":
+                        if (stack.pop())
+                            frame.pc = ins.offset;
+                        break;
+                    case "jumpIfFalse":
+                        if (!stack.pop())
+                            frame.pc = ins.offset;
+                        break;
+                    case "call": {
+                        var fun = functions[ins.functionIndex];
+                        var newFrame = new Frame(fun);
+                        newFrame.slots.length = fun.locals.length;
+                        for (var i = fun.locals.length - 1; i >= 0; i--) {
+                            newFrame.slots[i].value = stack.pop();
+                        }
+                        frames.push(newFrame);
+                        break;
+                    }
+                    case "return":
+                        frames.pop();
+                        break;
+                    case "unaryOp": {
+                        var value_1 = stack.pop();
+                        switch (ins.operator) {
+                            case "not":
+                                stack.push(!value_1);
+                                break;
+                            case "-":
+                                stack.push(-value_1);
+                                break;
+                            default:
+                                throw new Error("Unknown unary operator " + ins.operator);
+                        }
+                        break;
+                    }
+                    case "binaryOp": {
+                        var right = stack.pop();
+                        var left = stack.pop();
+                        switch (ins.operator) {
+                            case "+":
+                                stack.push(left + right);
+                                break;
+                            case "-":
+                                stack.push(left - right);
+                                break;
+                            case "*":
+                                stack.push(left * right);
+                                break;
+                            case "/":
+                                stack.push(left / right);
+                                break;
+                            case "<=":
+                                stack.push(left <= right);
+                                break;
+                            case ">=":
+                                stack.push(left >= right);
+                                break;
+                            case "<":
+                                stack.push(left < right);
+                                break;
+                            case ">":
+                                stack.push(left > right);
+                                break;
+                            case "==":
+                                stack.push(left === right);
+                                break;
+                            case "!=":
+                                stack.push(left !== right);
+                                break;
+                            case "and":
+                                stack.push(left && right);
+                                break;
+                            case "or":
+                                stack.push(left || right);
+                                break;
+                            case "xor":
+                                stack.push(!(left && right));
+                                break;
+                        }
+                        break;
+                    }
+                    default:
+                        assertNever(ins);
+                }
+            }
         };
         return VirtualMachine;
     }());
@@ -4979,10 +5117,11 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             EditorMode[EditorMode["Running"] = 1] = "Running";
         })(EditorMode = paperbots_1.EditorMode || (paperbots_1.EditorMode = {}));
         var Paperbots = (function () {
-            function Paperbots(canvasElement, editorElement, outputElement) {
+            function Paperbots(canvasElement, editorElement, outputElement, debuggerElement) {
                 this.mode = EditorMode.Editing;
                 this.canvas = new Canvas(this, canvasElement);
                 this.codeEditor = new CodeEditor(this, editorElement, outputElement);
+                this["debugger"] = new Debugger(this, this.codeEditor, debuggerElement);
                 this.setMode(EditorMode.Editing);
             }
             Paperbots.prototype.setMode = function (mode) {
@@ -4996,6 +5135,37 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
             return Paperbots;
         }());
         paperbots_1.Paperbots = Paperbots;
+        var Debugger = (function () {
+            function Debugger(paperbots, editor, debuggerElement) {
+                var _this = this;
+                this.paperbots = paperbots;
+                $("#pb-debug-run").click(function () {
+                    var module = editor.compile();
+                    var vm = _this.vm = new compiler.VirtualMachine(module.code);
+                    $("#pb-debugger-callstack")[0].innerHTML = "";
+                });
+                $("#pb-debug-step").click(function () {
+                    if (_this.vm.frames.length > 0) {
+                        var frame = _this.vm.frames[_this.vm.frames.length - 1];
+                        $("#pb-debugger-callstack")[0].innerHTML = JSON.stringify(frame.code.code[frame.pc]);
+                    }
+                    _this.vm.run(1);
+                    var output = "";
+                    _this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                        output += frame.code.index == 0 ? "$main()" : compiler.functionSignature(frame.code.ast);
+                        output += "<br>";
+                        frame.slots.forEach(function (slot) {
+                            output += slot.symbol.name.value + ": " + slot.value + "<br>";
+                        });
+                    });
+                    output += $("#pb-debugger-callstack")[0].innerHTML;
+                    $("#pb-debugger-callstack")[0].innerHTML = output;
+                    $("#pb-debugger-valuestack")[0].innerHTML = JSON.stringify(_this.vm.stack);
+                });
+            }
+            return Debugger;
+        }());
+        paperbots_1.Debugger = Debugger;
         var CodeEditor = (function () {
             function CodeEditor(paperbots, editorElement, outputElement) {
                 var _this = this;
@@ -5037,6 +5207,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 try {
                     var result = compiler.compile(this.editor.getDoc().getValue());
                     this.outputElement.innerHTML = compiler.moduleToJson(result);
+                    return result;
                 }
                 catch (e) {
                     if (e["location"]) {

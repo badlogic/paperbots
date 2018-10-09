@@ -39,16 +39,16 @@ export namespace paperbots {
 			$("#pb-debug-run").click(() => {
 				if (!this.vm) {
 					let module = editor.compile();
-					let vm = this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
+					this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debugger-valuestack")[0].innerHTML = "";
 					$("#pb-debug-run").val("Stop");
 					$("#pb-debug-debug").attr("disabled", "true");
 
 					let advance = () => {
-						if (!vm) return;
-						vm.run(1000);
-						if (vm.state == compiler.VMState.Completed) {
+						if (!this.vm) return;
+						this.vm.run(1000);
+						if (this.vm.state == compiler.VMState.Completed) {
 							this.vm = null;
 							$("#pb-debugger-callstack")[0].innerHTML = "";
 							$("#pb-debugger-valuestack")[0].innerHTML = "";

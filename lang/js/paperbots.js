@@ -5259,16 +5259,16 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 $("#pb-debug-run").click(function () {
                     if (!_this.vm) {
                         var module = editor.compile();
-                        var vm_1 = _this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
+                        _this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debugger-valuestack")[0].innerHTML = "";
                         $("#pb-debug-run").val("Stop");
                         $("#pb-debug-debug").attr("disabled", "true");
                         var advance_1 = function () {
-                            if (!vm_1)
+                            if (!_this.vm)
                                 return;
-                            vm_1.run(1000);
-                            if (vm_1.state == compiler.VMState.Completed) {
+                            _this.vm.run(1000);
+                            if (_this.vm.state == compiler.VMState.Completed) {
                                 _this.vm = null;
                                 $("#pb-debugger-callstack")[0].innerHTML = "";
                                 $("#pb-debugger-valuestack")[0].innerHTML = "";

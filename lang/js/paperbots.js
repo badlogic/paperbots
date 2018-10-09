@@ -388,9 +388,11 @@ define("Parser", ["require", "exports"], function (require, exports) {
         var peg$c110 = "\"";
         var peg$c111 = peg$literalExpectation("\"", false);
         var peg$c112 = function (chars) {
+            var value = JSON.stringify(chars.join(""));
+            value = value.substring(1, value.length - 1);
             return {
                 kind: "string",
-                value: JSON.stringify(chars.join("")),
+                value: value,
                 location: location()
             };
         };
@@ -4226,7 +4228,44 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }, 2);
     }
     exports.moduleToJson = moduleToJson;
-    function compile(input) {
+    var ExternalFunctions = (function () {
+        function ExternalFunctions() {
+            this.functions = new Array();
+            this.lookup = {};
+        }
+        ExternalFunctions.prototype.addFunction = function (name, args, returnTypeName, async, fun) {
+            var index = this.functions.length;
+            var extFun = new ExternalFunction(name, args, returnTypeName, async, fun, index);
+            this.functions.push(extFun);
+            this.lookup[extFun.signature] = extFun;
+        };
+        return ExternalFunctions;
+    }());
+    exports.ExternalFunctions = ExternalFunctions;
+    var ExternalFunctionParameter = (function () {
+        function ExternalFunctionParameter(name, typeName) {
+            this.name = name;
+            this.typeName = typeName;
+        }
+        return ExternalFunctionParameter;
+    }());
+    exports.ExternalFunctionParameter = ExternalFunctionParameter;
+    var ExternalFunction = (function () {
+        function ExternalFunction(name, args, returnTypeName, async, fun, index) {
+            this.name = name;
+            this.args = args;
+            this.returnTypeName = returnTypeName;
+            this.async = async;
+            this.fun = fun;
+            this.index = index;
+            this.argTypes = new Array();
+            this.returnType = null;
+            this.signature = name + "(" + args.map(function (arg) { return arg.typeName; }).join(",") + ")";
+        }
+        return ExternalFunction;
+    }());
+    exports.ExternalFunction = ExternalFunction;
+    function compile(input, externalFunctions) {
         try {
             var ast = Parser_1.parse(input);
             var functions = ast.filter(function (element) { return element.kind == "function"; });
@@ -4251,12 +4290,13 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 }
             };
             functions.unshift(mainFunction);
-            var types = typeCheck(functions, records);
-            var codes = emitProgram(functions);
+            var types = typeCheck(functions, records, externalFunctions);
+            var codes = emitProgram(functions, externalFunctions);
             return {
                 code: codes,
                 ast: ast,
-                types: types
+                types: types,
+                externalFunctions: externalFunctions
             };
         }
         catch (e) {
@@ -4268,6 +4308,20 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     function debug(msg) {
         throw new CompilerError(msg, null);
     }
+    function nullLocation() {
+        return {
+            start: {
+                line: 1,
+                column: 1,
+                offset: 0
+            },
+            end: {
+                line: 1,
+                column: 1,
+                offset: 0
+            }
+        };
+    }
     function functionSignature(fun) {
         switch (fun.kind) {
             case "function":
@@ -4277,10 +4331,11 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }
     }
     exports.functionSignature = functionSignature;
-    function typeCheck(functions, records) {
+    function typeCheck(functions, records, externalFunctions) {
         var types = {
             all: {},
             functions: {},
+            externalFunctions: {},
             records: {}
         };
         types.all[exports.NothingType.name] = exports.NothingType;
@@ -4297,6 +4352,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 var otherLoc = other.declarationNode.location.start;
                 throw new CompilerError("Function '" + other.name + "' already defined in line " + otherLoc.line + ".", fun.name.location);
             }
+            if (externalFunctions.lookup[type.name])
+                throw new CompilerError("Function '" + other.name + "' already defined externally.", fun.name.location);
             types.all[type.name] = type;
             types.functions[type.name] = type;
         });
@@ -4312,6 +4369,25 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             }
             types.all[type.name] = type;
             types.records[type.name] = type;
+        });
+        externalFunctions.functions.forEach(function (fun) {
+            if (!fun.returnTypeName) {
+                fun.returnTypeName = "nothing";
+                fun.returnType = exports.NothingType;
+            }
+            else {
+                var returnType = types.all[fun.returnTypeName];
+                if (!returnType)
+                    throw new CompilerError("Could not find type '" + fun.returnTypeName + "' for return value of external function '" + fun.name + "'.", nullLocation());
+                fun.returnType = returnType;
+            }
+            fun.args.forEach(function (arg, index) {
+                var argType = types.all[arg.typeName];
+                if (!argType)
+                    throw new CompilerError("Could not find type '" + arg + "' for argument " + (index + 1) + " of external function '" + fun.name + "'.", nullLocation());
+                fun.argTypes.push(argType);
+            });
+            types.externalFunctions[fun.signature] = fun;
         });
         var _loop_1 = function (typeName) {
             var type = types.all[typeName];
@@ -4502,9 +4578,16 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 node.args.forEach(function (arg) { return typeCheckRec(arg, types, scopes, enclosingFun, enclosingLoop); });
                 var signature = functionSignature(node);
                 var funType = types.functions[signature];
-                if (!funType)
-                    throw new CompilerError("Can not find function '" + signature + "'.", node.location);
-                var returnType = funType.declarationNode.returnType;
+                var returnType;
+                if (!funType) {
+                    var externalFun = types.externalFunctions[signature];
+                    if (!externalFun)
+                        throw new CompilerError("Can not find function '" + signature + "'.", node.location);
+                    returnType = externalFun.returnType;
+                }
+                else {
+                    returnType = funType.declarationNode.returnType;
+                }
                 node.type = returnType;
                 break;
             }
@@ -4536,16 +4619,17 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }
     }
     var EmitterContext = (function () {
-        function EmitterContext(fun, functionLookup) {
+        function EmitterContext(fun, functionLookup, externalFunctionLookup) {
             this.fun = fun;
             this.functionLookup = functionLookup;
+            this.externalFunctionLookup = externalFunctionLookup;
             this.scopes = new Scopes();
             this.continues = new Array();
             this.breaks = new Array();
         }
         return EmitterContext;
     }());
-    function emitProgram(functions) {
+    function emitProgram(functions, externalFunctions) {
         var functionCodes = Array();
         var functionLookup = {};
         functions.forEach(function (fun) {
@@ -4558,7 +4642,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             functionCodes.push(funCode);
             functionLookup[functionSignature(fun)] = funCode;
         });
-        functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup)); });
+        functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)); });
         return functionCodes;
     }
     function emitFunction(context) {
@@ -4586,10 +4670,18 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     context.fun.instructions.push({ kind: "pop" });
                     break;
                 case "functionCall":
-                    var calledFun = context.functionLookup[functionSignature(stmt)].ast;
-                    if (calledFun.returnType)
-                        context.fun.instructions.push({ kind: "pop" });
-                    break;
+                    if (context.functionLookup[functionSignature(stmt)]) {
+                        var calledFun = context.functionLookup[functionSignature(stmt)].ast;
+                        if (calledFun.returnType && calledFun.returnType != exports.NothingType)
+                            context.fun.instructions.push({ kind: "pop" });
+                        break;
+                    }
+                    else {
+                        var calledFun = context.externalFunctionLookup[functionSignature(stmt)];
+                        if (calledFun.returnType && calledFun.returnType != exports.NothingType)
+                            context.fun.instructions.push({ kind: "pop" });
+                        break;
+                    }
                 case "if":
                 case "while":
                 case "repeat":
@@ -4609,8 +4701,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     function emitAstNode(node, context) {
         var fun = context.fun;
         var code = fun.instructions;
-        var functionLookup = context.functionLookup;
-        var scopes = context.scopes;
+        var functionLookup = context.functionLookup, scopes = context.scopes, externalFunctionLookup = context.externalFunctionLookup;
         switch (node.kind) {
             case "number":
             case "boolean":
@@ -4641,7 +4732,13 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 break;
             case "functionCall":
                 node.args.forEach(function (arg) { return emitAstNode(arg, context); });
-                code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                if (functionLookup[functionSignature(node)]) {
+                    code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                }
+                else {
+                    var externalFun = externalFunctionLookup[functionSignature(node)];
+                    code.push({ kind: "callExt", functionIndex: externalFun.index });
+                }
                 break;
             case "if":
                 emitAstNode(node.condition, context);
@@ -4678,7 +4775,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 var conditionIndex_2 = code.length;
                 code.push({ kind: "dup" });
                 code.push({ kind: "push", value: 0 });
-                code.push({ kind: "binaryOp", operator: ">=" });
+                code.push({ kind: "binaryOp", operator: ">" });
                 var jumpPastBlock_1 = { kind: "jumpIfFalse", offset: 0 };
                 code.push(jumpPastBlock_1);
                 scopes.push();
@@ -4743,8 +4840,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         VMState[VMState["Completed"] = 1] = "Completed";
     })(VMState = exports.VMState || (exports.VMState = {}));
     var VirtualMachine = (function () {
-        function VirtualMachine(functions) {
+        function VirtualMachine(functions, externalFunctions) {
             this.functions = functions;
+            this.externalFunctions = externalFunctions;
             this.state = VMState.Running;
             this.frames = Array();
             this.stack = Array();
@@ -4754,7 +4852,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         VirtualMachine.prototype.run = function (numInstructions) {
             if (this.state == VMState.Completed)
                 return;
-            var _a = this, functions = _a.functions, frames = _a.frames, stack = _a.stack;
+            var _a = this, functions = _a.functions, externalFunctions = _a.externalFunctions, frames = _a.frames, stack = _a.stack;
             while (numInstructions-- > 0) {
                 if (frames.length == 0) {
                     this.state = VMState.Completed;
@@ -4800,6 +4898,18 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                             newFrame.slots[i].value = stack.pop();
                         }
                         frames.push(newFrame);
+                        break;
+                    }
+                    case "callExt": {
+                        var fun = externalFunctions.functions[ins.functionIndex];
+                        var extArgs = new Array(fun.args.length);
+                        for (var i = extArgs.length - 1; i >= 0; i--) {
+                            extArgs[i] = stack.pop();
+                        }
+                        var result = fun.fun.apply(fun.fun, extArgs);
+                        if (fun.returnType != exports.NothingType) {
+                            stack.push(result);
+                        }
                         break;
                     }
                     case "return":
@@ -5149,10 +5259,42 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 $("#pb-debug-run").click(function () {
                     if (!_this.vm) {
                         var module = editor.compile();
-                        var vm = _this.vm = new compiler.VirtualMachine(module.code);
+                        var vm_1 = _this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
+                        $("#pb-debugger-callstack")[0].innerHTML = "";
+                        $("#pb-debugger-valuestack")[0].innerHTML = "";
+                        $("#pb-debug-run").val("Stop");
+                        $("#pb-debug-debug").attr("disabled", "true");
+                        var advance_1 = function () {
+                            if (!vm_1)
+                                return;
+                            vm_1.run(1000);
+                            if (vm_1.state == compiler.VMState.Completed) {
+                                _this.vm = null;
+                                $("#pb-debugger-callstack")[0].innerHTML = "";
+                                $("#pb-debugger-valuestack")[0].innerHTML = "";
+                                $("#pb-debug-run").val("Run");
+                                $("#pb-debug-debug").removeAttr("disabled");
+                                return;
+                            }
+                            requestAnimationFrame(advance_1);
+                        };
+                        requestAnimationFrame(advance_1);
+                    }
+                    else {
+                        _this.vm = null;
+                        $("#pb-debugger-callstack")[0].innerHTML = "";
+                        $("#pb-debugger-valuestack")[0].innerHTML = "";
+                        $("#pb-debug-run").val("Run");
+                        $("#pb-debug-debug").removeAttr("disabled");
+                    }
+                });
+                $("#pb-debug-debug").click(function () {
+                    if (!_this.vm) {
+                        var module = editor.compile();
+                        var vm = _this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debug-step").removeAttr("disabled");
-                        $("#pb-debug-run").val("Stop");
+                        $("#pb-debug-debug").val("Stop");
                         _this.renderVmState(vm);
                     }
                     else {
@@ -5160,7 +5302,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debugger-valuestack")[0].innerHTML = "";
                         $("#pb-debug-step").attr("disabled", "true");
-                        $("#pb-debug-run").val("Run");
+                        $("#pb-debug-debug").val("Debug");
                     }
                 });
                 $("#pb-debug-step").click(function () {
@@ -5233,7 +5375,13 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.markers.forEach(function (marker) { return marker.clear(); });
                 this.markers.length = 0;
                 try {
-                    var result = compiler.compile(this.editor.getDoc().getValue());
+                    var externals = new compiler.ExternalFunctions();
+                    externals.addFunction("js_alert", [new compiler.ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
+                    externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", false, function (message) { console.log(message); });
+                    externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "boolean")], "nothing", false, function (message) { console.log(message); });
+                    externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "string")], "nothing", false, function (message) { console.log(message); });
+                    externals.addFunction("toString", [new compiler.ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
+                    var result = compiler.compile(this.editor.getDoc().getValue(), externals);
                     this.outputElement.innerHTML = compiler.moduleToJson(result);
                     return result;
                 }

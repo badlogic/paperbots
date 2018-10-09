@@ -445,9 +445,11 @@ function peg$parse(input: string, options?: IParseOptions) {
   const peg$c110 = "\"";
   const peg$c111 = peg$literalExpectation("\"", false);
   const peg$c112 = function(chars: any) {
+      var value = JSON.stringify(chars.join(""));
+      value = value.substring(1, value.length - 1);
       return {
         kind: "string",
-        value: JSON.stringify(chars.join("")),
+        value: value,
         location: location()
       };
     };

@@ -194,6 +194,7 @@ export interface Map<T> {
 export interface Types {
 	all: Map<Type>,
 	functions: Map<Type>,
+	externalFunctions: Map<ExternalFunction>,
 	records: Map<Type>;
 }
 
@@ -201,6 +202,7 @@ export interface Module {
 	types: Types,
 	ast: Array<AstNode>,
 	code: Array<FunctionCode>,
+	externalFunctions: ExternalFunctions
 }
 
 class Scopes {
@@ -254,7 +256,33 @@ export function moduleToJson(module: Module): string {
 	}, 2);
 }
 
-export function compile(input: string): Module {
+export class ExternalFunctions {
+	functions = new Array<ExternalFunction>();
+	lookup: Map<ExternalFunction> = {};
+
+	addFunction(name: string, args: Array<ExternalFunctionParameter>, returnTypeName: string, async: boolean, fun: (...args: any[]) => any) {
+		let index = this.functions.length;
+		let extFun = new ExternalFunction(name, args, returnTypeName, async, fun, index)
+		this.functions.push(extFun);
+		this.lookup[extFun.signature] = extFun;
+	}
+}
+
+export class ExternalFunctionParameter {
+	constructor(public name: string, public typeName: string) { }
+}
+
+export class ExternalFunction {
+	public readonly signature: string;
+	public readonly argTypes: Array<Type> = new Array<Type>();
+	public returnType: Type = null;
+
+	constructor(public name: string, public args: Array<ExternalFunctionParameter>, public returnTypeName: string, public async: boolean, public fun: (...args: any[]) => any, public index: number) {
+		this.signature = name + "(" + args.map(arg => arg.typeName).join(",") + ")";
+	}
+}
+
+export function compile(input: string, externalFunctions: ExternalFunctions): Module {
 	try {
 		// parse source to an AST
 		let ast = (parse(input) as Array<AstNode>);
@@ -284,13 +312,14 @@ export function compile(input: string): Module {
 		}
 		functions.unshift(mainFunction);
 
-		let types = typeCheck(functions, records);
-		let codes = emitProgram(functions);
+		let types = typeCheck(functions, records, externalFunctions);
+		let codes = emitProgram(functions, externalFunctions);
 
 		return {
 			code: codes,
 			ast: ast,
 			types: types,
+			externalFunctions: externalFunctions
 		}
 	} catch (e) {
 		var error = (e as SyntaxError);
@@ -302,6 +331,21 @@ function debug(msg: string) {
 	throw new CompilerError(msg, null);
 }
 
+function nullLocation(): IFileRange {
+	return {
+		start: {
+			line: 1,
+			column: 1,
+			offset: 0
+		},
+		end: {
+			line: 1,
+			column: 1,
+			offset: 0
+		}
+	}
+}
+
 export function functionSignature(fun: FunctionDecl | FunctionCall): string {
 	switch(fun.kind) {
 		case "function":
@@ -311,10 +355,11 @@ export function functionSignature(fun: FunctionDecl | FunctionCall): string {
 	}
 }
 
-function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>): Types {
+function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, externalFunctions: ExternalFunctions): Types {
 	let types: Types = {
 		all: {},
 		functions: {},
+		externalFunctions: {},
 		records: {}
 	}
 
@@ -337,6 +382,8 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>): 
 			throw new CompilerError(`Function '${other.name}' already defined in line ${otherLoc.line}.`, fun.name.location);
 		}
 
+		if (externalFunctions.lookup[type.name]) throw new CompilerError(`Function '${other.name}' already defined externally.`, fun.name.location);
+
 		types.all[type.name] = type;
 		types.functions[type.name] = type;
 	});
@@ -356,6 +403,24 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>): 
 		types.records[type.name] = type;
 	});
 
+	externalFunctions.functions.forEach(fun => {
+		if (!fun.returnTypeName) {
+			fun.returnTypeName = "nothing";
+			fun.returnType = NothingType;
+		} else {
+			let returnType = types.all[fun.returnTypeName];
+			if (!returnType) throw new CompilerError(`Could not find type '${fun.returnTypeName}' for return value of external function '${fun.name}'.`, nullLocation());
+			fun.returnType = returnType;
+		}
+
+		fun.args.forEach((arg, index) => {
+			let argType = types.all[arg.typeName];
+			if (!argType) throw new CompilerError(`Could not find type '${arg}' for argument ${index + 1} of external function '${fun.name}'.`, nullLocation());
+			fun.argTypes.push(argType);
+		});
+
+		types.externalFunctions[fun.signature] = fun;
+	});
 
 	for(let typeName in types.all) {
 		let type = types.all[typeName];
@@ -554,8 +619,14 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			let signature = functionSignature(node);
 			let funType = types.functions[signature];
-			if (!funType) throw new CompilerError(`Can not find function '${signature}'.`, node.location);
-			let returnType = (funType.declarationNode as FunctionDecl).returnType;
+			var returnType: Type;
+			if (!funType) {
+				let externalFun = types.externalFunctions[signature];
+				if(!externalFun) throw new CompilerError(`Can not find function '${signature}'.`, node.location);
+				returnType = externalFun.returnType;
+			} else {
+				returnType = (funType.declarationNode as FunctionDecl).returnType;
+			}
 			node.type = returnType;
 			break;
 		}
@@ -588,10 +659,10 @@ class EmitterContext {
 	continues = new Array<JumpIns>()
 	breaks = new Array<JumpIns>()
 
-	constructor(public fun: FunctionCode, public functionLookup: Map<FunctionCode>) { }
+	constructor(public fun: FunctionCode, public functionLookup: Map<FunctionCode>, public externalFunctionLookup: Map<ExternalFunction>) { }
 }
 
-function emitProgram (functions: Array<FunctionDecl>): Array<FunctionCode> {
+function emitProgram (functions: Array<FunctionDecl>, externalFunctions: ExternalFunctions): Array<FunctionCode> {
 	let functionCodes = Array<FunctionCode>()
 	let functionLookup: Map<FunctionCode> = {};
 
@@ -606,7 +677,7 @@ function emitProgram (functions: Array<FunctionDecl>): Array<FunctionCode> {
 		functionLookup[functionSignature(fun as FunctionDecl)] = funCode;
 	});
 
-	functionCodes.forEach(fun => emitFunction(new EmitterContext(fun, functionLookup)));
+	functionCodes.forEach(fun => emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)));
 	return functionCodes;
 }
 
@@ -649,10 +720,17 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "functionCall":
 				// function calls may leave a value on the stack if
 				// they return a value.
-				let calledFun = context.functionLookup[functionSignature(stmt)].ast;
-				if (calledFun.returnType)
-					context.fun.instructions.push({kind: "pop"});
-				break;
+				if (context.functionLookup[functionSignature(stmt)]) {
+					let calledFun = context.functionLookup[functionSignature(stmt)].ast;
+					if (calledFun.returnType && calledFun.returnType != NothingType)
+						context.fun.instructions.push({kind: "pop"});
+					break;
+				} else {
+					let calledFun = context.externalFunctionLookup[functionSignature(stmt)];
+					if (calledFun.returnType && calledFun.returnType != NothingType)
+						context.fun.instructions.push({kind: "pop"});
+					break;
+				}
 			case "if":
 			case "while":
 			case "repeat":
@@ -674,8 +752,7 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 function emitAstNode(node: AstNode, context: EmitterContext) {
 	let fun = context.fun;
 	let code = fun.instructions;
-	let functionLookup = context.functionLookup;
-	let scopes = context.scopes;
+	let {functionLookup, scopes, externalFunctionLookup} = context;
 
 	switch(node.kind) {
 		case "number":
@@ -708,7 +785,14 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 		case "functionCall":
 			// push all arguments onto the stack, left to right
 			node.args.forEach(arg => emitAstNode(arg as AstNode, context));
-			code.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
+
+			// Either the function is a function inside the program, or an external function
+			if (functionLookup[functionSignature(node)]) {
+				code.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
+			} else {
+				let externalFun = externalFunctionLookup[functionSignature(node)];
+				code.push({kind: "callExt", functionIndex: externalFun.index });
+			}
 			break;
 		case "if":
 			emitAstNode(node.condition as AstNode, context);
@@ -772,7 +856,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			let conditionIndex = code.length;
 			code.push({ kind: "dup"})
 			code.push({ kind: "push", value: 0 });
-			code.push({ kind: "binaryOp", operator: ">=" });
+			code.push({ kind: "binaryOp", operator: ">" });
 			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0};
 			code.push(jumpPastBlock);
 
@@ -863,6 +947,11 @@ export interface CallIns {
 	functionIndex: number
 }
 
+export interface CallExternalIns {
+	kind: "callExt"
+	functionIndex: number
+}
+
 export interface JumpIfTrueIns {
 	kind: "jumpIfTrue"
 	offset: number
@@ -894,6 +983,7 @@ type Instruction =
 	|	LoadIns
 	|	StoreIns
 	| 	CallIns
+	|	CallExternalIns
 	|	JumpIfTrueIns
 	|	JumpIfFalseIns
 	|	JumpIns
@@ -917,6 +1007,7 @@ export class Frame {
 		public code: FunctionCode,
 		public slots = new Array<Slot>(),
 		public pc = 0) {
+
 		code.locals.forEach(v => slots.push(new Slot(v, null)));
 	}
 }
@@ -931,7 +1022,7 @@ export class VirtualMachine {
 	frames = Array<Frame>()
 	stack = Array<Value>()
 
-	constructor(public functions: Array<FunctionCode>) {
+	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
 		this.frames.push(new Frame(this.functions[0]));
 		this.state = VMState.Running;
 	}
@@ -939,7 +1030,7 @@ export class VirtualMachine {
 	run(numInstructions: number) {
 		if (this.state == VMState.Completed) return;
 
-		let {functions, frames, stack} = this;
+		let {functions, externalFunctions, frames, stack} = this;
 
 		while(numInstructions-- > 0) {
 			if (frames.length == 0) {
@@ -985,6 +1076,18 @@ export class VirtualMachine {
 						newFrame.slots[i].value = stack.pop();
 					}
 					frames.push(newFrame);
+					break;
+				}
+				case "callExt": {
+					let fun = externalFunctions.functions[ins.functionIndex];
+					let extArgs = new Array(fun.args.length);
+					for (var i = extArgs.length - 1; i >= 0 ; i--) {
+						extArgs[i] = stack.pop();
+					}
+					let result = fun.fun.apply(fun.fun, extArgs);
+					if (fun.returnType != NothingType) {
+						stack.push(result);
+					}
 					break;
 				}
 				case "return":

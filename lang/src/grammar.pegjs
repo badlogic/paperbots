@@ -332,9 +332,11 @@ Boolean "boolean"
 String "string"
   = '"' chars:StringCharacter* '"'
   {
+    var value = JSON.stringify(chars.join(""));
+    value = value.substring(1, value.length - 1);
     return {
       kind: "string",
-      value: JSON.stringify(chars.join("")),
+      value: value,
       location: location()
     };
   }

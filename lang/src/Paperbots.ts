@@ -39,17 +39,50 @@ export namespace paperbots {
 			$("#pb-debug-run").click(() => {
 				if (!this.vm) {
 					let module = editor.compile();
-					let vm = this.vm = new compiler.VirtualMachine(module.code);
+					let vm = this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
+					$("#pb-debugger-callstack")[0].innerHTML = "";
+					$("#pb-debugger-valuestack")[0].innerHTML = "";
+					$("#pb-debug-run").val("Stop");
+					$("#pb-debug-debug").attr("disabled", "true");
+
+					let advance = () => {
+						if (!vm) return;
+						vm.run(1000);
+						if (vm.state == compiler.VMState.Completed) {
+							this.vm = null;
+							$("#pb-debugger-callstack")[0].innerHTML = "";
+							$("#pb-debugger-valuestack")[0].innerHTML = "";
+							$("#pb-debug-run").val("Run");
+							$("#pb-debug-debug").removeAttr("disabled");
+							return;
+						}
+						requestAnimationFrame(advance);
+					};
+					requestAnimationFrame(advance);
+
+				} else {
+					this.vm = null;
+					$("#pb-debugger-callstack")[0].innerHTML = "";
+					$("#pb-debugger-valuestack")[0].innerHTML = "";
+					$("#pb-debug-run").val("Run");
+					$("#pb-debug-debug").removeAttr("disabled");
+				}
+			});
+
+			$("#pb-debug-debug").click(() => {
+				if (!this.vm) {
+					let module = editor.compile();
+					let vm = this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debug-step").removeAttr("disabled");
-					$("#pb-debug-run").val("Stop");
+					$("#pb-debug-debug").val("Stop");
 					this.renderVmState(vm);
 				} else {
 					this.vm = null;
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debugger-valuestack")[0].innerHTML = "";
 					$("#pb-debug-step").attr("disabled", "true");
-					$("#pb-debug-run").val("Run");
+					$("#pb-debug-debug").val("Debug");
 				}
 			});
 
@@ -133,7 +166,44 @@ export namespace paperbots {
 			this.markers.length = 0;
 
 			try {
-				let result = compiler.compile(this.editor.getDoc().getValue());
+				let externals = new compiler.ExternalFunctions();
+				externals.addFunction(
+					"js_alert",
+					[new compiler.ExternalFunctionParameter("message", "string")],
+					"nothing",
+					false,
+					(message: string) => { alert(message); }
+				)
+				externals.addFunction(
+					"print",
+					[new compiler.ExternalFunctionParameter("value", "number")],
+					"nothing",
+					false,
+					(message: string) => { console.log(message); }
+				)
+				externals.addFunction(
+					"print",
+					[new compiler.ExternalFunctionParameter("value", "boolean")],
+					"nothing",
+					false,
+					(message: string) => { console.log(message); }
+				)
+				externals.addFunction(
+					"print",
+					[new compiler.ExternalFunctionParameter("value", "string")],
+					"nothing",
+					false,
+					(message: string) => { console.log(message); }
+				)
+				externals.addFunction(
+					"toString",
+					[new compiler.ExternalFunctionParameter("value", "number")],
+					"string",
+					false,
+					(value: string) => { return "" + value; }
+				)
+
+				let result = compiler.compile(this.editor.getDoc().getValue(), externals);
 				this.outputElement.innerHTML = compiler.moduleToJson(result);
 				return result;
 			} catch (e) {

@@ -228,7 +228,7 @@ Relational
   }
 
 AddSubtract
-  = head:MultiplyDivide tail:(_ ("+" / "-") _ MultiplyDivide)*
+  = head:MultiplyDivide tail:(_ ("+" / "-" / "..") _ MultiplyDivide)*
   {
     if (tail.length == 0) return head;
 
@@ -330,20 +330,37 @@ Boolean "boolean"
  }
 
 String "string"
-  = '"' chars:StringCharacter* '"'
+  = chars:StringValue
   {
-    var value = JSON.stringify(chars.join(""));
-    value = value.substring(1, value.length - 1);
     return {
       kind: "string",
-      value: value,
+      value: chars,
       location: location()
     };
   }
 
-StringCharacter
-  = '\\' '"' { return '"'; }
-  / !'"' . { return text(); }
+StringValue
+  = '"' chars:DoubleStringCharacter* '"' { return chars.join(''); }
+  / "'" chars:SingleStringCharacter* "'" { return chars.join(''); }
+
+DoubleStringCharacter
+  = !('"' / "\\") char:. { return char; }
+  / "\\" sequence:EscapeSequence { return sequence; }
+
+SingleStringCharacter
+  = !("'" / "\\") char:. { return char; }
+  / "\\" sequence:EscapeSequence { return sequence; }
+
+EscapeSequence
+  = "'"
+  / '"'
+  / "\\"
+  / "b"  { return "\b";   }
+  / "f"  { return "\f";   }
+  / "n"  { return "\n";   }
+  / "r"  { return "\r";   }
+  / "t"  { return "\t";   }
+  / "v"  { return "\x0B"; }
 
 Identifier "identifier"
   = !Reserved IdentifierStart IdentifierPart*

@@ -528,9 +528,14 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 				case "-":
 				case "*":
 				case "/":
-				if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
-				if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
+					if (node.left.type != NumberType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'number', but a '${node.left.type.name}'.`, node.left.location);
+					if (node.right.type != NumberType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'number', but a '${node.right.type.name}'.`, node.right.location);
 					node.type = NumberType;
+					break;
+				case "..":
+					if (node.left.type != StringType) throw new CompilerError(`Left operand of ${node.operator} operator is not a 'string', but a '${node.left.type.name}'.`, node.left.location);
+					if (node.right.type != StringType) throw new CompilerError(`Right operand of ${node.operator} operator is not a 'string', but a '${node.right.type.name}'.`, node.right.location);
+					node.type = StringType;
 					break;
 				case "<":
 				case "<=":
@@ -768,7 +773,8 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 		case "binaryOp":
 			emitAstNode(node.left as AstNode, context);
 			emitAstNode(node.right as AstNode, context);
-			code.push({kind: "binaryOp", operator: node.operator});
+			if (node.operator == "..") code.push({kind: "stringConcat" });
+			else code.push({kind: "binaryOp", operator: node.operator});
 			break;
 		case "unaryOp":
 			emitAstNode(node.value as AstNode, context);
@@ -929,6 +935,10 @@ export interface PopIns {
 	kind: "pop"
 }
 
+export interface StringConcatOpIns {
+	kind: "stringConcat"
+}
+
 export interface BinaryOpIns {
 	kind: "binaryOp"
 	operator: string
@@ -986,6 +996,7 @@ type Instruction =
 		PushIns
 	|	PopIns
 	|	BinaryOpIns
+	|	StringConcatOpIns
 	|	UnaryOpIns
 	|	LoadIns
 	|	StoreIns
@@ -1135,6 +1146,12 @@ export class VirtualMachine {
 							// TODO: throw a nice error for this impossible case
 							throw new Error(`Unknown unary operator ${ins.operator}`, )
 					}
+					break;
+				}
+				case "stringConcat": {
+					let right = stack.pop();
+					let left = stack.pop();
+					stack.push((left as string) + (right as string));
 					break;
 				}
 				case "binaryOp": {

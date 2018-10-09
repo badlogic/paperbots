@@ -180,6 +180,20 @@ export namespace paperbots {
 					(message: string) => { alert(message); }
 				)
 				externals.addFunction(
+					"alert",
+					[new compiler.ExternalFunctionParameter("message", "number")],
+					"nothing",
+					false,
+					(message: number) => { alert(message); }
+				)
+				externals.addFunction(
+					"alert",
+					[new compiler.ExternalFunctionParameter("message", "boolean")],
+					"nothing",
+					false,
+					(message: boolean) => { alert(message); }
+				)
+				externals.addFunction(
 					"print",
 					[new compiler.ExternalFunctionParameter("value", "number")],
 					"nothing",
@@ -206,6 +220,30 @@ export namespace paperbots {
 					"string",
 					false,
 					(value: string) => { return "" + value; }
+				)
+				externals.addFunction(
+					"toString",
+					[new compiler.ExternalFunctionParameter("value", "boolean")],
+					"string",
+					false,
+					(value: string) => { return "" + value; }
+				)
+				externals.addFunction(
+					"length",
+					[new compiler.ExternalFunctionParameter("value", "string")],
+					"number",
+					false,
+					(value: string) => { return value.length; }
+				)
+				externals.addFunction(
+					"charAt",
+					[
+						new compiler.ExternalFunctionParameter("value", "string"),
+						new compiler.ExternalFunctionParameter("index", "number")
+					],
+					"number",
+					false,
+					(value: string, index: number) => { return value.charAt(index); }
 				)
 
 				externals.addFunction(

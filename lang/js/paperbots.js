@@ -5417,7 +5417,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 this.markers.length = 0;
                 try {
                     var externals = new compiler.ExternalFunctions();
-                    externals.addFunction("js_alert", [new compiler.ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
+                    externals.addFunction("alert", [new compiler.ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
                     externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", false, function (message) { console.log(message); });
                     externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "boolean")], "nothing", false, function (message) { console.log(message); });
                     externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "string")], "nothing", false, function (message) { console.log(message); });

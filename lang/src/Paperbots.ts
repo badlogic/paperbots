@@ -173,7 +173,7 @@ export namespace paperbots {
 			try {
 				let externals = new compiler.ExternalFunctions();
 				externals.addFunction(
-					"js_alert",
+					"alert",
 					[new compiler.ExternalFunctionParameter("message", "string")],
 					"nothing",
 					false,

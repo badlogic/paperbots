@@ -279,34 +279,78 @@ Factor
   / VariableAccessOrFunctionCall
 
 VariableAccessOrFunctionCall "function call or variable name"
-  = id:Identifier args:(Arguments)?
+  = id:Identifier access:(Arguments / FieldAccess / ArrayAccess)*
   {
-  	if (args === null) {
+  	if (access === null) {
       return {
         kind: "variableAccess",
         name: id,
         location: location()
       }
     } else {
-      return {
-        kind: "functionCall",
-        name: id,
-        args: args,
+    	if (access.length == 1 && access[0].kind == "arguments") {
+          return {
+            kind: "functionCall",
+            name: id,
+            args: access[0].args,
+            location: location()
+          }
+        }
+
+        var parent = {
+          kind: "variableAccess",
+          name: id,
+          location: location()
+        };
+
+        access.map(function (el) {
+        	if (el.kind == "fieldAccess") {
+            	el.record = parent;
+            	parent = el;
+            } else if (el.kind == "arrayAccess") {
+            	el.array = parent;
+            	parent = el;
+            }
+        });
+        return parent;
+    }
+  }
+
+FieldAccess
+  = "." id: Identifier
+  {
+  	return {
+		kind: "fieldAccess",
+        record: null,
+		name: id,
         location: location()
-      };
+    }
+  }
+
+ArrayAccess
+  = "[" _ index: Expression _ "]"
+  {
+  	return {
+    	kind: "arrayAccess",
+        array: null,
+        index: index,
+        location: location()
     }
   }
 
 Arguments "arguments"
   = "(" _ args:(Expression ( _ "," _ Expression )* ) ? _ ")"
   {
-    if (args == null) return [];
+    if (args == null) return { kind: "arguments", args: [] };
     var head = args[0];
     args = args[1].map(function(element) {
       return element[3];
     })
 	  args.unshift(head);
-    return args;
+    return {
+    	kind: "arguments",
+    	args: args
+    };
   }
 
 Number "number"

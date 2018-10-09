@@ -44,6 +44,18 @@ export interface FunctionCall extends BaseNode {
 	args: Array<AstNode>
 }
 
+export interface FieldAccess extends BaseNode {
+	kind: "fieldAccess",
+	record: AstNode,
+	name: string
+}
+
+export interface ArrayAccess extends BaseNode {
+	kind: "arrayAccess",
+	array: AstNode,
+	index: AstNode
+}
+
 export interface UnaryOp extends BaseNode {
 	kind: "unaryOp",
 	operator: string,
@@ -148,6 +160,8 @@ type AstNode =
 	|	NumberLiteral
 	|	VariableAccess
 	|	FunctionCall
+	|	FieldAccess
+	|	ArrayAccess
 	|	UnaryOp
 	|	BinaryOp
 	|	If
@@ -403,6 +417,9 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 
 		types.all[type.name] = type;
 		types.records[type.name] = type;
+
+		// create constructor function
+		// TODO
 	});
 
 	externalFunctions.functions.forEach(fun => {
@@ -658,6 +675,10 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 		case "comment":
 			break;
+		case "fieldAccess":
+		case "arrayAccess":
+			// TODO implement
+			throw new CompilerError(`Field an array access not implemented yet.`, node.location);
 		default:
 			assertNever(node);
 	}
@@ -722,6 +743,8 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "unaryOp":
 			case "binaryOp":
 			case "variableAccess":
+			case "fieldAccess":
+			case "arrayAccess":
 				// all of the above leave a value on the stack
 				// when used as a statement, so we insert a pop()
 				context.fun.instructions.push({kind: "pop"});
@@ -919,6 +942,10 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			throw new CompilerError("Hit emission for record or function. This should never happen.", node.location);
 		case "comment":
 			break;
+		case "fieldAccess":
+		case "arrayAccess":
+			// TODO implement
+			throw new CompilerError(`Field an array access not implemented yet.`, node.location);
 		default:
 			assertNever(node);
 	}

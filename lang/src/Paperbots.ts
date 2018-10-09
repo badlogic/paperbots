@@ -2,6 +2,9 @@ import {TextMarker} from "../node_modules/@types/codemirror/index";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import * as compiler from "./Compiler";
 
+
+declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
+
 export namespace paperbots {
 	export enum EditorMode {
 		Editing,
@@ -76,12 +79,14 @@ export namespace paperbots {
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debug-step").removeAttr("disabled");
 					$("#pb-debug-debug").val("Stop");
+					$("#pb-debug-run").attr("disabled", "true");
 					this.renderVmState(vm);
 				} else {
 					this.vm = null;
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debugger-valuestack")[0].innerHTML = "";
 					$("#pb-debug-step").attr("disabled", "true");
+					$("#pb-debug-run").removeAttr("disabled");
 					$("#pb-debug-debug").val("Debug");
 				}
 			});
@@ -126,7 +131,7 @@ export namespace paperbots {
 		private markers = Array<TextMarker>();
 
 		constructor (private paperbots: Paperbots, private editorElement: HTMLElement, private outputElement: HTMLElement) {
-			this.editor = CodeMirror(editorElement, {
+			this.editor = (CodeMirror as any)(editorElement, {
 				tabSize: 3,
 				indentUnit: 3,
 				indentWithTabs: true,

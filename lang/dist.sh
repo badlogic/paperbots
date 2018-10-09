@@ -6,7 +6,7 @@ mkdir dist/js
 mkdir dist/css
 mkdir dist/img
 
-cp index.html dist
+cp *.html dist
 cp js/* dist/js/
 cp css/* dist/css/
 cp img/* dist/img/

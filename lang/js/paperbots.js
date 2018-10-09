@@ -5295,6 +5295,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debug-step").removeAttr("disabled");
                         $("#pb-debug-debug").val("Stop");
+                        $("#pb-debug-run").attr("disabled", "true");
                         _this.renderVmState(vm);
                     }
                     else {
@@ -5302,6 +5303,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debugger-valuestack")[0].innerHTML = "";
                         $("#pb-debug-step").attr("disabled", "true");
+                        $("#pb-debug-run").removeAttr("disabled");
                         $("#pb-debug-debug").val("Debug");
                     }
                 });

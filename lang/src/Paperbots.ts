@@ -37,30 +37,54 @@ export namespace paperbots {
 
 		constructor(private paperbots: Paperbots, editor: CodeEditor, debuggerElement: HTMLElement) {
 			$("#pb-debug-run").click(() => {
-				let module = editor.compile();
-				let vm = this.vm = new compiler.VirtualMachine(module.code);
-				$("#pb-debugger-callstack")[0].innerHTML = "";
+				if (!this.vm) {
+					let module = editor.compile();
+					let vm = this.vm = new compiler.VirtualMachine(module.code);
+					$("#pb-debugger-callstack")[0].innerHTML = "";
+					$("#pb-debug-step").removeAttr("disabled");
+					$("#pb-debug-run").val("Stop");
+					this.renderVmState(vm);
+				} else {
+					this.vm = null;
+					$("#pb-debugger-callstack")[0].innerHTML = "";
+					$("#pb-debugger-valuestack")[0].innerHTML = "";
+					$("#pb-debug-step").attr("disabled", "true");
+					$("#pb-debug-run").val("Run");
+				}
 			});
 
 			$("#pb-debug-step").click(() => {
-				if (this.vm.frames.length > 0) {
-					let frame = this.vm.frames[this.vm.frames.length - 1];
-					$("#pb-debugger-callstack")[0].innerHTML = JSON.stringify(frame.code.code[frame.pc]);
-				}
 				this.vm.run(1);
-				var output = "";
-				this.vm.frames.slice(0).reverse().forEach(frame => {
-					output += frame.code.index == 0 ? "$main()" : compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
-					output += "<br>"
-					frame.slots.forEach(slot => {
-						output += slot.symbol.name.value + ": " + slot.value + "<br>";
-					});
-				});
-				output += $("#pb-debugger-callstack")[0].innerHTML;
-				$("#pb-debugger-callstack")[0].innerHTML = output;
-
-				$("#pb-debugger-valuestack")[0].innerHTML = JSON.stringify(this.vm.stack);
+				this.renderVmState(this.vm);
 			});
+		}
+
+		renderVmState(vm: compiler.VirtualMachine) {
+			let callStack = $("#pb-debugger-callstack")[0];
+			var output = "";
+
+			this.vm.frames.slice(0).reverse().forEach(frame => {
+				output += compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
+				output += "\nlocals:\n"
+				frame.slots.forEach((slot, index) => {
+					output += `   [${index}] ` + slot.symbol.name.value + ": " + slot.value + "\n";
+				});
+
+				output += "\ninstructions:\n"
+				frame.code.instructions.forEach((ins, index) => {
+					output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + "\n";
+				});
+				output += "\n";
+			});
+
+			callStack.innerHTML = output;
+
+			let valueStack = $("#pb-debugger-valuestack")[0];
+			output = "stack:\n"
+			this.vm.stack.slice(0).reverse().forEach((value, index) => {
+				output += `   [${index}] = `+ JSON.stringify(value) + "\n";
+			})
+			valueStack.innerHTML = output;
 		}
 	}
 

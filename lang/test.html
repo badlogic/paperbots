@@ -41,13 +41,18 @@
 		width: 50%;
 		height: 100%;
 		overflow: auto;
+		font-family: monospace;
+		white-space: pre;
 	}
 
 	#pb-debugger-valuestack {
 		background: green;
+		color: white;
 		width: 50%;
 		height: 100%;
 		overflow: auto;
+		font-family: monospace;
+		white-space: pre;
 	}
 
 </style>
@@ -65,7 +70,7 @@
 		<div id="pb-debugger">
 			<div id="pb-debugger-tools">
 				<input type="button" id="pb-debug-run" value="Run">
-				<input type="button" id="pb-debug-step" value="step">
+				<input type="button" id="pb-debug-step" value="step" disabled>
 			</div>
 			<div id="pb-debugger-output">
 				<div id="pb-debugger-callstack"></div>

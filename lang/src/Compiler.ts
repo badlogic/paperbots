@@ -263,10 +263,29 @@ export function compile(input: string): Module {
 		// function and record declarations
 		let functions = ast.filter(element => { return element.kind == "function" }) as Array<FunctionDecl>;
 		let records = ast.filter(element => { return element.kind == "record" }) as Array<RecordDecl>;
-		let mainProgram = ast.filter(element => { return element.kind != "function" && element.kind != "record" });
+		let mainStatements = ast.filter(element => { return element.kind != "function" && element.kind != "record" });
+		let mainFunction:  FunctionDecl = {
+			kind: "function",
+			name: {
+				location: {
+					start: { line: 0, column: 0, offset: 0 },
+					end: { line: 0, column: 0, offset: 0 }
+				},
+				value: "$main"
+			},
+			block: mainStatements,
+			params: new Array(),
+			returnType: NothingType,
+			returnTypeName: null,
+			location: {
+				start: { line: 0, column: 0, offset: 0 },
+				end: { line: 0, column: 0, offset: 0 }
+			}
+		}
+		functions.unshift(mainFunction);
 
-		let types = typeCheck(functions, records, mainProgram);
-		let codes = emitProgram(mainProgram, functions);
+		let types = typeCheck(functions, records);
+		let codes = emitProgram(functions);
 
 		return {
 			code: codes,
@@ -292,7 +311,7 @@ export function functionSignature(fun: FunctionDecl | FunctionCall): string {
 	}
 }
 
-function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, main: Array<AstNode>): Types {
+function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>): Types {
 	let types: Types = {
 		all: {},
 		functions: {},
@@ -399,8 +418,6 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, m
 
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
-	let mainSymbols = new Scopes();
-	main.forEach(node => typeCheckRec(node, types, mainSymbols, null, null));
 	functions.forEach(node => typeCheckRec(node, types, new Scopes(), node, null));
 
 	return types;
@@ -574,25 +591,16 @@ class EmitterContext {
 	constructor(public fun: FunctionCode, public functionLookup: Map<FunctionCode>) { }
 }
 
-function emitProgram (mainProgram: Array<AstNode>, functions: Array<FunctionDecl>): Array<FunctionCode> {
+function emitProgram (functions: Array<FunctionDecl>): Array<FunctionCode> {
 	let functionCodes = Array<FunctionCode>()
 	let functionLookup: Map<FunctionCode> = {};
-
-	let mainFunction: FunctionCode = {
-		ast: mainProgram,
-		code: new Array<Instruction>(),
-		locals: new Array<VariableDecl | Parameter>(),
-		index: 0
-	};
-	functionCodes.push(mainFunction);
-	functionLookup["$main()"] = mainFunction;
 
 	functions.forEach(fun => {
 		let funCode: FunctionCode = {
 			ast: fun,
-			code: new Array<Instruction>(),
+			instructions: new Array<Instruction>(),
 			locals: new Array<VariableDecl | Parameter>(),
-			index: functions.length
+			index: functionCodes.length
 		}
 		functionCodes.push(funCode);
 		functionLookup[functionSignature(fun as FunctionDecl)] = funCode;
@@ -604,19 +612,17 @@ function emitProgram (mainProgram: Array<AstNode>, functions: Array<FunctionDecl
 
 function emitFunction(context: EmitterContext) {
 	let fun = context.fun;
-	let statements = fun.index == 0 ? (fun.ast as Array<AstNode>) : (fun.ast as FunctionDecl).block;
-	if (fun.index != 0) {
-		let funDecl = fun.ast as FunctionDecl;
-		funDecl.params.forEach(param => {
-			context.scopes.addSymbol(param)
-			fun.locals.push(param)
-		});
-	}
+	let statements = fun.ast.block;
+	let funDecl = fun.ast as FunctionDecl;
+	funDecl.params.forEach(param => {
+		context.scopes.addSymbol(param)
+		fun.locals.push(param)
+	});
 	emitStatementList(statements as Array<AstNode>, context);
 
 	// if there's no return instruction at the end of the function, add one.
-	if (fun.code.length == 0 || fun.code[fun.code.length - 1].kind != "return")
-		context.fun.code.push({kind: "return"});
+	if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return")
+		context.fun.instructions.push({kind: "return"});
 }
 
 // Some "statements" like 12 * 23 may leave a value on the stack which
@@ -638,14 +644,14 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "variableAccess":
 				// all of the above leave a value on the stack
 				// when used as a statement, so we insert a pop()
-				context.fun.code.push({kind: "pop"});
+				context.fun.instructions.push({kind: "pop"});
 				break;
 			case "functionCall":
 				// function calls may leave a value on the stack if
 				// they return a value.
-				let calledFun = context.functionLookup[functionSignature(stmt)].ast as FunctionDecl;
+				let calledFun = context.functionLookup[functionSignature(stmt)].ast;
 				if (calledFun.returnType)
-					context.fun.code.push({kind: "pop"});
+					context.fun.instructions.push({kind: "pop"});
 				break;
 			case "if":
 			case "while":
@@ -667,7 +673,7 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 
 function emitAstNode(node: AstNode, context: EmitterContext) {
 	let fun = context.fun;
-	let code = fun.code;
+	let code = fun.instructions;
 	let functionLookup = context.functionLookup;
 	let scopes = context.scopes;
 
@@ -900,9 +906,9 @@ export class Slot {
 }
 
 export interface FunctionCode {
-	ast: FunctionDecl | Array<AstNode>
+	ast: FunctionDecl
 	locals: Array<VariableDecl | Parameter>
-	code: Array<Instruction>
+	instructions: Array<Instruction>
 	index: number
 }
 
@@ -942,7 +948,7 @@ export class VirtualMachine {
 			}
 
 			let frame = frames[frames.length - 1];
-			let ins = frame.code.code[frame.pc];
+			let ins = frame.code.instructions[frame.pc];
 			frame.pc++;
 			switch(ins.kind) {
 				case "pop":

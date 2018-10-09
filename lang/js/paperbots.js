@@ -4231,9 +4231,28 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var ast = Parser_1.parse(input);
             var functions = ast.filter(function (element) { return element.kind == "function"; });
             var records = ast.filter(function (element) { return element.kind == "record"; });
-            var mainProgram = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
-            var types = typeCheck(functions, records, mainProgram);
-            var codes = emitProgram(mainProgram, functions);
+            var mainStatements = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
+            var mainFunction = {
+                kind: "function",
+                name: {
+                    location: {
+                        start: { line: 0, column: 0, offset: 0 },
+                        end: { line: 0, column: 0, offset: 0 }
+                    },
+                    value: "$main"
+                },
+                block: mainStatements,
+                params: new Array(),
+                returnType: exports.NothingType,
+                returnTypeName: null,
+                location: {
+                    start: { line: 0, column: 0, offset: 0 },
+                    end: { line: 0, column: 0, offset: 0 }
+                }
+            };
+            functions.unshift(mainFunction);
+            var types = typeCheck(functions, records);
+            var codes = emitProgram(functions);
             return {
                 code: codes,
                 ast: ast,
@@ -4258,7 +4277,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }
     }
     exports.functionSignature = functionSignature;
-    function typeCheck(functions, records, main) {
+    function typeCheck(functions, records) {
         var types = {
             all: {},
             functions: {},
@@ -4340,8 +4359,6 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         for (var typeName in types.all) {
             _loop_1(typeName);
         }
-        var mainSymbols = new Scopes();
-        main.forEach(function (node) { return typeCheckRec(node, types, mainSymbols, null, null); });
         functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes(), node, null); });
         return types;
     }
@@ -4528,23 +4545,15 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         }
         return EmitterContext;
     }());
-    function emitProgram(mainProgram, functions) {
+    function emitProgram(functions) {
         var functionCodes = Array();
         var functionLookup = {};
-        var mainFunction = {
-            ast: mainProgram,
-            code: new Array(),
-            locals: new Array(),
-            index: 0
-        };
-        functionCodes.push(mainFunction);
-        functionLookup["$main()"] = mainFunction;
         functions.forEach(function (fun) {
             var funCode = {
                 ast: fun,
-                code: new Array(),
+                instructions: new Array(),
                 locals: new Array(),
-                index: functions.length
+                index: functionCodes.length
             };
             functionCodes.push(funCode);
             functionLookup[functionSignature(fun)] = funCode;
@@ -4554,17 +4563,15 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     }
     function emitFunction(context) {
         var fun = context.fun;
-        var statements = fun.index == 0 ? fun.ast : fun.ast.block;
-        if (fun.index != 0) {
-            var funDecl = fun.ast;
-            funDecl.params.forEach(function (param) {
-                context.scopes.addSymbol(param);
-                fun.locals.push(param);
-            });
-        }
+        var statements = fun.ast.block;
+        var funDecl = fun.ast;
+        funDecl.params.forEach(function (param) {
+            context.scopes.addSymbol(param);
+            fun.locals.push(param);
+        });
         emitStatementList(statements, context);
-        if (fun.code.length == 0 || fun.code[fun.code.length - 1].kind != "return")
-            context.fun.code.push({ kind: "return" });
+        if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return")
+            context.fun.instructions.push({ kind: "return" });
     }
     function emitStatementList(statements, context) {
         statements.forEach(function (stmt) {
@@ -4576,12 +4583,12 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 case "unaryOp":
                 case "binaryOp":
                 case "variableAccess":
-                    context.fun.code.push({ kind: "pop" });
+                    context.fun.instructions.push({ kind: "pop" });
                     break;
                 case "functionCall":
                     var calledFun = context.functionLookup[functionSignature(stmt)].ast;
                     if (calledFun.returnType)
-                        context.fun.code.push({ kind: "pop" });
+                        context.fun.instructions.push({ kind: "pop" });
                     break;
                 case "if":
                 case "while":
@@ -4601,7 +4608,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     }
     function emitAstNode(node, context) {
         var fun = context.fun;
-        var code = fun.code;
+        var code = fun.instructions;
         var functionLookup = context.functionLookup;
         var scopes = context.scopes;
         switch (node.kind) {
@@ -4754,7 +4761,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     break;
                 }
                 var frame = frames[frames.length - 1];
-                var ins = frame.code.code[frame.pc];
+                var ins = frame.code.instructions[frame.pc];
                 frame.pc++;
                 switch (ins.kind) {
                     case "pop":
@@ -5140,29 +5147,50 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 var _this = this;
                 this.paperbots = paperbots;
                 $("#pb-debug-run").click(function () {
-                    var module = editor.compile();
-                    var vm = _this.vm = new compiler.VirtualMachine(module.code);
-                    $("#pb-debugger-callstack")[0].innerHTML = "";
+                    if (!_this.vm) {
+                        var module = editor.compile();
+                        var vm = _this.vm = new compiler.VirtualMachine(module.code);
+                        $("#pb-debugger-callstack")[0].innerHTML = "";
+                        $("#pb-debug-step").removeAttr("disabled");
+                        $("#pb-debug-run").val("Stop");
+                        _this.renderVmState(vm);
+                    }
+                    else {
+                        _this.vm = null;
+                        $("#pb-debugger-callstack")[0].innerHTML = "";
+                        $("#pb-debugger-valuestack")[0].innerHTML = "";
+                        $("#pb-debug-step").attr("disabled", "true");
+                        $("#pb-debug-run").val("Run");
+                    }
                 });
                 $("#pb-debug-step").click(function () {
-                    if (_this.vm.frames.length > 0) {
-                        var frame = _this.vm.frames[_this.vm.frames.length - 1];
-                        $("#pb-debugger-callstack")[0].innerHTML = JSON.stringify(frame.code.code[frame.pc]);
-                    }
                     _this.vm.run(1);
-                    var output = "";
-                    _this.vm.frames.slice(0).reverse().forEach(function (frame) {
-                        output += frame.code.index == 0 ? "$main()" : compiler.functionSignature(frame.code.ast);
-                        output += "<br>";
-                        frame.slots.forEach(function (slot) {
-                            output += slot.symbol.name.value + ": " + slot.value + "<br>";
-                        });
-                    });
-                    output += $("#pb-debugger-callstack")[0].innerHTML;
-                    $("#pb-debugger-callstack")[0].innerHTML = output;
-                    $("#pb-debugger-valuestack")[0].innerHTML = JSON.stringify(_this.vm.stack);
+                    _this.renderVmState(_this.vm);
                 });
             }
+            Debugger.prototype.renderVmState = function (vm) {
+                var callStack = $("#pb-debugger-callstack")[0];
+                var output = "";
+                this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                    output += compiler.functionSignature(frame.code.ast);
+                    output += "\nlocals:\n";
+                    frame.slots.forEach(function (slot, index) {
+                        output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
+                    });
+                    output += "\ninstructions:\n";
+                    frame.code.instructions.forEach(function (ins, index) {
+                        output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + "\n";
+                    });
+                    output += "\n";
+                });
+                callStack.innerHTML = output;
+                var valueStack = $("#pb-debugger-valuestack")[0];
+                output = "stack:\n";
+                this.vm.stack.slice(0).reverse().forEach(function (value, index) {
+                    output += "   [" + index + "] = " + JSON.stringify(value) + "\n";
+                });
+                valueStack.innerHTML = output;
+            };
             return Debugger;
         }());
         paperbots_1.Debugger = Debugger;

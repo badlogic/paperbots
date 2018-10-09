@@ -1,7 +1,7 @@
 // PEG grammar for a minimal programming language
 
 Program
-  = stmts:(_ (Statement / Function / Record) _)*
+  = _ stmts:(_ (Statement / Function / Record) _)* _
   {
     return stmts.map(function(element) {
       return element[1];

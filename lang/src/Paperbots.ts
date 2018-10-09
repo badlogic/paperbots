@@ -208,6 +208,24 @@ export namespace paperbots {
 					(value: string) => { return "" + value; }
 				)
 
+				externals.addFunction(
+					"wait",
+					[new compiler.ExternalFunctionParameter("milliSeconds", "number")],
+					"number",
+					true,
+					(milliSeconds: number) => {
+						let promise: compiler.AsyncPromise<number> = {
+							completed: false,
+							value: 0
+						}
+						setTimeout(() => {
+							promise.value = milliSeconds;
+							promise.completed = true;
+						}, milliSeconds);
+						return promise;
+					}
+				)
+
 				let result = compiler.compile(this.editor.getDoc().getValue(), externals);
 				this.outputElement.innerHTML = compiler.moduleToJson(result);
 				return result;

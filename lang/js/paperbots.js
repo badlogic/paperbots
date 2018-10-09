@@ -524,77 +524,95 @@ define("Parser", ["require", "exports"], function (require, exports) {
             return new SyntaxError(SyntaxError.buildMessage(expected1, found), expected1, found, location1);
         }
         function peg$parseProgram() {
-            var s0, s1, s2, s3, s4, s5;
+            var s0, s1, s2, s3, s4, s5, s6;
             s0 = peg$currPos;
-            s1 = [];
-            s2 = peg$currPos;
-            s3 = peg$parse_();
-            if (s3 !== peg$FAILED) {
-                s4 = peg$parseStatement();
-                if (s4 === peg$FAILED) {
-                    s4 = peg$parseFunction();
-                    if (s4 === peg$FAILED) {
-                        s4 = peg$parseRecord();
-                    }
-                }
+            s1 = peg$parse_();
+            if (s1 !== peg$FAILED) {
+                s2 = [];
+                s3 = peg$currPos;
+                s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
-                    s5 = peg$parse_();
+                    s5 = peg$parseStatement();
+                    if (s5 === peg$FAILED) {
+                        s5 = peg$parseFunction();
+                        if (s5 === peg$FAILED) {
+                            s5 = peg$parseRecord();
+                        }
+                    }
                     if (s5 !== peg$FAILED) {
-                        s3 = [s3, s4, s5];
-                        s2 = s3;
+                        s6 = peg$parse_();
+                        if (s6 !== peg$FAILED) {
+                            s4 = [s4, s5, s6];
+                            s3 = s4;
+                        }
+                        else {
+                            peg$currPos = s3;
+                            s3 = peg$FAILED;
+                        }
                     }
                     else {
-                        peg$currPos = s2;
-                        s2 = peg$FAILED;
+                        peg$currPos = s3;
+                        s3 = peg$FAILED;
                     }
                 }
                 else {
-                    peg$currPos = s2;
-                    s2 = peg$FAILED;
+                    peg$currPos = s3;
+                    s3 = peg$FAILED;
+                }
+                while (s3 !== peg$FAILED) {
+                    s2.push(s3);
+                    s3 = peg$currPos;
+                    s4 = peg$parse_();
+                    if (s4 !== peg$FAILED) {
+                        s5 = peg$parseStatement();
+                        if (s5 === peg$FAILED) {
+                            s5 = peg$parseFunction();
+                            if (s5 === peg$FAILED) {
+                                s5 = peg$parseRecord();
+                            }
+                        }
+                        if (s5 !== peg$FAILED) {
+                            s6 = peg$parse_();
+                            if (s6 !== peg$FAILED) {
+                                s4 = [s4, s5, s6];
+                                s3 = s4;
+                            }
+                            else {
+                                peg$currPos = s3;
+                                s3 = peg$FAILED;
+                            }
+                        }
+                        else {
+                            peg$currPos = s3;
+                            s3 = peg$FAILED;
+                        }
+                    }
+                    else {
+                        peg$currPos = s3;
+                        s3 = peg$FAILED;
+                    }
+                }
+                if (s2 !== peg$FAILED) {
+                    s3 = peg$parse_();
+                    if (s3 !== peg$FAILED) {
+                        peg$savedPos = s0;
+                        s1 = peg$c0(s2);
+                        s0 = s1;
+                    }
+                    else {
+                        peg$currPos = s0;
+                        s0 = peg$FAILED;
+                    }
+                }
+                else {
+                    peg$currPos = s0;
+                    s0 = peg$FAILED;
                 }
             }
             else {
-                peg$currPos = s2;
-                s2 = peg$FAILED;
+                peg$currPos = s0;
+                s0 = peg$FAILED;
             }
-            while (s2 !== peg$FAILED) {
-                s1.push(s2);
-                s2 = peg$currPos;
-                s3 = peg$parse_();
-                if (s3 !== peg$FAILED) {
-                    s4 = peg$parseStatement();
-                    if (s4 === peg$FAILED) {
-                        s4 = peg$parseFunction();
-                        if (s4 === peg$FAILED) {
-                            s4 = peg$parseRecord();
-                        }
-                    }
-                    if (s4 !== peg$FAILED) {
-                        s5 = peg$parse_();
-                        if (s5 !== peg$FAILED) {
-                            s3 = [s3, s4, s5];
-                            s2 = s3;
-                        }
-                        else {
-                            peg$currPos = s2;
-                            s2 = peg$FAILED;
-                        }
-                    }
-                    else {
-                        peg$currPos = s2;
-                        s2 = peg$FAILED;
-                    }
-                }
-                else {
-                    peg$currPos = s2;
-                    s2 = peg$FAILED;
-                }
-            }
-            if (s1 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c0(s1);
-            }
-            s0 = s1;
             return s0;
         }
         function peg$parseComment() {
@@ -4267,7 +4285,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
     exports.ExternalFunction = ExternalFunction;
     function compile(input, externalFunctions) {
         try {
-            var ast = Parser_1.parse(input);
+            var ast = (Parser_1.parse(input));
             var functions = ast.filter(function (element) { return element.kind == "function"; });
             var records = ast.filter(function (element) { return element.kind == "record"; });
             var mainStatements = ast.filter(function (element) { return element.kind != "function" && element.kind != "record"; });
@@ -4287,7 +4305,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 location: {
                     start: { line: 0, column: 0, offset: 0 },
                     end: { line: 0, column: 0, offset: 0 }
-                }
+                },
+                type: null
             };
             functions.unshift(mainFunction);
             var types = typeCheck(functions, records, externalFunctions);
@@ -4614,6 +4633,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 if (!enclosingLoop)
                     throw new CompilerError("'" + node.kind + "' can only be used inside a 'while' or 'repeat' loop.", node.location);
                 break;
+            case "comment":
+                break;
             default:
                 assertNever(node);
         }
@@ -4692,6 +4713,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 case "return":
                 case "break":
                 case "continue":
+                case "comment":
                     break;
                 default:
                     assertNever(stmt);
@@ -4809,7 +4831,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 break;
             case "record":
             case "function":
-                throw new CompilerError("This should never happen", node.location);
+                throw new CompilerError("Hit emission for record or function. This should never happen.", node.location);
+            case "comment":
+                break;
             default:
                 assertNever(node);
         }
@@ -4852,8 +4876,17 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         VirtualMachine.prototype.run = function (numInstructions) {
             if (this.state == VMState.Completed)
                 return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != exports.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
             var _a = this, functions = _a.functions, externalFunctions = _a.externalFunctions, frames = _a.frames, stack = _a.stack;
-            while (numInstructions-- > 0) {
+            while (!this.asyncPromise && numInstructions-- > 0) {
                 if (frames.length == 0) {
                     this.state = VMState.Completed;
                     break;
@@ -4907,8 +4940,14 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                             extArgs[i] = stack.pop();
                         }
                         var result = fun.fun.apply(fun.fun, extArgs);
-                        if (fun.returnType != exports.NothingType) {
-                            stack.push(result);
+                        if (fun.async) {
+                            this.asyncFun = fun;
+                            this.asyncPromise = result;
+                        }
+                        else {
+                            if (fun.returnType != exports.NothingType) {
+                                stack.push(result);
+                            }
                         }
                         break;
                     }
@@ -5383,6 +5422,17 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "boolean")], "nothing", false, function (message) { console.log(message); });
                     externals.addFunction("print", [new compiler.ExternalFunctionParameter("value", "string")], "nothing", false, function (message) { console.log(message); });
                     externals.addFunction("toString", [new compiler.ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
+                    externals.addFunction("wait", [new compiler.ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
+                        var promise = {
+                            completed: false,
+                            value: 0
+                        };
+                        setTimeout(function () {
+                            promise.value = milliSeconds;
+                            promise.completed = true;
+                        }, milliSeconds);
+                        return promise;
+                    });
                     var result = compiler.compile(this.editor.getDoc().getValue(), externals);
                     this.outputElement.innerHTML = compiler.moduleToJson(result);
                     return result;

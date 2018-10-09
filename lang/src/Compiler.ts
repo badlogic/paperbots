@@ -15,88 +15,83 @@ export interface Identifier {
 
 export interface BaseNode {
 	location: IFileRange;
-}
-
-export interface Expression extends BaseNode {
 	type: Type;
 }
 
-export interface Statement extends BaseNode {}
-
-export interface StringLiteral extends Expression {
+export interface StringLiteral extends BaseNode {
 	kind: "string",
 	value: string
 }
 
-export interface BooleanLiteral extends Expression {
+export interface BooleanLiteral extends BaseNode {
 	kind: "boolean",
 	value: boolean
 }
 
-export interface NumberLiteral extends Expression {
+export interface NumberLiteral extends BaseNode {
 	kind: "number",
 	value: number
 }
 
-export interface VariableAccess extends Expression {
+export interface VariableAccess extends BaseNode {
 	kind: "variableAccess",
 	name: Identifier
 }
 
-export interface FunctionCall extends Expression {
+export interface FunctionCall extends BaseNode {
 	kind: "functionCall",
 	name: Identifier,
-	args: Array<Expression>
+	args: Array<AstNode>
 }
 
-export interface UnaryOp extends Expression {
+export interface UnaryOp extends BaseNode {
 	kind: "unaryOp",
 	operator: string,
-	value: Expression
+	value: AstNode
 }
 
-export interface BinaryOp extends Expression {
+export interface BinaryOp extends BaseNode {
 	kind: "binaryOp",
 	operator: string,
-	left: Expression,
-	right: Expression
+	left: AstNode,
+	right: AstNode
 }
 
-export interface If extends Statement {
+export interface If extends BaseNode {
 	kind: "if",
-	condition: Expression
-	trueBlock: Array<Statement>,
-	falseBlock: Array<Statement>
+	condition: AstNode
+	trueBlock: Array<AstNode>,
+	falseBlock: Array<AstNode>
 }
 
-export interface While extends Statement {
+export interface While extends BaseNode {
 	kind: "while",
-	condition: Expression,
-	block: Array<Statement>
+	condition: AstNode,
+	block: Array<AstNode>
 }
 
-export interface Repeat extends Statement {
+export interface Repeat extends BaseNode {
 	kind: "repeat",
-	count: Expression,
-	block: Array<Statement>
+	count: AstNode,
+	block: Array<AstNode>
 }
 
-export interface Assignment extends Statement {
+export interface Assignment extends BaseNode {
 	kind: "assignment",
 	id: Identifier,
-	value: Expression
+	value: AstNode
 }
 
 export interface TypeName {
 	id: Identifier
 }
 
-export interface VariableDecl extends Statement {
+export interface VariableDecl extends BaseNode {
 	kind: "variable",
 	name: Identifier,
 	typeName?: TypeName,
 	type: Type,
-	value: Expression,
+	value: AstNode,
 	slotIndex: number;
 }
 
@@ -106,23 +101,23 @@ export interface RecordField {
 	type: Type,
 }
 
-export interface RecordDecl extends Statement {
+export interface RecordDecl extends BaseNode {
 	kind: "record",
 	name: Identifier,
 	fields: Array<RecordField>,
 	type: Type,
 }
 
-export interface Return extends Statement {
+export interface Return extends BaseNode {
 	kind: "return",
-	value?: Expression
+	value?: AstNode
 }
 
-export interface Break extends Statement {
+export interface Break extends BaseNode {
 	kind: "break",
 }
 
-export interface Continue extends Statement {
+export interface Continue extends BaseNode {
 	kind: "continue",
 }
 
@@ -133,13 +128,18 @@ export interface Parameter {
 	slotIndex: number
 }
 
-export interface FunctionDecl extends Statement {
+export interface FunctionDecl extends BaseNode {
 	kind: "function",
 	name: Identifier,
 	params: Array<Parameter>,
 	returnTypeName?: TypeName,
 	returnType?: Type,
-	block: Array<Statement>
+	block: Array<AstNode>
+}
+
+export interface Comment extends BaseNode {
+	kind: "comment",
+	value: string
 }
 
 type AstNode =
@@ -160,6 +160,7 @@ type AstNode =
 	|	Return
 	|	Break
 	|	Continue
+	|	Comment
 	;
 
 export interface Type {
@@ -285,7 +286,7 @@ export class ExternalFunction {
 export function compile(input: string, externalFunctions: ExternalFunctions): Module {
 	try {
 		// parse source to an AST
-		let ast = (parse(input) as Array<AstNode>);
+		let ast = (parse(input));
 
 		// separate the main program statements from
 		// function and record declarations
@@ -308,7 +309,8 @@ export function compile(input: string, externalFunctions: ExternalFunctions): Mo
 			location: {
 				start: { line: 0, column: 0, offset: 0 },
 				end: { line: 0, column: 0, offset: 0 }
-			}
+			},
+			type: null
 		}
 		functions.unshift(mainFunction);
 
@@ -649,6 +651,8 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		case "continue":
 			if (!enclosingLoop) throw new CompilerError(`'${node.kind}' can only be used inside a 'while' or 'repeat' loop.`, node.location);
 			break;
+		case "comment":
+			break;
 		default:
 			assertNever(node);
 	}
@@ -689,7 +693,7 @@ function emitFunction(context: EmitterContext) {
 		context.scopes.addSymbol(param)
 		fun.locals.push(param)
 	});
-	emitStatementList(statements as Array<AstNode>, context);
+	emitStatementList(statements, context);
 
 	// if there's no return instruction at the end of the function, add one.
 	if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return")
@@ -741,6 +745,7 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "return":
 			case "break":
 			case "continue":
+			case "comment":
 				// none of these leave a value on the stack
 				break;
 			default:
@@ -805,7 +810,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 
 			// Emit the true block and a jump to after the false block
 			scopes.push();
-			emitStatementList(node.trueBlock as Array<AstNode>, context);
+			emitStatementList(node.trueBlock, context);
 			scopes.pop()
 			code.push(jumpPastFalse);
 
@@ -814,7 +819,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 
 			// Emit the false block
 			scopes.push();
-			emitStatementList(node.falseBlock as Array<AstNode>, context);
+			emitStatementList(node.falseBlock, context);
 			scopes.pop()
 
 			// Patch in the address of the first instruction after the false block
@@ -830,7 +835,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0 };
 			code.push(jumpPastBlock);
 			scopes.push();
-			emitStatementList(node.block as Array<AstNode>, context);
+			emitStatementList(node.block, context);
 			scopes.pop();
 
 			// Patch up all continues to jump to the loop header
@@ -861,7 +866,7 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			code.push(jumpPastBlock);
 
 			scopes.push();
-			emitStatementList(node.block as Array<AstNode>, context);
+			emitStatementList(node.block, context);
 			scopes.pop();
 
 			// Patch up all continues to go to the next jump instruction, and
@@ -905,7 +910,9 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 		case "function":
 			// No code emission for function and type declarations
 			// this path should never be hit.
-			throw new CompilerError("This should never happen", node.location);
+			throw new CompilerError("Hit emission for record or function. This should never happen.", node.location);
+		case "comment":
+			break;
 		default:
 			assertNever(node);
 	}
@@ -1012,6 +1019,11 @@ export class Frame {
 	}
 }
 
+export interface AsyncPromise<T> {
+	completed: boolean;
+	value: T;
+}
+
 export enum VMState {
 	Running,
 	Completed
@@ -1019,8 +1031,10 @@ export enum VMState {
 
 export class VirtualMachine {
 	state = VMState.Running;
-	frames = Array<Frame>()
-	stack = Array<Value>()
+	frames = Array<Frame>();
+	stack = Array<Value>();
+	asyncFun: ExternalFunction;
+	asyncPromise: AsyncPromise<any>;
 
 	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
 		this.frames.push(new Frame(this.functions[0]));
@@ -1030,9 +1044,19 @@ export class VirtualMachine {
 	run(numInstructions: number) {
 		if (this.state == VMState.Completed) return;
 
+		if (this.asyncPromise) {
+			if (this.asyncPromise.completed) {
+				if (this.asyncFun.returnType != NothingType) {
+					this.stack.push(this.asyncPromise.value);
+				}
+				this.asyncPromise = null;
+				this.asyncFun = null;
+			}
+		}
+
 		let {functions, externalFunctions, frames, stack} = this;
 
-		while(numInstructions-- > 0) {
+		while(!this.asyncPromise && numInstructions-- > 0) {
 			if (frames.length == 0) {
 				this.state = VMState.Completed;
 				break;
@@ -1085,8 +1109,13 @@ export class VirtualMachine {
 						extArgs[i] = stack.pop();
 					}
 					let result = fun.fun.apply(fun.fun, extArgs);
-					if (fun.returnType != NothingType) {
-						stack.push(result);
+					if (fun.async) {
+						this.asyncFun = fun;
+						this.asyncPromise = result as AsyncPromise<any>;
+					} else {
+						if (fun.returnType != NothingType) {
+							stack.push(result);
+						}
 					}
 					break;
 				}

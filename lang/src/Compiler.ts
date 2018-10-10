@@ -688,6 +688,7 @@ class EmitterContext {
 	scopes = new Scopes()
 	continues = new Array<JumpIns>()
 	breaks = new Array<JumpIns>()
+	lineInfoIndex = 0
 
 	constructor(public fun: FunctionCode, public functionLookup: Map<FunctionCode>, public externalFunctionLookup: Map<ExternalFunction>) { }
 }
@@ -700,7 +701,9 @@ function emitProgram (functions: Array<FunctionDecl>, externalFunctions: Externa
 		let funCode: FunctionCode = {
 			ast: fun,
 			instructions: new Array<Instruction>(),
+			lineInfos: new Array<LineInfo>(),
 			locals: new Array<VariableDecl | Parameter>(),
+			numParameters: fun.params.length,
 			index: functionCodes.length
 		}
 		functionCodes.push(funCode);
@@ -722,8 +725,12 @@ function emitFunction(context: EmitterContext) {
 	emitStatementList(statements, context);
 
 	// if there's no return instruction at the end of the function, add one.
-	if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return")
+	if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return") {
+		let lineInfo = fun.instructions.length > 0 ? context.fun.lineInfos[context.fun.instructions.length - 1] : null;
 		context.fun.instructions.push({kind: "return"});
+		if (lineInfo) context.fun.lineInfos.push(lineInfo);
+		else emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
+	}
 }
 
 // Some "statements" like 12 * 23 may leave a value on the stack which
@@ -732,7 +739,7 @@ function emitFunction(context: EmitterContext) {
 // pop instructions when necessary
 function emitStatementList (statements: Array<AstNode>, context: EmitterContext) {
 	statements.forEach(stmt => {
-		emitAstNode(stmt as AstNode, context);
+		emitAstNode(stmt as AstNode, context, true);
 
 		// Check if this is a node that leaves a value on the stack
 		// so we can insert a pop
@@ -747,22 +754,31 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "arrayAccess":
 				// all of the above leave a value on the stack
 				// when used as a statement, so we insert a pop()
+				let lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
+				emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
 				context.fun.instructions.push({kind: "pop"});
 				break;
-			case "functionCall":
+			case "functionCall": {
 				// function calls may leave a value on the stack if
 				// they return a value.
 				if (context.functionLookup[functionSignature(stmt)]) {
 					let calledFun = context.functionLookup[functionSignature(stmt)].ast;
-					if (calledFun.returnType && calledFun.returnType != NothingType)
+					if (calledFun.returnType && calledFun.returnType != NothingType) {
+						let lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
+						emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
 						context.fun.instructions.push({kind: "pop"});
+					}
 					break;
 				} else {
 					let calledFun = context.externalFunctionLookup[functionSignature(stmt)];
-					if (calledFun.returnType && calledFun.returnType != NothingType)
+					if (calledFun.returnType && calledFun.returnType != NothingType) {
+						let lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
+						emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
 						context.fun.instructions.push({kind: "pop"});
+					}
 					break;
 				}
+			}
 			case "if":
 			case "while":
 			case "repeat":
@@ -782,69 +798,83 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 	});
 }
 
-function emitAstNode(node: AstNode, context: EmitterContext) {
+function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolean) {
 	let fun = context.fun;
-	let code = fun.instructions;
+	let instructions = fun.instructions;
 	let {functionLookup, scopes, externalFunctionLookup} = context;
+
+	let lastInsIndex = instructions.length;
+	let lineInfos = fun.lineInfos;
 
 	switch(node.kind) {
 		case "number":
 		case "boolean":
 		case "string":
-			code.push({kind: "push", value: node.value});
+			instructions.push({kind: "push", value: node.value});
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "binaryOp":
-			emitAstNode(node.left as AstNode, context);
-			emitAstNode(node.right as AstNode, context);
-			if (node.operator == "..") code.push({kind: "stringConcat" });
-			else code.push({kind: "binaryOp", operator: node.operator});
+			emitAstNode(node.left as AstNode, context, false);
+			emitAstNode(node.right as AstNode, context, false);
+			if (node.operator == "..") instructions.push({kind: "stringConcat" });
+			else instructions.push({kind: "binaryOp", operator: node.operator});
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "unaryOp":
-			emitAstNode(node.value as AstNode, context);
-			code.push({kind: "unaryOp", operator: node.operator});
+			emitAstNode(node.value as AstNode, context, false);
+			instructions.push({kind: "unaryOp", operator: node.operator});
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "variableAccess":
-			code.push({kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex});
+			instructions.push({kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex});
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "variable":
 			fun.locals.push(node);
 			scopes.addSymbol(node);
-			emitAstNode(node.value as AstNode, context);
-			code.push({kind: "store", slotIndex: node.slotIndex});
+			emitAstNode(node.value as AstNode, context, false);
+			instructions.push({kind: "store", slotIndex: node.slotIndex});
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "assignment":
-			emitAstNode(node.value as AstNode, context);
-			code.push({kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex});
+			emitAstNode(node.value as AstNode, context, false);
+			instructions.push({kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex});
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "functionCall":
 			// push all arguments onto the stack, left to right
-			node.args.forEach(arg => emitAstNode(arg as AstNode, context));
+			node.args.forEach(arg => emitAstNode(arg as AstNode, context, false));
 
 			// Either the function is a function inside the program, or an external function
 			if (functionLookup[functionSignature(node)]) {
-				code.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
+				instructions.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
 			} else {
 				let externalFun = externalFunctionLookup[functionSignature(node)];
-				code.push({kind: "callExt", functionIndex: externalFun.index });
+				instructions.push({kind: "callExt", functionIndex: externalFun.index });
 			}
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "if":
-			emitAstNode(node.condition as AstNode, context);
+			emitAstNode(node.condition as AstNode, context, false);
 
 			// Setup jumps. There's a boolean value on the top of the stack
 			// for the conditional which will be consumed by jumpIfFalse
 			let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
 			let jumpPastFalse: Instruction = { kind: "jump", offset: 0 };
-			code.push(jumpToFalse);
+			instructions.push(jumpToFalse);
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			context.lineInfoIndex++;
 
 			// Emit the true block and a jump to after the false block
 			scopes.push();
 			emitStatementList(node.trueBlock, context);
 			scopes.pop()
-			code.push(jumpPastFalse);
+			instructions.push(jumpPastFalse);
+			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			context.lineInfoIndex++;
 
 			// Patch in the address of the first instruction of the false block
-			jumpToFalse.offset = code.length;
+			jumpToFalse.offset = instructions.length;
 
 			// Emit the false block
 			scopes.push();
@@ -852,17 +882,20 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			scopes.pop()
 
 			// Patch in the address of the first instruction after the false block
-			jumpPastFalse.offset = code.length;
+			jumpPastFalse.offset = instructions.length;
 			break;
 		case "while":
 			// save the index of the start of the condition code
-			let conditionIndex = code.length;
+			let conditionIndex = instructions.length;
 
 			// emit the condition and setup a jump to after
 			// the while block.
-			emitAstNode(node.condition as AstNode, context);
+			emitAstNode(node.condition as AstNode, context, false);
 			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0 };
-			code.push(jumpPastBlock);
+			instructions.push(jumpPastBlock);
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			context.lineInfoIndex++;
+
 			scopes.push();
 			emitStatementList(node.block, context);
 			scopes.pop();
@@ -872,27 +905,33 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			context.continues.length = 0
 
 			// Emit jump to the loop header
-			code.push({ kind: "jump", offset: conditionIndex });
+			instructions.push({ kind: "jump", offset: conditionIndex });
+			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			context.lineInfoIndex++;
 
 			// Patch in the address of the first instruction after the loop body
-			jumpPastBlock.offset = code.length;
+			jumpPastBlock.offset = instructions.length;
 
 			// Patch up all continues to go to the first instruction after the loop body
-			context.breaks.forEach(br => br.offset = code.length);
+			context.breaks.forEach(br => br.offset = instructions.length);
 			context.breaks.length = 0;
 			break;
 		case "repeat": {
 			// Emit the count, which leaves a value on the stack
-			emitAstNode(node.count as AstNode, context);
+			emitAstNode(node.count as AstNode, context, false);
 
 			// Emit check for count >= 0: duplicate count,
 			// push 0, compare, jump past block if false.
-			let conditionIndex = code.length;
-			code.push({ kind: "dup"})
-			code.push({ kind: "push", value: 0 });
-			code.push({ kind: "binaryOp", operator: ">" });
+			let conditionIndex = instructions.length;
+			instructions.push({ kind: "dup"})
+			instructions.push({ kind: "push", value: 0 });
+			instructions.push({ kind: "binaryOp", operator: ">" });
 			let jumpPastBlock: Instruction = { kind: "jumpIfFalse", offset: 0};
-			code.push(jumpPastBlock);
+			instructions.push(jumpPastBlock);
+
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			let headerLineInfo = lineInfos[lineInfos.length - 1];
+			context.lineInfoIndex++;
 
 			scopes.push();
 			emitStatementList(node.block, context);
@@ -900,40 +939,47 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 
 			// Patch up all continues to go to the next jump instruction, and
 			// thus to the loop header.
-			context.continues.forEach(cont => cont.offset = code.length);
+			context.continues.forEach(cont => cont.offset = instructions.length);
 			context.continues.length = 0
 
 			// decrease the count and jump to the loop header
-			code.push({ kind: "push", value: 1});
-			code.push({ kind: "binaryOp", operator: "-" });
-			code.push({ kind: "jump", offset: conditionIndex });
+			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			instructions.push({ kind: "push", value: 1});
+			instructions.push({ kind: "binaryOp", operator: "-" });
+			instructions.push({ kind: "jump", offset: conditionIndex });
 
 			// Patch in the address of the first instruction after the loop body
-			jumpPastBlock.offset = code.length;
+			jumpPastBlock.offset = instructions.length;
 
 			// Patch up all continues to go to the first instruction after the loop body
-			context.breaks.forEach(br => br.offset = code.length);
+			context.breaks.forEach(br => br.offset = instructions.length);
 			context.breaks.length = 0;
 
 			// Remove the count from the
-			code.push({ kind: "pop" });
+			instructions.push({ kind: "pop" });
+			lineInfos.push(headerLineInfo);
 			break;
 		}
 		case "return":
-			if (node.value) emitAstNode(node.value as AstNode, context);
-			code.push({ kind: "return" });
+			if (node.value) emitAstNode(node.value as AstNode, context, false);
+			instructions.push({ kind: "return" });
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "break":
 			// this is patched in the emission of while and repeat
 			let breakIns: Instruction = { kind: "jump", offset: 0 };
-			code.push(breakIns);
+			instructions.push(breakIns);
 			context.breaks.push(breakIns);
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "continue":
 			// this is patched in the emission of while and repeat
 			let continueIns: Instruction = { kind: "jump", offset: 0 };
-			code.push(continueIns);
+			instructions.push(continueIns);
 			context.continues.push(continueIns);
+			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "record":
 		case "function":
@@ -948,6 +994,15 @@ function emitAstNode(node: AstNode, context: EmitterContext) {
 			throw new CompilerError(`Field an array access not implemented yet.`, node.location);
 		default:
 			assertNever(node);
+	}
+
+	if(isStatement) context.lineInfoIndex++;
+}
+
+function emitLineInfo(lineInfos: Array<LineInfo>, lineInfoIndex: number, sourceLine: number, numIns: number) {
+	let lineInfo: LineInfo = { index: lineInfoIndex, line: sourceLine };
+	while(numIns-- > 0) {
+		lineInfos.push(lineInfo);
 	}
 }
 
@@ -1040,10 +1095,17 @@ export class Slot {
 	constructor(public symbol: VariableDecl | Parameter, public value: Value) { }
 }
 
+export interface LineInfo {
+	index: number;
+	line: number;
+}
+
 export interface FunctionCode {
 	ast: FunctionDecl
 	locals: Array<VariableDecl | Parameter>
+	numParameters: number,
 	instructions: Array<Instruction>
+	lineInfos: Array<LineInfo>
 	index: number
 }
 
@@ -1080,6 +1142,7 @@ export class VirtualMachine {
 	}
 
 	run(numInstructions: number) {
+		if (this.frames.length == 0) this.state = VMState.Completed;
 		if (this.state == VMState.Completed) return;
 
 		if (this.asyncPromise) {
@@ -1092,146 +1155,235 @@ export class VirtualMachine {
 			}
 		}
 
-		let {functions, externalFunctions, frames, stack} = this;
-
 		while(!this.asyncPromise && numInstructions-- > 0) {
-			if (frames.length == 0) {
-				this.state = VMState.Completed;
+			this.step();
+		}
+
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return;
+	}
+
+	stepOver () {
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return;
+
+		if (this.asyncPromise) {
+			if (this.asyncPromise.completed) {
+				if (this.asyncFun.returnType != NothingType) {
+					this.stack.push(this.asyncPromise.value);
+				}
+				this.asyncPromise = null;
+				this.asyncFun = null;
+			}
+		}
+
+		let frameIndex = this.frames.length - 1;
+		let frame = this.frames[frameIndex];
+		let lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+		while(true) {
+			if (this.asyncPromise) return;
+			if (this.frames.length == 0) return;
+
+			let currFrameIndex = this.frames.length - 1;
+			let currFrame = this.frames[currFrameIndex];
+			let currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+
+			if (currFrameIndex == frameIndex)
+				if (lineInfoIndex != currLineInfoIndex) return;
+
+			if (currFrameIndex < frameIndex) return;
+
+			this.step();
+		}
+
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return;
+	}
+
+	stepInto () {
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return;
+
+		if (this.asyncPromise) {
+			if (this.asyncPromise.completed) {
+				if (this.asyncFun.returnType != NothingType) {
+					this.stack.push(this.asyncPromise.value);
+				}
+				this.asyncPromise = null;
+				this.asyncFun = null;
+			}
+		}
+
+		let frameIndex = this.frames.length - 1;
+		let frame = this.frames[frameIndex];
+		let lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+		while(true) {
+			if (this.asyncPromise) return;
+			if (this.frames.length == 0) return;
+
+			let currFrameIndex = this.frames.length - 1;
+			let currFrame = this.frames[currFrameIndex];
+			let currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+
+			if (lineInfoIndex != currLineInfoIndex) return;
+			if (currFrameIndex != frameIndex) return;
+
+
+			this.step();
+		}
+
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return;
+	}
+
+	getLineNumber() {
+		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.state == VMState.Completed) return -1;
+
+		let frameIndex = this.frames.length - 1;
+		let frame = this.frames[frameIndex];
+		return frame.code.lineInfos[frame.pc].line;
+	}
+
+	private step() {
+		let {frames, stack, functions, externalFunctions} = this;
+
+		if (frames.length == 0) {
+			this.state = VMState.Completed;
+			return;
+		}
+
+		let frame = frames[frames.length - 1];
+		let ins = frame.code.instructions[frame.pc];
+		frame.pc++;
+		switch(ins.kind) {
+			case "pop":
+				stack.pop();
+				break;
+			case "push":
+				stack.push(ins.value);
+				break;
+			case "dup":
+				let value = stack.pop();
+				stack.push(value);
+				stack.push(value);
+				break;
+			case "store":
+				frame.slots[ins.slotIndex].value = stack.pop();
+				break;
+			case "load":
+				stack.push(frame.slots[ins.slotIndex].value);
+				break;
+			case "jump":
+				frame.pc = ins.offset;
+				break;
+			case "jumpIfTrue":
+				if(stack.pop()) frame.pc = ins.offset;
+				break;
+			case "jumpIfFalse":
+				if(!stack.pop()) frame.pc = ins.offset;
+				break;
+			case "call": {
+				let fun = functions[ins.functionIndex];
+				let newFrame = new Frame(fun);
+				newFrame.slots.length = fun.locals.length;
+				for (var i = fun.numParameters - 1; i >= 0 ; i--) {
+					newFrame.slots[i].value = stack.pop();
+				}
+				frames.push(newFrame);
 				break;
 			}
-
-			let frame = frames[frames.length - 1];
-			let ins = frame.code.instructions[frame.pc];
-			frame.pc++;
-			switch(ins.kind) {
-				case "pop":
-					stack.pop();
-					break;
-				case "push":
-					stack.push(ins.value);
-					break;
-				case "dup":
-					let value = stack.pop();
-					stack.push(value);
-					stack.push(value);
-					break;
-				case "store":
-					frame.slots[ins.slotIndex].value = stack.pop();
-					break;
-				case "load":
-					stack.push(frame.slots[ins.slotIndex].value);
-					break;
-				case "jump":
-					frame.pc = ins.offset;
-					break;
-				case "jumpIfTrue":
-					if(stack.pop()) frame.pc = ins.offset;
-					break;
-				case "jumpIfFalse":
-					if(!stack.pop()) frame.pc = ins.offset;
-					break;
-				case "call": {
-					let fun = functions[ins.functionIndex];
-					let newFrame = new Frame(fun);
-					newFrame.slots.length = fun.locals.length;
-					for (var i = fun.locals.length - 1; i >= 0 ; i--) {
-						newFrame.slots[i].value = stack.pop();
-					}
-					frames.push(newFrame);
-					break;
+			case "callExt": {
+				let fun = externalFunctions.functions[ins.functionIndex];
+				let extArgs = new Array(fun.args.length);
+				for (var i = extArgs.length - 1; i >= 0 ; i--) {
+					extArgs[i] = stack.pop();
 				}
-				case "callExt": {
-					let fun = externalFunctions.functions[ins.functionIndex];
-					let extArgs = new Array(fun.args.length);
-					for (var i = extArgs.length - 1; i >= 0 ; i--) {
-						extArgs[i] = stack.pop();
+				let result = fun.fun.apply(fun.fun, extArgs);
+				if (fun.async) {
+					this.asyncFun = fun;
+					this.asyncPromise = result as AsyncPromise<any>;
+				} else {
+					if (fun.returnType != NothingType) {
+						stack.push(result);
 					}
-					let result = fun.fun.apply(fun.fun, extArgs);
-					if (fun.async) {
-						this.asyncFun = fun;
-						this.asyncPromise = result as AsyncPromise<any>;
-					} else {
-						if (fun.returnType != NothingType) {
-							stack.push(result);
-						}
-					}
-					break;
 				}
-				case "return":
-					frames.pop();
-					break
-				case "unaryOp": {
-					let value = stack.pop() as boolean;
-					switch(ins.operator) {
-						case "not":
-							stack.push(!value);
-							break;
-						case "-":
-							stack.push(-value);
-							break;
-						default:
-							// TODO: throw a nice error for this impossible case
-							throw new Error(`Unknown unary operator ${ins.operator}`, )
-					}
-					break;
-				}
-				case "stringConcat": {
-					let right = stack.pop();
-					let left = stack.pop();
-					stack.push((left as string) + (right as string));
-					break;
-				}
-				case "binaryOp": {
-					let right = stack.pop();
-					let left = stack.pop();
-
-					switch(ins.operator) {
-						case "+":
-							stack.push((left as number) + (right as number));
-							break;
-						case "-":
-							stack.push((left as number) - (right as number));
-							break;
-						case "*":
-							stack.push((left as number) * (right as number));
-							break;
-						case "/":
-							stack.push((left as number) / (right as number));
-							break;
-						case "<=":
-							stack.push((left as number) <= (right as number));
-							break;
-						case ">=":
-							stack.push((left as number) >= (right as number));
-							break;
-						case "<":
-							stack.push((left as number) < (right as number));
-							break;
-						case ">":
-							stack.push((left as number) > (right as number));
-							break;
-						case "==":
-							stack.push(left === right);
-							break;
-						case "!=":
-							stack.push(left !== right);
-							break;
-						case "and":
-							stack.push(left as boolean && right as boolean);
-							break;
-						case "or":
-							stack.push(left as boolean || right as boolean);
-							break;
-						case "xor":
-							stack.push(!(left as boolean && right as boolean));
-							break;
-					}
-
-					break;
-				}
-				default:
-					assertNever(ins);
+				break;
 			}
+			case "return":
+				frames.pop();
+				break
+			case "unaryOp": {
+				let value = stack.pop() as boolean;
+				switch(ins.operator) {
+					case "not":
+						stack.push(!value);
+						break;
+					case "-":
+						stack.push(-value);
+						break;
+					default:
+						// TODO: throw a nice error for this impossible case
+						throw new Error(`Unknown unary operator ${ins.operator}`, )
+				}
+				break;
+			}
+			case "stringConcat": {
+				let right = stack.pop();
+				let left = stack.pop();
+				stack.push((left as string) + (right as string));
+				break;
+			}
+			case "binaryOp": {
+				let right = stack.pop();
+				let left = stack.pop();
+
+				switch(ins.operator) {
+					case "+":
+						stack.push((left as number) + (right as number));
+						break;
+					case "-":
+						stack.push((left as number) - (right as number));
+						break;
+					case "*":
+						stack.push((left as number) * (right as number));
+						break;
+					case "/":
+						stack.push((left as number) / (right as number));
+						break;
+					case "<=":
+						stack.push((left as number) <= (right as number));
+						break;
+					case ">=":
+						stack.push((left as number) >= (right as number));
+						break;
+					case "<":
+						stack.push((left as number) < (right as number));
+						break;
+					case ">":
+						stack.push((left as number) > (right as number));
+						break;
+					case "==":
+						stack.push(left === right);
+						break;
+					case "!=":
+						stack.push(left !== right);
+						break;
+					case "and":
+						stack.push(left as boolean && right as boolean);
+						break;
+					case "or":
+						stack.push(left as boolean || right as boolean);
+						break;
+					case "xor":
+						stack.push(!(left as boolean && right as boolean));
+						break;
+				}
+
+				break;
+			}
+			default:
+				assertNever(ins);
 		}
 	}
 }

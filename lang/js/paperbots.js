@@ -5150,6 +5150,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             this.scopes = new Scopes();
             this.continues = new Array();
             this.breaks = new Array();
+            this.lineInfoIndex = 0;
         }
         return EmitterContext;
     }());
@@ -5160,7 +5161,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             var funCode = {
                 ast: fun,
                 instructions: new Array(),
+                lineInfos: new Array(),
                 locals: new Array(),
+                numParameters: fun.params.length,
                 index: functionCodes.length
             };
             functionCodes.push(funCode);
@@ -5178,12 +5181,18 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             fun.locals.push(param);
         });
         emitStatementList(statements, context);
-        if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return")
+        if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return") {
+            var lineInfo = fun.instructions.length > 0 ? context.fun.lineInfos[context.fun.instructions.length - 1] : null;
             context.fun.instructions.push({ kind: "return" });
+            if (lineInfo)
+                context.fun.lineInfos.push(lineInfo);
+            else
+                emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
+        }
     }
     function emitStatementList(statements, context) {
         statements.forEach(function (stmt) {
-            emitAstNode(stmt, context);
+            emitAstNode(stmt, context, true);
             switch (stmt.kind) {
                 case "number":
                 case "boolean":
@@ -5193,21 +5202,30 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 case "variableAccess":
                 case "fieldAccess":
                 case "arrayAccess":
+                    var lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
+                    emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
                     context.fun.instructions.push({ kind: "pop" });
                     break;
-                case "functionCall":
+                case "functionCall": {
                     if (context.functionLookup[functionSignature(stmt)]) {
                         var calledFun = context.functionLookup[functionSignature(stmt)].ast;
-                        if (calledFun.returnType && calledFun.returnType != exports.NothingType)
+                        if (calledFun.returnType && calledFun.returnType != exports.NothingType) {
+                            var lineInfo_1 = context.fun.lineInfos[context.fun.instructions.length - 1];
+                            emitLineInfo(context.fun.lineInfos, lineInfo_1.index, lineInfo_1.line, 1);
                             context.fun.instructions.push({ kind: "pop" });
+                        }
                         break;
                     }
                     else {
                         var calledFun = context.externalFunctionLookup[functionSignature(stmt)];
-                        if (calledFun.returnType && calledFun.returnType != exports.NothingType)
+                        if (calledFun.returnType && calledFun.returnType != exports.NothingType) {
+                            var lineInfo_2 = context.fun.lineInfos[context.fun.instructions.length - 1];
+                            emitLineInfo(context.fun.lineInfos, lineInfo_2.index, lineInfo_2.line, 1);
                             context.fun.instructions.push({ kind: "pop" });
+                        }
                         break;
                     }
+                }
                 case "if":
                 case "while":
                 case "repeat":
@@ -5225,117 +5243,149 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             }
         });
     }
-    function emitAstNode(node, context) {
+    function emitAstNode(node, context, isStatement) {
         var fun = context.fun;
-        var code = fun.instructions;
+        var instructions = fun.instructions;
         var functionLookup = context.functionLookup, scopes = context.scopes, externalFunctionLookup = context.externalFunctionLookup;
+        var lastInsIndex = instructions.length;
+        var lineInfos = fun.lineInfos;
         switch (node.kind) {
             case "number":
             case "boolean":
             case "string":
-                code.push({ kind: "push", value: node.value });
+                instructions.push({ kind: "push", value: node.value });
+                if (isStatement)
+                    emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "binaryOp":
-                emitAstNode(node.left, context);
-                emitAstNode(node.right, context);
+                emitAstNode(node.left, context, false);
+                emitAstNode(node.right, context, false);
                 if (node.operator == "..")
-                    code.push({ kind: "stringConcat" });
+                    instructions.push({ kind: "stringConcat" });
                 else
-                    code.push({ kind: "binaryOp", operator: node.operator });
+                    instructions.push({ kind: "binaryOp", operator: node.operator });
+                if (isStatement)
+                    emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "unaryOp":
-                emitAstNode(node.value, context);
-                code.push({ kind: "unaryOp", operator: node.operator });
+                emitAstNode(node.value, context, false);
+                instructions.push({ kind: "unaryOp", operator: node.operator });
+                if (isStatement)
+                    emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "variableAccess":
-                code.push({ kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex });
+                instructions.push({ kind: "load", slotIndex: context.scopes.findSymbol(node.name).slotIndex });
+                if (isStatement)
+                    emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "variable":
                 fun.locals.push(node);
                 scopes.addSymbol(node);
-                emitAstNode(node.value, context);
-                code.push({ kind: "store", slotIndex: node.slotIndex });
+                emitAstNode(node.value, context, false);
+                instructions.push({ kind: "store", slotIndex: node.slotIndex });
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "assignment":
-                emitAstNode(node.value, context);
-                code.push({ kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex });
+                emitAstNode(node.value, context, false);
+                instructions.push({ kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex });
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "functionCall":
-                node.args.forEach(function (arg) { return emitAstNode(arg, context); });
+                node.args.forEach(function (arg) { return emitAstNode(arg, context, false); });
                 if (functionLookup[functionSignature(node)]) {
-                    code.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                    instructions.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
                 }
                 else {
                     var externalFun = externalFunctionLookup[functionSignature(node)];
-                    code.push({ kind: "callExt", functionIndex: externalFun.index });
+                    instructions.push({ kind: "callExt", functionIndex: externalFun.index });
                 }
+                if (isStatement)
+                    emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "if":
-                emitAstNode(node.condition, context);
+                emitAstNode(node.condition, context, false);
                 var jumpToFalse = { kind: "jumpIfFalse", offset: 0 };
                 var jumpPastFalse = { kind: "jump", offset: 0 };
-                code.push(jumpToFalse);
+                instructions.push(jumpToFalse);
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+                context.lineInfoIndex++;
                 scopes.push();
                 emitStatementList(node.trueBlock, context);
                 scopes.pop();
-                code.push(jumpPastFalse);
-                jumpToFalse.offset = code.length;
+                instructions.push(jumpPastFalse);
+                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                context.lineInfoIndex++;
+                jumpToFalse.offset = instructions.length;
                 scopes.push();
                 emitStatementList(node.falseBlock, context);
                 scopes.pop();
-                jumpPastFalse.offset = code.length;
+                jumpPastFalse.offset = instructions.length;
                 break;
             case "while":
-                var conditionIndex_1 = code.length;
-                emitAstNode(node.condition, context);
+                var conditionIndex_1 = instructions.length;
+                emitAstNode(node.condition, context, false);
                 var jumpPastBlock = { kind: "jumpIfFalse", offset: 0 };
-                code.push(jumpPastBlock);
+                instructions.push(jumpPastBlock);
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+                context.lineInfoIndex++;
                 scopes.push();
                 emitStatementList(node.block, context);
                 scopes.pop();
                 context.continues.forEach(function (cont) { return cont.offset = conditionIndex_1; });
                 context.continues.length = 0;
-                code.push({ kind: "jump", offset: conditionIndex_1 });
-                jumpPastBlock.offset = code.length;
-                context.breaks.forEach(function (br) { return br.offset = code.length; });
+                instructions.push({ kind: "jump", offset: conditionIndex_1 });
+                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                context.lineInfoIndex++;
+                jumpPastBlock.offset = instructions.length;
+                context.breaks.forEach(function (br) { return br.offset = instructions.length; });
                 context.breaks.length = 0;
                 break;
             case "repeat": {
-                emitAstNode(node.count, context);
-                var conditionIndex_2 = code.length;
-                code.push({ kind: "dup" });
-                code.push({ kind: "push", value: 0 });
-                code.push({ kind: "binaryOp", operator: ">" });
+                emitAstNode(node.count, context, false);
+                var conditionIndex_2 = instructions.length;
+                instructions.push({ kind: "dup" });
+                instructions.push({ kind: "push", value: 0 });
+                instructions.push({ kind: "binaryOp", operator: ">" });
                 var jumpPastBlock_1 = { kind: "jumpIfFalse", offset: 0 };
-                code.push(jumpPastBlock_1);
+                instructions.push(jumpPastBlock_1);
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+                var headerLineInfo = lineInfos[lineInfos.length - 1];
+                context.lineInfoIndex++;
                 scopes.push();
                 emitStatementList(node.block, context);
                 scopes.pop();
-                context.continues.forEach(function (cont) { return cont.offset = code.length; });
+                context.continues.forEach(function (cont) { return cont.offset = instructions.length; });
                 context.continues.length = 0;
-                code.push({ kind: "push", value: 1 });
-                code.push({ kind: "binaryOp", operator: "-" });
-                code.push({ kind: "jump", offset: conditionIndex_2 });
-                jumpPastBlock_1.offset = code.length;
-                context.breaks.forEach(function (br) { return br.offset = code.length; });
+                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                instructions.push({ kind: "push", value: 1 });
+                instructions.push({ kind: "binaryOp", operator: "-" });
+                instructions.push({ kind: "jump", offset: conditionIndex_2 });
+                jumpPastBlock_1.offset = instructions.length;
+                context.breaks.forEach(function (br) { return br.offset = instructions.length; });
                 context.breaks.length = 0;
-                code.push({ kind: "pop" });
+                instructions.push({ kind: "pop" });
+                lineInfos.push(headerLineInfo);
                 break;
             }
             case "return":
                 if (node.value)
-                    emitAstNode(node.value, context);
-                code.push({ kind: "return" });
+                    emitAstNode(node.value, context, false);
+                instructions.push({ kind: "return" });
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "break":
                 var breakIns = { kind: "jump", offset: 0 };
-                code.push(breakIns);
+                instructions.push(breakIns);
                 context.breaks.push(breakIns);
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "continue":
                 var continueIns = { kind: "jump", offset: 0 };
-                code.push(continueIns);
+                instructions.push(continueIns);
                 context.continues.push(continueIns);
+                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "record":
             case "function":
@@ -5347,6 +5397,14 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 throw new CompilerError("Field an array access not implemented yet.", node.location);
             default:
                 assertNever(node);
+        }
+        if (isStatement)
+            context.lineInfoIndex++;
+    }
+    function emitLineInfo(lineInfos, lineInfoIndex, sourceLine, numIns) {
+        var lineInfo = { index: lineInfoIndex, line: sourceLine };
+        while (numIns-- > 0) {
+            lineInfos.push(lineInfo);
         }
     }
     var Slot = (function () {
@@ -5385,6 +5443,8 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
             this.state = VMState.Running;
         }
         VirtualMachine.prototype.run = function (numInstructions) {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
             if (this.state == VMState.Completed)
                 return;
             if (this.asyncPromise) {
@@ -5396,144 +5456,233 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     this.asyncFun = null;
                 }
             }
-            var _a = this, functions = _a.functions, externalFunctions = _a.externalFunctions, frames = _a.frames, stack = _a.stack;
             while (!this.asyncPromise && numInstructions-- > 0) {
-                if (frames.length == 0) {
-                    this.state = VMState.Completed;
+                this.step();
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+        };
+        VirtualMachine.prototype.stepOver = function () {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != exports.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            var frameIndex = this.frames.length - 1;
+            var frame = this.frames[frameIndex];
+            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+            while (true) {
+                if (this.asyncPromise)
+                    return;
+                if (this.frames.length == 0)
+                    return;
+                var currFrameIndex = this.frames.length - 1;
+                var currFrame = this.frames[currFrameIndex];
+                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                if (currFrameIndex == frameIndex)
+                    if (lineInfoIndex != currLineInfoIndex)
+                        return;
+                if (currFrameIndex < frameIndex)
+                    return;
+                this.step();
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+        };
+        VirtualMachine.prototype.stepInto = function () {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != exports.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            var frameIndex = this.frames.length - 1;
+            var frame = this.frames[frameIndex];
+            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+            while (true) {
+                if (this.asyncPromise)
+                    return;
+                if (this.frames.length == 0)
+                    return;
+                var currFrameIndex = this.frames.length - 1;
+                var currFrame = this.frames[currFrameIndex];
+                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                if (lineInfoIndex != currLineInfoIndex)
+                    return;
+                if (currFrameIndex != frameIndex)
+                    return;
+                this.step();
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+        };
+        VirtualMachine.prototype.getLineNumber = function () {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return -1;
+            var frameIndex = this.frames.length - 1;
+            var frame = this.frames[frameIndex];
+            return frame.code.lineInfos[frame.pc].line;
+        };
+        VirtualMachine.prototype.step = function () {
+            var _a = this, frames = _a.frames, stack = _a.stack, functions = _a.functions, externalFunctions = _a.externalFunctions;
+            if (frames.length == 0) {
+                this.state = VMState.Completed;
+                return;
+            }
+            var frame = frames[frames.length - 1];
+            var ins = frame.code.instructions[frame.pc];
+            frame.pc++;
+            switch (ins.kind) {
+                case "pop":
+                    stack.pop();
+                    break;
+                case "push":
+                    stack.push(ins.value);
+                    break;
+                case "dup":
+                    var value = stack.pop();
+                    stack.push(value);
+                    stack.push(value);
+                    break;
+                case "store":
+                    frame.slots[ins.slotIndex].value = stack.pop();
+                    break;
+                case "load":
+                    stack.push(frame.slots[ins.slotIndex].value);
+                    break;
+                case "jump":
+                    frame.pc = ins.offset;
+                    break;
+                case "jumpIfTrue":
+                    if (stack.pop())
+                        frame.pc = ins.offset;
+                    break;
+                case "jumpIfFalse":
+                    if (!stack.pop())
+                        frame.pc = ins.offset;
+                    break;
+                case "call": {
+                    var fun = functions[ins.functionIndex];
+                    var newFrame = new Frame(fun);
+                    newFrame.slots.length = fun.locals.length;
+                    for (var i = fun.numParameters - 1; i >= 0; i--) {
+                        newFrame.slots[i].value = stack.pop();
+                    }
+                    frames.push(newFrame);
                     break;
                 }
-                var frame = frames[frames.length - 1];
-                var ins = frame.code.instructions[frame.pc];
-                frame.pc++;
-                switch (ins.kind) {
-                    case "pop":
-                        stack.pop();
-                        break;
-                    case "push":
-                        stack.push(ins.value);
-                        break;
-                    case "dup":
-                        var value = stack.pop();
-                        stack.push(value);
-                        stack.push(value);
-                        break;
-                    case "store":
-                        frame.slots[ins.slotIndex].value = stack.pop();
-                        break;
-                    case "load":
-                        stack.push(frame.slots[ins.slotIndex].value);
-                        break;
-                    case "jump":
-                        frame.pc = ins.offset;
-                        break;
-                    case "jumpIfTrue":
-                        if (stack.pop())
-                            frame.pc = ins.offset;
-                        break;
-                    case "jumpIfFalse":
-                        if (!stack.pop())
-                            frame.pc = ins.offset;
-                        break;
-                    case "call": {
-                        var fun = functions[ins.functionIndex];
-                        var newFrame = new Frame(fun);
-                        newFrame.slots.length = fun.locals.length;
-                        for (var i = fun.locals.length - 1; i >= 0; i--) {
-                            newFrame.slots[i].value = stack.pop();
-                        }
-                        frames.push(newFrame);
-                        break;
+                case "callExt": {
+                    var fun = externalFunctions.functions[ins.functionIndex];
+                    var extArgs = new Array(fun.args.length);
+                    for (var i = extArgs.length - 1; i >= 0; i--) {
+                        extArgs[i] = stack.pop();
                     }
-                    case "callExt": {
-                        var fun = externalFunctions.functions[ins.functionIndex];
-                        var extArgs = new Array(fun.args.length);
-                        for (var i = extArgs.length - 1; i >= 0; i--) {
-                            extArgs[i] = stack.pop();
-                        }
-                        var result = fun.fun.apply(fun.fun, extArgs);
-                        if (fun.async) {
-                            this.asyncFun = fun;
-                            this.asyncPromise = result;
-                        }
-                        else {
-                            if (fun.returnType != exports.NothingType) {
-                                stack.push(result);
-                            }
-                        }
-                        break;
+                    var result = fun.fun.apply(fun.fun, extArgs);
+                    if (fun.async) {
+                        this.asyncFun = fun;
+                        this.asyncPromise = result;
                     }
-                    case "return":
-                        frames.pop();
-                        break;
-                    case "unaryOp": {
-                        var value_1 = stack.pop();
-                        switch (ins.operator) {
-                            case "not":
-                                stack.push(!value_1);
-                                break;
-                            case "-":
-                                stack.push(-value_1);
-                                break;
-                            default:
-                                throw new Error("Unknown unary operator " + ins.operator);
+                    else {
+                        if (fun.returnType != exports.NothingType) {
+                            stack.push(result);
                         }
-                        break;
                     }
-                    case "stringConcat": {
-                        var right = stack.pop();
-                        var left = stack.pop();
-                        stack.push(left + right);
-                        break;
-                    }
-                    case "binaryOp": {
-                        var right = stack.pop();
-                        var left = stack.pop();
-                        switch (ins.operator) {
-                            case "+":
-                                stack.push(left + right);
-                                break;
-                            case "-":
-                                stack.push(left - right);
-                                break;
-                            case "*":
-                                stack.push(left * right);
-                                break;
-                            case "/":
-                                stack.push(left / right);
-                                break;
-                            case "<=":
-                                stack.push(left <= right);
-                                break;
-                            case ">=":
-                                stack.push(left >= right);
-                                break;
-                            case "<":
-                                stack.push(left < right);
-                                break;
-                            case ">":
-                                stack.push(left > right);
-                                break;
-                            case "==":
-                                stack.push(left === right);
-                                break;
-                            case "!=":
-                                stack.push(left !== right);
-                                break;
-                            case "and":
-                                stack.push(left && right);
-                                break;
-                            case "or":
-                                stack.push(left || right);
-                                break;
-                            case "xor":
-                                stack.push(!(left && right));
-                                break;
-                        }
-                        break;
-                    }
-                    default:
-                        assertNever(ins);
+                    break;
                 }
+                case "return":
+                    frames.pop();
+                    break;
+                case "unaryOp": {
+                    var value_1 = stack.pop();
+                    switch (ins.operator) {
+                        case "not":
+                            stack.push(!value_1);
+                            break;
+                        case "-":
+                            stack.push(-value_1);
+                            break;
+                        default:
+                            throw new Error("Unknown unary operator " + ins.operator);
+                    }
+                    break;
+                }
+                case "stringConcat": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    stack.push(left + right);
+                    break;
+                }
+                case "binaryOp": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    switch (ins.operator) {
+                        case "+":
+                            stack.push(left + right);
+                            break;
+                        case "-":
+                            stack.push(left - right);
+                            break;
+                        case "*":
+                            stack.push(left * right);
+                            break;
+                        case "/":
+                            stack.push(left / right);
+                            break;
+                        case "<=":
+                            stack.push(left <= right);
+                            break;
+                        case ">=":
+                            stack.push(left >= right);
+                            break;
+                        case "<":
+                            stack.push(left < right);
+                            break;
+                        case ">":
+                            stack.push(left > right);
+                            break;
+                        case "==":
+                            stack.push(left === right);
+                            break;
+                        case "!=":
+                            stack.push(left !== right);
+                            break;
+                        case "and":
+                            stack.push(left && right);
+                            break;
+                        case "or":
+                            stack.push(left || right);
+                            break;
+                        case "xor":
+                            stack.push(!(left && right));
+                            break;
+                    }
+                    break;
+                }
+                default:
+                    assertNever(ins);
             }
         };
         return VirtualMachine;
@@ -5809,9 +5958,11 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
         }());
         paperbots_1.Paperbots = Paperbots;
         var Debugger = (function () {
-            function Debugger(paperbots, editor, debuggerElement) {
+            function Debugger(paperbots, editor, debuggerElement, lineChanged) {
+                if (lineChanged === void 0) { lineChanged = function () { }; }
                 var _this = this;
                 this.paperbots = paperbots;
+                this.lineChanged = lineChanged;
                 $("#pb-debug-run").click(function () {
                     if (!_this.vm) {
                         var module = editor.compile();
@@ -5850,15 +6001,20 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         var vm = _this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debug-step").removeAttr("disabled");
+                        $("#pb-debug-step-over").removeAttr("disabled");
+                        $("#pb-debug-step-into").removeAttr("disabled");
                         $("#pb-debug-debug").val("Stop");
                         $("#pb-debug-run").attr("disabled", "true");
                         _this.renderVmState(vm);
+                        lineChanged(vm.getLineNumber());
                     }
                     else {
                         _this.vm = null;
                         $("#pb-debugger-callstack")[0].innerHTML = "";
                         $("#pb-debugger-valuestack")[0].innerHTML = "";
                         $("#pb-debug-step").attr("disabled", "true");
+                        $("#pb-debug-step-over").attr("disabled", "true");
+                        $("#pb-debug-step-into").attr("disabled", "true");
                         $("#pb-debug-run").removeAttr("disabled");
                         $("#pb-debug-debug").val("Debug");
                     }
@@ -5866,6 +6022,17 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                 $("#pb-debug-step").click(function () {
                     _this.vm.run(1);
                     _this.renderVmState(_this.vm);
+                    lineChanged(_this.vm.getLineNumber());
+                });
+                $("#pb-debug-step-over").click(function () {
+                    _this.vm.stepOver();
+                    _this.renderVmState(_this.vm);
+                    lineChanged(_this.vm.getLineNumber());
+                });
+                $("#pb-debug-step-into").click(function () {
+                    _this.vm.stepInto();
+                    _this.renderVmState(_this.vm);
+                    lineChanged(_this.vm.getLineNumber());
                 });
             }
             Debugger.prototype.renderVmState = function (vm) {
@@ -5878,8 +6045,14 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                         output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
                     });
                     output += "\ninstructions:\n";
+                    var lastLineInfoIndex = -1;
                     frame.code.instructions.forEach(function (ins, index) {
-                        output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + "\n";
+                        var line = frame.code.lineInfos[index];
+                        if (lastLineInfoIndex != line.index) {
+                            output += "\n";
+                            lastLineInfoIndex = line.index;
+                        }
+                        output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
                     });
                     output += "\n";
                 });
@@ -5946,7 +6119,7 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     externals.addFunction("charAt", [
                         new compiler.ExternalFunctionParameter("value", "string"),
                         new compiler.ExternalFunctionParameter("index", "number")
-                    ], "number", false, function (value, index) { return value.charAt(index); });
+                    ], "string", false, function (value, index) { return value.charAt(index); });
                     externals.addFunction("wait", [new compiler.ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
                         var promise = {
                             completed: false,
@@ -5992,6 +6165,9 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
                     $("#pb-editor-tools-editing").hide();
                     $("#pb-editor-tools-running").show();
                 }
+            };
+            CodeEditor.prototype.setLine = function (line) {
+                this.editor.getDoc().setCursor(line, 1);
             };
             return CodeEditor;
         }());

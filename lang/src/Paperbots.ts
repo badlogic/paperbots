@@ -38,7 +38,7 @@ export namespace paperbots {
 	export class Debugger {
 		vm?: compiler.VirtualMachine;
 
-		constructor(private paperbots: Paperbots, editor: CodeEditor, debuggerElement: HTMLElement) {
+		constructor(private paperbots: Paperbots, editor: CodeEditor, debuggerElement: HTMLElement, private lineChanged: (line: number) => void = () => { }) {
 			$("#pb-debug-run").click(() => {
 				if (!this.vm) {
 					let module = editor.compile();
@@ -78,14 +78,19 @@ export namespace paperbots {
 					let vm = this.vm = new compiler.VirtualMachine(module.code, module.externalFunctions);
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debug-step").removeAttr("disabled");
+					$("#pb-debug-step-over").removeAttr("disabled");
+					$("#pb-debug-step-into").removeAttr("disabled");
 					$("#pb-debug-debug").val("Stop");
 					$("#pb-debug-run").attr("disabled", "true");
 					this.renderVmState(vm);
+					lineChanged(vm.getLineNumber());
 				} else {
 					this.vm = null;
 					$("#pb-debugger-callstack")[0].innerHTML = "";
 					$("#pb-debugger-valuestack")[0].innerHTML = "";
 					$("#pb-debug-step").attr("disabled", "true");
+					$("#pb-debug-step-over").attr("disabled", "true");
+					$("#pb-debug-step-into").attr("disabled", "true");
 					$("#pb-debug-run").removeAttr("disabled");
 					$("#pb-debug-debug").val("Debug");
 				}
@@ -94,6 +99,19 @@ export namespace paperbots {
 			$("#pb-debug-step").click(() => {
 				this.vm.run(1);
 				this.renderVmState(this.vm);
+				lineChanged(this.vm.getLineNumber());
+			});
+
+			$("#pb-debug-step-over").click(() => {
+				this.vm.stepOver();
+				this.renderVmState(this.vm);
+				lineChanged(this.vm.getLineNumber());
+			});
+
+			$("#pb-debug-step-into").click(() => {
+				this.vm.stepInto();
+				this.renderVmState(this.vm);
+				lineChanged(this.vm.getLineNumber());
 			});
 		}
 
@@ -109,8 +127,14 @@ export namespace paperbots {
 				});
 
 				output += "\ninstructions:\n"
+				var lastLineInfoIndex = -1;
 				frame.code.instructions.forEach((ins, index) => {
-					output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + "\n";
+					let line = frame.code.lineInfos[index];
+					if (lastLineInfoIndex != line.index) {
+						output += "\n";
+						lastLineInfoIndex = line.index;
+					}
+					output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
 				});
 				output += "\n";
 			});
@@ -241,7 +265,7 @@ export namespace paperbots {
 						new compiler.ExternalFunctionParameter("value", "string"),
 						new compiler.ExternalFunctionParameter("index", "number")
 					],
-					"number",
+					"string",
 					false,
 					(value: string, index: number) => { return value.charAt(index); }
 				)
@@ -301,6 +325,10 @@ export namespace paperbots {
 				$("#pb-editor-tools-editing").hide();
 				$("#pb-editor-tools-running").show();
 			}
+		}
+
+		setLine(line: number) {
+			this.editor.getDoc().setCursor(line, 1);
 		}
 	}
 

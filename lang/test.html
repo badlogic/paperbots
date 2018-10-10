@@ -6,6 +6,7 @@
 	<script src="js/jquery.js"></script>
 	<script src="js/codemirror.js"></script>
 	<script src="js/paperbots-cm.js"></script>
+	<script src="js/active-line.js"></script>
 	<script src="js/require.js"></script>
 	<script src="js/paperbots.js"></script>
 	<link rel="stylesheet" type="text/css" href="css/codemirror.css" />
@@ -71,7 +72,9 @@
 			<div id="pb-debugger-tools">
 				<input type="button" id="pb-debug-run" value="Run">
 				<input type="button" id="pb-debug-debug" value="Debug">
-				<input type="button" id="pb-debug-step" value="step" disabled>
+				<input type="button" id="pb-debug-step" value="Step" disabled>
+				<input type="button" id="pb-debug-step-over" value="Step over" disabled>
+				<input type="button" id="pb-debug-step-into" value="Step into" disabled>
 			</div>
 			<div id="pb-debugger-output">
 				<div id="pb-debugger-callstack"></div>
@@ -91,7 +94,8 @@
 			var debug = new paperbots.Debugger(
 				null,
 				editor,
-				document.getElementById("pb-debugger")
+				document.getElementById("pb-debugger"),
+				function (number) { if (number != -1) editor.setLine(number - 1); }
 			);
 		});
 	</script>

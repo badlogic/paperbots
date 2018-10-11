@@ -53,6 +53,12 @@ body {
 	height: 100%;
 	padding: 0 1em 0 1em;
 	display: flex;
+	flex-direction: row;
+}
+
+#pb-debugger-locals-callstack {
+	flex: 1;
+	display: flex;
 	flex-direction: column;
 }
 
@@ -81,6 +87,17 @@ body {
 .pb-debugger-local {
 	padding: 0 1em 0 1em;
 	font-size: 0.8em;
+}
+
+#pb-debugger-vm {
+	flex: 1;
+	overflow: auto;
+	margin: 1em 0 0 1em;
+	font-family: monospace;
+	font-size: 0.8em;
+	background: #fff;
+	color: #000;
+	white-space: pre;
 }
 
 .selected {

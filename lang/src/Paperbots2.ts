@@ -12,8 +12,14 @@ export class Step { constructor(public line: number) {} }
 export class Stop { }
 export class LineChange { constructor(public line: number) {} }
 export class Select { constructor(public startLine: number, public startColumn: number, public endLine: number, public endColumn: number) {} }
+export class AnnounceExternalFunctions { constructor(public functions: compiler.ExternalFunctions) {} }
 export type Event = SourceChanged | Run | Debug | Step | Stop | LineChange | Selection;
 
+const DEFAULT_SOURCE = `
+while true do
+	forward()
+end
+`
 export interface EventListener {
 	onEvent(event: Event);
 }
@@ -79,6 +85,7 @@ export class Debugger extends Widget {
 	private stepInto: JQuery;
 	private locals: JQuery;
 	private callstack: JQuery;
+	private vmState: JQuery;
 	private dom: JQuery;
 	private lastModule: compiler.Module = null;
 	private selectedFrame: compiler.Frame = null;
@@ -86,18 +93,19 @@ export class Debugger extends Widget {
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
 			<div id="pb-debugger">
-				<div>
-					<input id="pb-debugger-run" type="button" value="Run">
-					<input id="pb-debugger-debug" type="button" value="Debug">
-					<input id="pb-debugger-step-over" type="button" value="Step over">
-					<input id="pb-debugger-step-into" type="button" value="Step into">
+				<div id="pb-debugger-locals-callstack">
+					<div>
+						<input id="pb-debugger-run" type="button" value="Run">
+						<input id="pb-debugger-debug" type="button" value="Debug">
+						<input id="pb-debugger-step-over" type="button" value="Step over">
+						<input id="pb-debugger-step-into" type="button" value="Step into">
+					</div>
+					<div class="pb-debugger-label">Parameters & Variables</div>
+					<div id="pb-debugger-locals"></div>
+					<div class="pb-debugger-label">Callstack</div>
+					<div id="pb-debugger-callstack"></div>
 				</div>
-				<div class="pb-debugger-label">Parameters & Variables</div>
-				<div id="pb-debugger-locals">
-				</div>
-				<div class="pb-debugger-label">Callstack</div>
-				<div id="pb-debugger-callstack">
-				</div>
+				<div id="pb-debugger-vm"></div>
 			</div>
 		`);
 
@@ -107,6 +115,7 @@ export class Debugger extends Widget {
 		this.stepInto = dom.find("#pb-debugger-step-into");
 		this.locals = dom.find("#pb-debugger-locals");
 		this.callstack = dom.find("#pb-debugger-callstack");
+		this.vmState = dom.find("#pb-debugger-vm");
 
 		this.run.click(() => {
 			if (this.run.val() == "Run") {
@@ -172,8 +181,10 @@ export class Debugger extends Widget {
 	}
 
 	renderState () {
+		if (!this.locals) return;
 		this.locals.empty();
 		this.callstack.empty();
+		this.vmState.empty();
 		if (this.vm && this.vm.frames.length > 0) {
 			this.vm.frames.slice(0).reverse().forEach(frame => {
 				let signature = compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
@@ -195,24 +206,58 @@ export class Debugger extends Widget {
 				this.callstack.append(dom);
 			});
 
-			this.selectedFrame.slots.forEach(slot => {
-				let dom = $(/*html*/`
-					<div class="pb-debugger-local">
-					</div>
-				`);
-				dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
-				dom.click(() => {
-					let location = slot.symbol.name.location;
-					this.bus.event(new Select(
-						location.start.line,
-						location.start.column,
-						location.end.line,
-						location.end.column
-					));
-				})
-				this.locals.append(dom);
-			});
+			if (this.selectedFrame) {
+				this.selectedFrame.slots.forEach(slot => {
+					let dom = $(/*html*/`
+						<div class="pb-debugger-local">
+						</div>
+					`);
+					dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+					dom.click(() => {
+						let location = slot.symbol.name.location;
+						this.bus.event(new Select(
+							location.start.line,
+							location.start.column,
+							location.end.line,
+							location.end.column
+						));
+					})
+					this.locals.append(dom);
+				});
+			}
+			this.renderVmState(this.vm);
 		}
+	}
+
+	renderVmState(vm: compiler.VirtualMachine) {
+		var output = "";
+		this.vm.frames.slice(0).reverse().forEach(frame => {
+			output += compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
+			output += "\nlocals:\n"
+			frame.slots.forEach((slot, index) => {
+				output += `   [${index}] ` + slot.symbol.name.value + ": " + slot.value + "\n";
+			});
+
+			output += "\ninstructions:\n"
+			var lastLineInfoIndex = -1;
+			frame.code.instructions.forEach((ins, index) => {
+				let line = frame.code.lineInfos[index];
+				if (lastLineInfoIndex != line.index) {
+					output += "\n";
+					lastLineInfoIndex = line.index;
+				}
+				output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+			});
+			output += "\n";
+		});
+		this.vmState.html(output);
+
+		/*let valueStack = $("#pb-debugger-valuestack")[0];
+		output = "stack:\n"
+		this.vm.stack.slice(0).reverse().forEach((value, index) => {
+			output += `   [${index}] = `+ JSON.stringify(value) + "\n";
+		})
+		valueStack.innerHTML = output;*/
 	}
 
 	onEvent(event: Event) {
@@ -258,6 +303,7 @@ export class Editor extends Widget {
 	private editor: CodeMirror.Editor;
 	private error: JQuery;
 	private markers = Array<TextMarker>();
+	private ext = new compiler.ExternalFunctions();
 
 	render (): HTMLElement {
 		let dom = $(/* html */`
@@ -286,13 +332,7 @@ export class Editor extends Widget {
 				this.bus.event(new SourceChanged(this.editor.getDoc().getValue(), module));
 			});
 
-			this.editor.getDoc().setValue(`
-fun fib(n: number): number
-	if n < 2 then return n end
-	return fib(n - 2) + fib(n - 1)
-end
-
-alert(fib(10))`.trim());
+			this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
 
 			let module = this.compile();
 			this.bus.event(new SourceChanged(this.editor.getDoc().getValue(), module));
@@ -307,7 +347,7 @@ alert(fib(10))`.trim());
 		this.markers.length = 0;
 
 		try {
-			let result = compiler.compile(this.editor.getDoc().getValue(), new compiler.ExternalFunctions());
+			let result = compiler.compile(this.editor.getDoc().getValue(), this.ext);
 			this.error.hide();
 			return result;
 		} catch (e) {
@@ -353,6 +393,8 @@ alert(fib(10))`.trim());
 				{line: event.startLine - 1, ch: event.startColumn - 1},
 				{line: event.endLine - 1, ch: event.endColumn - 1}
 			);
+		} else if (event instanceof AnnounceExternalFunctions) {
+			this.ext = event.functions;
 		}
 	}
 }
@@ -412,13 +454,6 @@ export class Playground extends Widget {
 		this.assets.loadImage("img/floor.png");
 		this.assets.loadImage("img/robot.png");
 		requestAnimationFrame(() => { this.draw(); });
-
-		let worldJson = window.localStorage.getItem("world-content");
-		if (worldJson) {
-			this.worldData = JSON.parse(worldJson);
-		} else {
-			this.worldData = new WorldData();
-		}
 
 		let tools = this.container.find("#pb-canvas-tools-editing input");
 		for (var i = 0; i < tools.length; i++) {
@@ -494,7 +529,6 @@ export class Playground extends Widget {
 				} else if (this.selectedTool == "Floor") {
 					this.world.setTile(x, y, null);
 				}
-				window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 			},
 			up: (x, y) => {
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
@@ -543,7 +577,6 @@ export class Playground extends Widget {
 						this.world.robot.turnLeft();
 					}
 				}
-				window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 			},
 			moved: (x, y) => {
 			},
@@ -560,27 +593,84 @@ export class Playground extends Widget {
 					this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
 					this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 				}
-				window.localStorage.setItem("world-content", JSON.stringify(this.world.data));
 			}
 		};
 		this.input.addListener(this.toolsHandler);
-
+		this.announceExternals();
 		return this.container[0];
+	}
+
+	announceExternals() {
+		let ext = new compiler.ExternalFunctions();
+
+		ext.addFunction("forward", [], "nothing", true, () => {
+			this.world.robot.setAction(this.world, RobotAction.Forward);
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			let check = () => {
+				if (this.world.robot.action == RobotAction.None) {
+					asyncResult.completed = true;
+					return;
+				}
+				requestAnimationFrame(check);
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+
+		ext.addFunction("turnLeft", [], "nothing", true, () => {
+			this.world.robot.setAction(this.world, RobotAction.TurnLeft);
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			let check = () => {
+				if (this.world.robot.action == RobotAction.None) {
+					asyncResult.completed = true;
+					return;
+				}
+				requestAnimationFrame(check);
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+
+		ext.addFunction("turnRight", [], "nothing", true, () => {
+			this.world.robot.setAction(this.world, RobotAction.TurnRight);
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			let check = () => {
+				if (this.world.robot.action == RobotAction.None) {
+					asyncResult.completed = true;
+					return;
+				}
+				requestAnimationFrame(check);
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+
+		this.bus.event(new AnnounceExternalFunctions(ext));
 	}
 
 	onEvent(event: Event) {
 		if (event instanceof Stop) {
 			this.input.addListener(this.toolsHandler);
-			$("#pb-canvas-tools-editing").show();
-			$("#pb-canvas-tools-running").hide();
+			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
+				setEnabled($(element), true);
+			});
 			this.world = new World(this.worldData);
 			this.isRunning = false;
 		} else if(event instanceof Run || event instanceof Debug) {
 			this.input.removeListener(this.toolsHandler);
-			$("#pb-canvas-tools-editing").hide();
-			$("#pb-canvas-tools-running").show();
+			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
+				setEnabled($(element), false);
+			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));
-			this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
 			this.isRunning = true;
 		}
 	}

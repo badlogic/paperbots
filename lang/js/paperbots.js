@@ -5359,8 +5359,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 context.continues.forEach(function (cont) { return cont.offset = conditionIndex_1; });
                 context.continues.length = 0;
                 instructions.push({ kind: "jump", offset: conditionIndex_1 });
-                lineInfos.push(lineInfos[lineInfos.length - 1]);
-                context.lineInfoIndex++;
+                lineInfos.push(lineInfos[conditionIndex_1]);
                 jumpPastBlock.offset = instructions.length;
                 context.breaks.forEach(function (br) { return br.offset = instructions.length; });
                 context.breaks.length = 0;
@@ -5381,9 +5380,9 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                 scopes.pop();
                 context.continues.forEach(function (cont) { return cont.offset = instructions.length; });
                 context.continues.length = 0;
-                lineInfos.push(lineInfos[lineInfos.length - 1]);
-                lineInfos.push(lineInfos[lineInfos.length - 1]);
-                lineInfos.push(lineInfos[lineInfos.length - 1]);
+                lineInfos.push(lineInfos[conditionIndex_2]);
+                lineInfos.push(lineInfos[conditionIndex_2]);
+                lineInfos.push(lineInfos[conditionIndex_2]);
                 instructions.push({ kind: "push", value: 1 });
                 instructions.push({ kind: "binaryOp", operator: "-" });
                 instructions.push({ kind: "jump", offset: conditionIndex_2 });
@@ -5521,10 +5520,6 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     return;
                 this.step();
             }
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
         };
         VirtualMachine.prototype.stepInto = function () {
             if (this.frames.length == 0)
@@ -6897,6 +6892,14 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         return Select;
     }());
     exports.Select = Select;
+    var AnnounceExternalFunctions = (function () {
+        function AnnounceExternalFunctions(functions) {
+            this.functions = functions;
+        }
+        return AnnounceExternalFunctions;
+    }());
+    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var DEFAULT_SOURCE = "\nwhile true do\n\tforward()\nend\n";
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -6950,13 +6953,14 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div>\n\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-debugger-label\">Parameters & Variables</div>\n\t\t\t\t<div id=\"pb-debugger-locals\">\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-debugger-label\">Callstack</div>\n\t\t\t\t<div id=\"pb-debugger-callstack\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div>\n\t\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">Parameters & Variables</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">Callstack</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.stepOver = dom.find("#pb-debugger-step-over");
             this.stepInto = dom.find("#pb-debugger-step-into");
             this.locals = dom.find("#pb-debugger-locals");
             this.callstack = dom.find("#pb-debugger-callstack");
+            this.vmState = dom.find("#pb-debugger-vm");
             this.run.click(function () {
                 if (_this.run.val() == "Run") {
                     _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
@@ -7015,8 +7019,11 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         };
         Debugger.prototype.renderState = function () {
             var _this = this;
+            if (!this.locals)
+                return;
             this.locals.empty();
             this.callstack.empty();
+            this.vmState.empty();
             if (this.vm && this.vm.frames.length > 0) {
                 this.vm.frames.slice(0).reverse().forEach(function (frame) {
                     var signature = compiler.functionSignature(frame.code.ast);
@@ -7032,16 +7039,41 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     });
                     _this.callstack.append(dom);
                 });
-                this.selectedFrame.slots.forEach(function (slot) {
-                    var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
-                    dom.click(function () {
-                        var location = slot.symbol.name.location;
-                        _this.bus.event(new Select(location.start.line, location.start.column, location.end.line, location.end.column));
+                if (this.selectedFrame) {
+                    this.selectedFrame.slots.forEach(function (slot) {
+                        var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
+                        dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+                        dom.click(function () {
+                            var location = slot.symbol.name.location;
+                            _this.bus.event(new Select(location.start.line, location.start.column, location.end.line, location.end.column));
+                        });
+                        _this.locals.append(dom);
                     });
-                    _this.locals.append(dom);
-                });
+                }
+                this.renderVmState(this.vm);
             }
+        };
+        Debugger.prototype.renderVmState = function (vm) {
+            var output = "";
+            this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                output += compiler.functionSignature(frame.code.ast);
+                output += "\nlocals:\n";
+                frame.slots.forEach(function (slot, index) {
+                    output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
+                });
+                output += "\ninstructions:\n";
+                var lastLineInfoIndex = -1;
+                frame.code.instructions.forEach(function (ins, index) {
+                    var line = frame.code.lineInfos[index];
+                    if (lastLineInfoIndex != line.index) {
+                        output += "\n";
+                        lastLineInfoIndex = line.index;
+                    }
+                    output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+                });
+                output += "\n";
+            });
+            this.vmState.html(output);
         };
         Debugger.prototype.onEvent = function (event) {
             var _a = this, run = _a.run, debug = _a.debug, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
@@ -7087,6 +7119,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         function Editor() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.markers = Array();
+            _this.ext = new compiler.ExternalFunctions();
             return _this;
         }
         Editor.prototype.render = function () {
@@ -7110,7 +7143,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     var module = _this.compile();
                     _this.bus.event(new SourceChanged(_this.editor.getDoc().getValue(), module));
                 });
-                _this.editor.getDoc().setValue("\nfun fib(n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\n\nalert(fib(10))".trim());
+                _this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
                 var module = _this.compile();
                 _this.bus.event(new SourceChanged(_this.editor.getDoc().getValue(), module));
             });
@@ -7122,7 +7155,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             this.markers.forEach(function (marker) { return marker.clear(); });
             this.markers.length = 0;
             try {
-                var result = compiler.compile(this.editor.getDoc().getValue(), new compiler.ExternalFunctions());
+                var result = compiler.compile(this.editor.getDoc().getValue(), this.ext);
                 this.error.hide();
                 return result;
             }
@@ -7164,6 +7197,9 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             else if (event instanceof Select) {
                 this.editor.getDoc().setSelection({ line: event.startLine - 1, ch: event.startColumn - 1 }, { line: event.endLine - 1, ch: event.endColumn - 1 });
             }
+            else if (event instanceof AnnounceExternalFunctions) {
+                this.ext = event.functions;
+            }
         };
         return Editor;
     }(Widget));
@@ -7195,13 +7231,6 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             this.assets.loadImage("img/floor.png");
             this.assets.loadImage("img/robot.png");
             requestAnimationFrame(function () { _this.draw(); });
-            var worldJson = window.localStorage.getItem("world-content");
-            if (worldJson) {
-                this.worldData = JSON.parse(worldJson);
-            }
-            else {
-                this.worldData = new World_1.WorldData();
-            }
             var tools = this.container.find("#pb-canvas-tools-editing input");
             for (var i = 0; i < tools.length; i++) {
                 $(tools[i]).click(function (tool) {
@@ -7277,7 +7306,6 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     else if (_this.selectedTool == "Floor") {
                         _this.world.setTile(x, y, null);
                     }
-                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                 },
                 up: function (x, y) {
                     var cellSize = _this.canvas.clientWidth / (World_1.World.WORLD_SIZE + 1);
@@ -7332,7 +7360,6 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                             _this.world.robot.turnLeft();
                         }
                     }
-                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                 },
                 moved: function (x, y) {
                 },
@@ -7350,26 +7377,80 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                         _this.world.robot.data.x = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, x));
                         _this.world.robot.data.y = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, y));
                     }
-                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
                 }
             };
             this.input.addListener(this.toolsHandler);
+            this.announceExternals();
             return this.container[0];
+        };
+        Playground.prototype.announceExternals = function () {
+            var _this = this;
+            var ext = new compiler.ExternalFunctions();
+            ext.addFunction("forward", [], "nothing", true, function () {
+                _this.world.robot.setAction(_this.world, World_1.RobotAction.Forward);
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var check = function () {
+                    if (_this.world.robot.action == World_1.RobotAction.None) {
+                        asyncResult.completed = true;
+                        return;
+                    }
+                    requestAnimationFrame(check);
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("turnLeft", [], "nothing", true, function () {
+                _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnLeft);
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var check = function () {
+                    if (_this.world.robot.action == World_1.RobotAction.None) {
+                        asyncResult.completed = true;
+                        return;
+                    }
+                    requestAnimationFrame(check);
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("turnRight", [], "nothing", true, function () {
+                _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnRight);
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var check = function () {
+                    if (_this.world.robot.action == World_1.RobotAction.None) {
+                        asyncResult.completed = true;
+                        return;
+                    }
+                    requestAnimationFrame(check);
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            this.bus.event(new AnnounceExternalFunctions(ext));
         };
         Playground.prototype.onEvent = function (event) {
             if (event instanceof Stop) {
                 this.input.addListener(this.toolsHandler);
-                $("#pb-canvas-tools-editing").show();
-                $("#pb-canvas-tools-running").hide();
+                this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
+                    setEnabled($(element), true);
+                });
                 this.world = new World_1.World(this.worldData);
                 this.isRunning = false;
             }
             else if (event instanceof Run || event instanceof Debug) {
                 this.input.removeListener(this.toolsHandler);
-                $("#pb-canvas-tools-editing").hide();
-                $("#pb-canvas-tools-running").show();
+                this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
+                    setEnabled($(element), false);
+                });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
-                this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
                 this.isRunning = true;
             }
         };

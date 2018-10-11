@@ -1001,8 +1001,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 
 			// Emit jump to the loop header
 			instructions.push({ kind: "jump", offset: conditionIndex });
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
-			context.lineInfoIndex++;
+			lineInfos.push(lineInfos[conditionIndex]);
 
 			// Patch in the address of the first instruction after the loop body
 			jumpPastBlock.offset = instructions.length;
@@ -1038,9 +1037,9 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			context.continues.length = 0
 
 			// decrease the count and jump to the loop header
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
+			lineInfos.push(lineInfos[conditionIndex]);
+			lineInfos.push(lineInfos[conditionIndex]);
+			lineInfos.push(lineInfos[conditionIndex]);
 			instructions.push({ kind: "push", value: 1});
 			instructions.push({ kind: "binaryOp", operator: "-" });
 			instructions.push({ kind: "jump", offset: conditionIndex });
@@ -1290,9 +1289,6 @@ export class VirtualMachine {
 
 			this.step();
 		}
-
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
 	}
 
 	stepInto () {

@@ -649,7 +649,12 @@ export class Playground extends Widget {
 				completed: false,
 				value: null
 			}
+			var num = 3;
 			let check = () => {
+				if (num-- > 0) {
+					requestAnimationFrame(check);
+					return;
+				}
 				asyncResult.completed = true;
 			}
 			requestAnimationFrame(check);

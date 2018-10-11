@@ -7399,7 +7399,12 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     completed: false,
                     value: null
                 };
+                var num = 3;
                 var check = function () {
+                    if (num-- > 0) {
+                        requestAnimationFrame(check);
+                        return;
+                    }
                     asyncResult.completed = true;
                 };
                 requestAnimationFrame(check);

@@ -5,62 +5,152 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="js/jquery.js"></script>
 	<script src="js/codemirror.js"></script>
-	<script src="js/active-line.js"></script>
 	<script src="js/paperbots-cm.js"></script>
+	<script src="js/active-line.js"></script>
 	<script src="js/require.js"></script>
 	<script src="js/paperbots.js"></script>
 	<link rel="stylesheet" type="text/css" href="css/codemirror.css" />
-	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
-<body>
+<style>
+html {
+	box-sizing: border-box;
+}
 
-	<h1>Paperbots</h1>
+body {
+	background: #dddddd;
+	color: 333333;
+	margin: 0;
+	padding: 20px;
+	font-family: Arial, Helvetica, sans-serif;
+}
 
-	<div class="pb-container">
-		<div id="pb-editor-container">
-			<div id="pb-editor-tools">
-				<div id="pb-editor-tools-editing">
-					<input type="button" id="pb-run" value="Run">
-					<!-- <input type="button" id="pb-save" value="Save">
-					<input type="button" id="pb-load" value="Load"> -->
-				</div>
-				<div id="pb-editor-tools-running" style="display:none;">
-					<input type="button" id="pb-stop" value="Stop">
-				</div>
-			</div>
-			<div id="pb-editor"></div>
-			<pre id="pb-output" disabled></pre>
-		</div>
-		<div style="padding: 10px"></div>
-		<div id="pb-canvas-container">
-			<div id="pb-canvas-tools">
-				<div id="pb-canvas-tools-editing">
-					<input type="button" value="Robot" class="selected">
-					<input type="button" value="Floor">
-					<input type="button" value="Wall">
-					<input type="button" value="Number">
-					<input type="button" value="Letter">
-				</div>
-				<div id="pb-canvas-tools-running" style="display:none;">
-					<input type="button" value="forward()">
-					<input type="button" value="turnLeft()">
-					<input type="button" value="turnRight()">
-					<input type="button" value="print()">
-					<input type="button" value="scan()">
-				</div>
-			</div>
-			<canvas id="pb-canvas"></canvas>
-		</div>
-	</div>
+#pb-main {
+	width: 100%;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
 
+#pb-canvas-container {
+	user-select: none;
+}
+
+#pb-debugger input[disabled] {
+	color: #888888;
+}
+
+#pb-editor-and-debugger {
+	display: flex;
+	height: 100%;
+	width: 100%;
+}
+
+#pb-code-editor {
+	width: 60%;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+#pb-debugger {
+	width: 40%;
+	height: 100%;
+	padding: 0 1em 0 1em;
+	display: flex;
+	flex-direction: row;
+}
+
+#pb-debugger-locals-callstack {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+#pb-debugger-locals {
+	flex: 1;
+	background: #ffffff;
+	overflow: auto;
+}
+
+#pb-debugger-callstack {
+	flex: 1;
+	background: #ffffff;
+	overflow: auto;
+}
+
+.pb-debugger-label {
+	margin: 0.4em 0 0.4em 0;
+	font-size: 0.8em;
+}
+
+.pb-debugger-callstack-frame {
+	padding: 0 1em 0 1em;
+	font-size: 0.8em;
+}
+
+.pb-debugger-local {
+	padding: 0 1em 0 1em;
+	font-size: 0.8em;
+}
+
+#pb-debugger-vm {
+	/*display: none;*/
+	flex: 1;
+	overflow: auto;
+	margin: 1em 0 0 1em;
+	font-family: monospace;
+	font-size: 0.8em;
+	background: #fff;
+	color: #000;
+	white-space: pre;
+}
+
+.selected {
+	background: rgba(76, 175, 80, 0.32);
+}
+
+#pb-code-editor-code-mirror {
+	width: 100%;
+	flex: 1;
+	overflow: auto;
+}
+
+#pb-code-editor-error {
+	font-family: monospace;
+	overflow: auto;
+	background: #cc0000;
+	color: #eeeeee;
+	padding: 1em;
+}
+
+#pb-canvas {
+	width: 512px;
+	height: 512px;
+}
+
+/* CodeMirror styles */
+.CodeMirror {
+	width: 100%;
+	height: 100%;
+}
+
+.gutter-breakpoints {
+	width: 16px;
+}
+
+.highlighted-line {
+	background:lightcoral;
+}
+
+.compiler-error {
+	text-decoration: underline red;
+}
+</style>
+<body style="height: 100vh; padding: 0;">
 	<script>
 		require(["Paperbots"], function(module) {
-			var paperbots = module.paperbots;
-			var editor = new paperbots.Paperbots(
-				document.getElementById("pb-canvas-container"),
-				document.getElementById("pb-editor"),
-				document.getElementById("pb-output")
-			);
+			var paperbots = module;
+			var editor = new paperbots.Paperbots2($("body"));
 		});
 	</script>
 </body>

@@ -680,6 +680,13 @@ export class Playground extends Widget {
 			return tile && tile.kind == "wall";
 		});
 
+		ext.addFunction("isNumberAhead", [], "boolean", false, () => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			return tile && tile.kind == "number";
+		});
+
 		this.bus.event(new AnnounceExternalFunctions(ext));
 	}
 

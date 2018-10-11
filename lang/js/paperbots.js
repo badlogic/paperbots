@@ -6701,6 +6701,12 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler", "World"], functi
                 var tile = _this.world.getTile(x, y);
                 return tile && tile.kind == "wall";
             });
+            ext.addFunction("isNumberAhead", [], "boolean", false, function () {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                return tile && tile.kind == "number";
+            });
             this.bus.event(new AnnounceExternalFunctions(ext));
         };
         Playground.prototype.onEvent = function (event) {

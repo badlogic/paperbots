@@ -1,4 +1,4 @@
-import {TextMarker} from "../node_modules/@types/codemirror/index";
+import {TextMarker} from "codemirror";
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import * as compiler from "./Compiler";
 import {World, Robot, RobotAction, RobotData, WorldData, WorldObject} from "./World";
@@ -247,6 +247,7 @@ export class Debugger extends Widget {
 
 			if (this.selectedFrame) {
 				this.selectedFrame.slots.forEach(slot => {
+					if (slot.value == null) return;
 					let dom = $(/*html*/`
 						<div class="pb-debugger-local">
 						</div>

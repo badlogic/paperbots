@@ -6317,6 +6317,8 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler", "World"], functi
                 });
                 if (this.selectedFrame) {
                     this.selectedFrame.slots.forEach(function (slot) {
+                        if (slot.value == null)
+                            return;
                         var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
                         dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
                         dom.click(function () {

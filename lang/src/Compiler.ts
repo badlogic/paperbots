@@ -275,6 +275,101 @@ export class ExternalFunctions {
 	functions = new Array<ExternalFunction>();
 	lookup: Map<ExternalFunction> = {};
 
+	constructor() {
+		let externals = this;
+		externals.addFunction(
+			"alert",
+			[new ExternalFunctionParameter("message", "string")],
+			"nothing",
+			false,
+			(message: string) => { alert(message); }
+		)
+		externals.addFunction(
+			"alert",
+			[new ExternalFunctionParameter("message", "number")],
+			"nothing",
+			false,
+			(message: number) => { alert(message); }
+		)
+		externals.addFunction(
+			"alert",
+			[new ExternalFunctionParameter("message", "boolean")],
+			"nothing",
+			false,
+			(message: boolean) => { alert(message); }
+		)
+		externals.addFunction(
+			"print",
+			[new ExternalFunctionParameter("value", "number")],
+			"nothing",
+			false,
+			(message: string) => { console.log(message); }
+		)
+		externals.addFunction(
+			"print",
+			[new ExternalFunctionParameter("value", "boolean")],
+			"nothing",
+			false,
+			(message: string) => { console.log(message); }
+		)
+		externals.addFunction(
+			"print",
+			[new ExternalFunctionParameter("value", "string")],
+			"nothing",
+			false,
+			(message: string) => { console.log(message); }
+		)
+		externals.addFunction(
+			"toString",
+			[new ExternalFunctionParameter("value", "number")],
+			"string",
+			false,
+			(value: string) => { return "" + value; }
+		)
+		externals.addFunction(
+			"toString",
+			[new ExternalFunctionParameter("value", "boolean")],
+			"string",
+			false,
+			(value: string) => { return "" + value; }
+		)
+		externals.addFunction(
+			"length",
+			[new ExternalFunctionParameter("value", "string")],
+			"number",
+			false,
+			(value: string) => { return value.length; }
+		)
+		externals.addFunction(
+			"charAt",
+			[
+				new ExternalFunctionParameter("value", "string"),
+				new ExternalFunctionParameter("index", "number")
+			],
+			"string",
+			false,
+			(value: string, index: number) => { return value.charAt(index); }
+		)
+
+		externals.addFunction(
+			"wait",
+			[new ExternalFunctionParameter("milliSeconds", "number")],
+			"number",
+			true,
+			(milliSeconds: number) => {
+				let promise: AsyncPromise<number> = {
+					completed: false,
+					value: 0
+				}
+				setTimeout(() => {
+					promise.value = milliSeconds;
+					promise.completed = true;
+				}, milliSeconds);
+				return promise;
+			}
+		)
+	}
+
 	addFunction(name: string, args: Array<ExternalFunctionParameter>, returnTypeName: string, async: boolean, fun: (...args: any[]) => any) {
 		let index = this.functions.length;
 		let extFun = new ExternalFunction(name, args, returnTypeName, async, fun, index)

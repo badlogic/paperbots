@@ -4743,6 +4743,31 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
         function ExternalFunctions() {
             this.functions = new Array();
             this.lookup = {};
+            var externals = this;
+            externals.addFunction("alert", [new ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
+            externals.addFunction("alert", [new ExternalFunctionParameter("message", "number")], "nothing", false, function (message) { alert(message); });
+            externals.addFunction("alert", [new ExternalFunctionParameter("message", "boolean")], "nothing", false, function (message) { alert(message); });
+            externals.addFunction("print", [new ExternalFunctionParameter("value", "number")], "nothing", false, function (message) { console.log(message); });
+            externals.addFunction("print", [new ExternalFunctionParameter("value", "boolean")], "nothing", false, function (message) { console.log(message); });
+            externals.addFunction("print", [new ExternalFunctionParameter("value", "string")], "nothing", false, function (message) { console.log(message); });
+            externals.addFunction("toString", [new ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
+            externals.addFunction("toString", [new ExternalFunctionParameter("value", "boolean")], "string", false, function (value) { return "" + value; });
+            externals.addFunction("length", [new ExternalFunctionParameter("value", "string")], "number", false, function (value) { return value.length; });
+            externals.addFunction("charAt", [
+                new ExternalFunctionParameter("value", "string"),
+                new ExternalFunctionParameter("index", "number")
+            ], "string", false, function (value, index) { return value.charAt(index); });
+            externals.addFunction("wait", [new ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
+                var promise = {
+                    completed: false,
+                    value: 0
+                };
+                setTimeout(function () {
+                    promise.value = milliSeconds;
+                    promise.completed = true;
+                }, milliSeconds);
+                return promise;
+            });
         }
         ExternalFunctions.prototype.addFunction = function (name, args, returnTypeName, async, fun) {
             var index = this.functions.length;
@@ -6655,5 +6680,824 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler"], function (requi
         }());
         paperbots_1.Canvas = Canvas;
     })(paperbots = exports.paperbots || (exports.paperbots = {}));
+});
+define("World", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var RobotAction;
+    (function (RobotAction) {
+        RobotAction[RobotAction["Forward"] = 0] = "Forward";
+        RobotAction[RobotAction["TurnLeft"] = 1] = "TurnLeft";
+        RobotAction[RobotAction["TurnRight"] = 2] = "TurnRight";
+        RobotAction[RobotAction["None"] = 3] = "None";
+    })(RobotAction = exports.RobotAction || (exports.RobotAction = {}));
+    var RobotData = (function () {
+        function RobotData(x, y, dirX, dirY, angle) {
+            if (x === void 0) { x = 0; }
+            if (y === void 0) { y = 15; }
+            if (dirX === void 0) { dirX = 1; }
+            if (dirY === void 0) { dirY = 0; }
+            if (angle === void 0) { angle = 0; }
+            this.x = x;
+            this.y = y;
+            this.dirX = dirX;
+            this.dirY = dirY;
+            this.angle = angle;
+        }
+        return RobotData;
+    }());
+    exports.RobotData = RobotData;
+    var Robot = (function () {
+        function Robot(data) {
+            this.data = data;
+            this.action = RobotAction.None;
+            this.actionTime = 0;
+            this.startX = 0;
+            this.startY = 0;
+            this.targetX = 0;
+            this.targetY = 0;
+            this.startAngle = 0;
+            this.targetAngle = 0;
+        }
+        Robot.prototype.turnLeft = function () {
+            this.data.angle = this.data.angle - 90;
+            var temp = this.data.dirX;
+            this.data.dirX = -this.data.dirY;
+            this.data.dirY = temp;
+        };
+        Robot.prototype.setAction = function (world, action) {
+            if (this.action != RobotAction.None) {
+                throw new Error("Can't set action while robot is executing previous action.");
+            }
+            this.action = action;
+            switch (action) {
+                case RobotAction.Forward:
+                    this.startX = this.data.x;
+                    this.startY = this.data.y;
+                    this.targetX = this.data.x + this.data.dirX;
+                    this.targetY = this.data.y + this.data.dirY;
+                    console.log(this.targetX + ", " + this.targetY);
+                    var tile = world.getTile(this.targetX, this.targetY);
+                    if (tile && tile.kind == "wall") {
+                        this.targetX = this.startX;
+                        this.targetY = this.startY;
+                    }
+                    break;
+                case RobotAction.TurnLeft: {
+                    this.startAngle = this.data.angle;
+                    this.targetAngle = this.data.angle - 90;
+                    var temp = this.data.dirX;
+                    this.data.dirX = -this.data.dirY;
+                    this.data.dirY = temp;
+                    console.log(this.targetAngle);
+                    break;
+                }
+                case RobotAction.TurnRight: {
+                    this.startAngle = this.data.angle;
+                    this.targetAngle = this.data.angle + 90;
+                    var temp = this.data.dirX;
+                    this.data.dirX = this.data.dirY;
+                    this.data.dirY = -temp;
+                    console.log(this.targetAngle);
+                    break;
+                }
+            }
+            this.actionTime = 0;
+        };
+        Robot.prototype.update = function (delta) {
+            this.actionTime += delta;
+            switch (this.action) {
+                case RobotAction.Forward: {
+                    var percentage = this.actionTime / Robot.FORWARD_DURATION;
+                    if (percentage >= 1) {
+                        this.action = RobotAction.None;
+                        this.data.x = this.targetX;
+                        this.data.y = this.targetY;
+                    }
+                    else {
+                        this.data.x = this.startX + (this.targetX - this.startX) * percentage;
+                        this.data.y = this.startY + (this.targetY - this.startY) * percentage;
+                    }
+                    break;
+                }
+                case RobotAction.TurnLeft:
+                case RobotAction.TurnRight: {
+                    var percentage = this.actionTime / Robot.TURN_DURATION;
+                    if (percentage >= 1) {
+                        this.action = RobotAction.None;
+                        this.data.angle = this.targetAngle;
+                    }
+                    else {
+                        this.data.angle = this.startAngle + (this.targetAngle - this.startAngle) * percentage;
+                    }
+                    break;
+                }
+            }
+            return this.action == RobotAction.None;
+        };
+        Robot.FORWARD_DURATION = 0.25;
+        Robot.TURN_DURATION = 0.25;
+        return Robot;
+    }());
+    exports.Robot = Robot;
+    var WorldData = (function () {
+        function WorldData(tiles, robot) {
+            if (tiles === void 0) { tiles = Array(16 * 16); }
+            if (robot === void 0) { robot = new RobotData(); }
+            this.tiles = tiles;
+            this.robot = robot;
+        }
+        return WorldData;
+    }());
+    exports.WorldData = WorldData;
+    var World = (function () {
+        function World(data) {
+            this.data = data;
+            this.robot = new Robot(data.robot);
+        }
+        World.prototype.getTile = function (x, y) {
+            x = x | 0;
+            y = y | 0;
+            if (x < 0 || x >= World.WORLD_SIZE)
+                return World.newWall();
+            if (y < 0 || y >= World.WORLD_SIZE)
+                return World.newWall();
+            return this.data.tiles[x + y * World.WORLD_SIZE];
+        };
+        World.prototype.setTile = function (x, y, tile) {
+            x = x | 0;
+            y = y | 0;
+            if (x < 0 || x >= World.WORLD_SIZE)
+                return;
+            if (y < 0 || y >= World.WORLD_SIZE)
+                return;
+            this.data.tiles[x + y * World.WORLD_SIZE] = tile;
+        };
+        World.prototype.update = function (delta) {
+            this.robot.update(delta);
+        };
+        World.newWall = function () { return { kind: "wall" }; };
+        World.newNumber = function (value) { return { kind: "number", value: value }; };
+        World.newLetter = function (value) { return { kind: "letter", value: value }; };
+        World.WORLD_SIZE = 16;
+        return World;
+    }());
+    exports.World = World;
+});
+define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], function (require, exports, Utils_2, compiler, World_1) {
+    "use strict";
+    exports.__esModule = true;
+    var SourceChanged = (function () {
+        function SourceChanged(source, module) {
+            this.source = source;
+            this.module = module;
+        }
+        return SourceChanged;
+    }());
+    exports.SourceChanged = SourceChanged;
+    var Run = (function () {
+        function Run() {
+        }
+        return Run;
+    }());
+    exports.Run = Run;
+    var Debug = (function () {
+        function Debug() {
+        }
+        return Debug;
+    }());
+    exports.Debug = Debug;
+    var Step = (function () {
+        function Step(line) {
+            this.line = line;
+        }
+        return Step;
+    }());
+    exports.Step = Step;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
+    var LineChange = (function () {
+        function LineChange(line) {
+            this.line = line;
+        }
+        return LineChange;
+    }());
+    exports.LineChange = LineChange;
+    var Select = (function () {
+        function Select(startLine, startColumn, endLine, endColumn) {
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
+        }
+        return Select;
+    }());
+    exports.Select = Select;
+    var EventBus = (function () {
+        function EventBus() {
+            this.listeners = new Array();
+        }
+        EventBus.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        EventBus.prototype.event = function (event) {
+            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        };
+        return EventBus;
+    }());
+    exports.EventBus = EventBus;
+    var Widget = (function () {
+        function Widget(bus) {
+            this.bus = bus;
+        }
+        return Widget;
+    }());
+    exports.Widget = Widget;
+    var Paperbots2 = (function () {
+        function Paperbots2(parent) {
+            this.eventBus = new EventBus();
+            this.editor = new Editor(this.eventBus);
+            this["debugger"] = new Debugger(this.eventBus);
+            this.playground = new Playground(this.eventBus);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.editor);
+            this.eventBus.addListener(this["debugger"]);
+            this.eventBus.addListener(this.playground);
+            var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
+            dom.append(this.playground.render());
+            var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
+            editorAndDebugger.append(this.editor.render());
+            editorAndDebugger.append(this["debugger"].render());
+            dom.append(editorAndDebugger);
+            $(parent).append(dom);
+        }
+        Paperbots2.prototype.onEvent = function (event) {
+        };
+        return Paperbots2;
+    }());
+    exports.Paperbots2 = Paperbots2;
+    var Debugger = (function (_super) {
+        __extends(Debugger, _super);
+        function Debugger() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.lastModule = null;
+            _this.selectedFrame = null;
+            return _this;
+        }
+        Debugger.prototype.render = function () {
+            var _this = this;
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div>\n\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-debugger-label\">Parameters & Variables</div>\n\t\t\t\t<div id=\"pb-debugger-locals\">\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-debugger-label\">Callstack</div>\n\t\t\t\t<div id=\"pb-debugger-callstack\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            this.run = dom.find("#pb-debugger-run");
+            this.debug = dom.find("#pb-debugger-debug");
+            this.stepOver = dom.find("#pb-debugger-step-over");
+            this.stepInto = dom.find("#pb-debugger-step-into");
+            this.locals = dom.find("#pb-debugger-locals");
+            this.callstack = dom.find("#pb-debugger-callstack");
+            this.run.click(function () {
+                if (_this.run.val() == "Run") {
+                    _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                    ;
+                    _this.run.val("Stop");
+                    setEnabled(_this.debug, false);
+                    _this.bus.event(new Run());
+                    var advance_2 = function () {
+                        if (!_this.vm)
+                            return;
+                        _this.vm.run(1000);
+                        if (_this.vm.state == compiler.VMState.Completed) {
+                            _this.bus.event(new Stop());
+                            return;
+                        }
+                        requestAnimationFrame(advance_2);
+                    };
+                    requestAnimationFrame(advance_2);
+                }
+                else {
+                    _this.bus.event(new Stop());
+                }
+            });
+            this.debug.click(function () {
+                if (_this.debug.val() == "Debug") {
+                    _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                    _this.debug.val("Stop");
+                    setEnabled(_this.run, false);
+                    setEnabled(_this.stepOver, true);
+                    setEnabled(_this.stepInto, true);
+                    _this.bus.event(new Debug());
+                    _this.bus.event(new Step(_this.vm.getLineNumber()));
+                }
+                else {
+                    _this.bus.event(new Stop());
+                }
+            });
+            this.stepOver.click(function () {
+                _this.vm.stepOver();
+                _this.bus.event(new Step(_this.vm.getLineNumber()));
+                if (_this.vm.state == compiler.VMState.Completed) {
+                    _this.bus.event(new Stop());
+                    return;
+                }
+            });
+            this.stepInto.click(function () {
+                _this.vm.stepInto();
+                _this.bus.event(new Step(_this.vm.getLineNumber()));
+                if (_this.vm.state == compiler.VMState.Completed) {
+                    _this.bus.event(new Stop());
+                    return;
+                }
+            });
+            dom.find("input").attr("disabled", "true");
+            return dom[0];
+        };
+        Debugger.prototype.renderState = function () {
+            var _this = this;
+            this.locals.empty();
+            this.callstack.empty();
+            if (this.vm && this.vm.frames.length > 0) {
+                this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                    var signature = compiler.functionSignature(frame.code.ast);
+                    var lineInfo = frame.code.lineInfos[frame.pc];
+                    var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-callstack-frame\">\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    dom.text(signature + " line " + lineInfo.line);
+                    if (frame == _this.selectedFrame)
+                        dom.addClass("selected");
+                    dom.click(function () {
+                        _this.selectedFrame = frame;
+                        _this.bus.event(new LineChange(lineInfo.line));
+                        _this.renderState();
+                    });
+                    _this.callstack.append(dom);
+                });
+                this.selectedFrame.slots.forEach(function (slot) {
+                    var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+                    dom.click(function () {
+                        var location = slot.symbol.name.location;
+                        _this.bus.event(new Select(location.start.line, location.start.column, location.end.line, location.end.column));
+                    });
+                    _this.locals.append(dom);
+                });
+            }
+        };
+        Debugger.prototype.onEvent = function (event) {
+            var _a = this, run = _a.run, debug = _a.debug, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
+            if (event instanceof SourceChanged) {
+                if (event.module) {
+                    this.lastModule = event.module;
+                    setEnabled(this.run, true);
+                    setEnabled(this.debug, true);
+                }
+                else {
+                    this.lastModule = null;
+                    this.vm = null;
+                    dom.find("input").attr("disabled", "true");
+                }
+            }
+            else if (event instanceof Stop) {
+                this.run.val("Run");
+                this.debug.val("Debug");
+                setEnabled(this.run, true);
+                setEnabled(this.debug, true);
+                setEnabled(this.stepOver, false);
+                setEnabled(this.stepInto, false);
+                this.vm = null;
+            }
+            else if (event instanceof Step) {
+                if (this.vm && this.vm.frames.length > 0) {
+                    this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
+                }
+            }
+            this.renderState();
+        };
+        return Debugger;
+    }(Widget));
+    exports.Debugger = Debugger;
+    function setEnabled(el, enabled) {
+        if (enabled)
+            el.removeAttr("disabled");
+        else
+            el.attr("disabled", "true");
+    }
+    var Editor = (function (_super) {
+        __extends(Editor, _super);
+        function Editor() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.markers = Array();
+            return _this;
+        }
+        Editor.prototype.render = function () {
+            var _this = this;
+            var dom = $("\n\t\t\t<div id=\"pb-code-editor\">\n\t\t\t\t<div id=\"pb-code-editor-code-mirror\"></div>\n\t\t\t\t<div id=\"pb-code-editor-error\"></div>\n\t\t\t</div>\n\t\t");
+            requestAnimationFrame(function () {
+                _this.editor = CodeMirror(dom.find("#pb-code-editor-code-mirror")[0], {
+                    tabSize: 3,
+                    indentUnit: 3,
+                    indentWithTabs: true,
+                    styleActiveLine: true,
+                    styleActiveSelected: true,
+                    lineNumbers: true,
+                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
+                    fixedGutter: true,
+                    extraKeys: {
+                        "Tab": "indentAuto"
+                    }
+                });
+                _this.editor.on("change", function (instance, change) {
+                    var module = _this.compile();
+                    _this.bus.event(new SourceChanged(_this.editor.getDoc().getValue(), module));
+                });
+                _this.editor.getDoc().setValue("\nfun fib(n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\n\nalert(fib(10))".trim());
+                var module = _this.compile();
+                _this.bus.event(new SourceChanged(_this.editor.getDoc().getValue(), module));
+            });
+            this.error = dom.find("#pb-code-editor-error");
+            this.error.hide();
+            return dom[0];
+        };
+        Editor.prototype.compile = function () {
+            this.markers.forEach(function (marker) { return marker.clear(); });
+            this.markers.length = 0;
+            try {
+                var result = compiler.compile(this.editor.getDoc().getValue(), new compiler.ExternalFunctions());
+                this.error.hide();
+                return result;
+            }
+            catch (e) {
+                this.error.show();
+                if (e["location"]) {
+                    var err = e;
+                    var loc = err.location;
+                    var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
+                    var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
+                    this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
+                    this.error.html("Error in line " + loc.start.line + ", column " + loc.start.column + ": " + err.message);
+                }
+                else {
+                    var err = e;
+                    this.error.html(err.message + (err.stack ? err.stack : ""));
+                }
+                return null;
+            }
+        };
+        Editor.prototype.newBreakpointMarker = function () {
+            var marker = $("\n\t\t<svg height=\"15\" width=\"15\">\n\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t  </svg>\n\t\t");
+            return marker[0];
+        };
+        Editor.prototype.setLine = function (line) {
+            this.editor.getDoc().setCursor(line, 1);
+        };
+        Editor.prototype.onEvent = function (event) {
+            if (event instanceof Run || event instanceof Debug) {
+                this.editor.setOption("readOnly", true);
+            }
+            else if (event instanceof Stop) {
+                this.editor.setOption("readOnly", false);
+                this.editor.focus();
+            }
+            else if (event instanceof Step || event instanceof LineChange) {
+                this.setLine(event.line - 1);
+            }
+            else if (event instanceof Select) {
+                this.editor.getDoc().setSelection({ line: event.startLine - 1, ch: event.startColumn - 1 }, { line: event.endLine - 1, ch: event.endColumn - 1 });
+            }
+        };
+        return Editor;
+    }(Widget));
+    exports.Editor = Editor;
+    function assertNever(x) {
+        throw new Error("Unexpected object: " + x);
+    }
+    var Playground = (function (_super) {
+        __extends(Playground, _super);
+        function Playground(bus) {
+            var _this = _super.call(this, bus) || this;
+            _this.assets = new Utils_2.AssetManager();
+            _this.selectedTool = "Robot";
+            _this.lastWidth = 0;
+            _this.cellSize = 0;
+            _this.drawingSize = 0;
+            _this.time = new Utils_2.TimeKeeper();
+            _this.isRunning = false;
+            _this.worldData = new World_1.WorldData();
+            _this.world = new World_1.World(_this.worldData);
+            return _this;
+        }
+        Playground.prototype.render = function () {
+            var _this = this;
+            this.container = $("\n\t\t\t<div id=\"pb-canvas-container\">\n\t\t\t\t<div id=\"pb-canvas-tools\">\n\t\t\t\t\t<div id=\"pb-canvas-tools-editing\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div id=\"pb-canvas-tools-running\" style=\"display:none;\">\n\t\t\t\t\t\t<input type=\"button\" value=\"forward()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"turnLeft()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"turnRight()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"print()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"scan()\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
+            this.canvas = this.container.find("#pb-canvas")[0];
+            this.ctx = this.canvas.getContext("2d");
+            this.assets.loadImage("img/wall.png");
+            this.assets.loadImage("img/floor.png");
+            this.assets.loadImage("img/robot.png");
+            requestAnimationFrame(function () { _this.draw(); });
+            var worldJson = window.localStorage.getItem("world-content");
+            if (worldJson) {
+                this.worldData = JSON.parse(worldJson);
+            }
+            else {
+                this.worldData = new World_1.WorldData();
+            }
+            var tools = this.container.find("#pb-canvas-tools-editing input");
+            for (var i = 0; i < tools.length; i++) {
+                $(tools[i]).click(function (tool) {
+                    var value = tool.target.value;
+                    tools.removeClass("selected");
+                    $(tool.target).addClass("selected");
+                    _this.selectedTool = value;
+                });
+            }
+            var functions = this.container.find("#pb-canvas-tools-running input");
+            for (var i = 0; i < functions.length; i++) {
+                $(functions[i]).click(function (fun) {
+                    var value = fun.target.value;
+                    if (value == "forward()") {
+                        _this.world.robot.setAction(_this.world, World_1.RobotAction.Forward);
+                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                    }
+                    if (value == "turnLeft()") {
+                        _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnLeft);
+                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                    }
+                    if (value == "turnRight()") {
+                        _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnRight);
+                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
+                    }
+                    if (value == "print()") {
+                        var number = null;
+                        while (number == null) {
+                            number = prompt("Please enter a number between 0-99.", "0");
+                            if (!number)
+                                return;
+                            try {
+                                number = parseInt(number, 10);
+                                if (number < 0 || number > 99 || isNaN(number)) {
+                                    alert("The number must be between 0-99.");
+                                    number = null;
+                                }
+                            }
+                            catch (e) {
+                                alert("The number must be between 0-99.");
+                                number = null;
+                            }
+                        }
+                        var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                        var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                        var tile = _this.world.getTile(x, y);
+                        if (!tile || tile.kind != "wall") {
+                            _this.world.setTile(x, y, World_1.World.newNumber(number));
+                        }
+                    }
+                    if (value == "scan()") {
+                        var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                        var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                        var tile = _this.world.getTile(x, y);
+                        if (!tile || tile.kind != "number") {
+                            alert("There is no number on the cell in front of the robot.\n\nAssume value of 0.");
+                        }
+                        else {
+                            alert("Number in cell in front of the robot: " + tile.value);
+                        }
+                    }
+                });
+            }
+            this.input = new Utils_2.Input(this.canvas);
+            this.toolsHandler = {
+                down: function (x, y) {
+                    var cellSize = _this.canvas.clientWidth / (World_1.World.WORLD_SIZE + 1);
+                    x = ((x / cellSize) | 0) - 1;
+                    y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
+                    if (_this.selectedTool == "Wall") {
+                        _this.world.setTile(x, y, World_1.World.newWall());
+                    }
+                    else if (_this.selectedTool == "Floor") {
+                        _this.world.setTile(x, y, null);
+                    }
+                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
+                },
+                up: function (x, y) {
+                    var cellSize = _this.canvas.clientWidth / (World_1.World.WORLD_SIZE + 1);
+                    x = ((x / cellSize) | 0) - 1;
+                    y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
+                    if (_this.selectedTool == "Wall") {
+                        _this.world.setTile(x, y, World_1.World.newWall());
+                    }
+                    else if (_this.selectedTool == "Floor") {
+                        _this.world.setTile(x, y, null);
+                    }
+                    else if (_this.selectedTool == "Number") {
+                        var number = null;
+                        while (number == null) {
+                            number = prompt("Please enter a number between 0-99.", "0");
+                            if (!number)
+                                return;
+                            try {
+                                number = parseInt(number, 10);
+                                if (number < 0 || number > 99 || isNaN(number)) {
+                                    alert("The number must be between 0-99.");
+                                    number = null;
+                                }
+                            }
+                            catch (e) {
+                                alert("The number must be between 0-99.");
+                                number = null;
+                            }
+                        }
+                        _this.world.setTile(x, y, World_1.World.newNumber(number));
+                    }
+                    else if (_this.selectedTool == "Letter") {
+                        var letter = null;
+                        while (letter == null) {
+                            letter = prompt("Please enter a letter", "a");
+                            if (!letter)
+                                return;
+                            letter = letter.trim();
+                            if (letter.length != 1) {
+                                alert("Only a single letter is allowed.");
+                                letter = null;
+                            }
+                        }
+                        _this.world.setTile(x, y, World_1.World.newLetter(letter));
+                    }
+                    else if (_this.selectedTool == "Robot") {
+                        if (_this.world.robot.data.x != x || _this.world.robot.data.y != y) {
+                            _this.world.robot.data.x = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, x));
+                            _this.world.robot.data.y = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, y));
+                        }
+                        else {
+                            _this.world.robot.turnLeft();
+                        }
+                    }
+                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
+                },
+                moved: function (x, y) {
+                },
+                dragged: function (x, y) {
+                    var cellSize = _this.canvas.clientWidth / (World_1.World.WORLD_SIZE + 1);
+                    x = ((x / cellSize) | 0) - 1;
+                    y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
+                    if (_this.selectedTool == "Wall") {
+                        _this.world.setTile(x, y, World_1.World.newWall());
+                    }
+                    else if (_this.selectedTool == "Floor") {
+                        _this.world.setTile(x, y, null);
+                    }
+                    else if (_this.selectedTool == "Robot") {
+                        _this.world.robot.data.x = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, x));
+                        _this.world.robot.data.y = Math.max(0, Math.min(World_1.World.WORLD_SIZE - 1, y));
+                    }
+                    window.localStorage.setItem("world-content", JSON.stringify(_this.world.data));
+                }
+            };
+            this.input.addListener(this.toolsHandler);
+            return this.container[0];
+        };
+        Playground.prototype.onEvent = function (event) {
+            if (event instanceof Stop) {
+                this.input.addListener(this.toolsHandler);
+                $("#pb-canvas-tools-editing").show();
+                $("#pb-canvas-tools-running").hide();
+                this.world = new World_1.World(this.worldData);
+                this.isRunning = false;
+            }
+            else if (event instanceof Run || event instanceof Debug) {
+                this.input.removeListener(this.toolsHandler);
+                $("#pb-canvas-tools-editing").hide();
+                $("#pb-canvas-tools-running").show();
+                this.worldData = JSON.parse(JSON.stringify(this.world.data));
+                this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
+                this.isRunning = true;
+            }
+        };
+        Playground.prototype.getWorld = function () {
+            return this.world;
+        };
+        Playground.prototype.resize = function () {
+            var canvas = this.canvas;
+            var realToCSSPixels = window.devicePixelRatio;
+            var displayWidth = Math.floor(canvas.clientWidth * realToCSSPixels);
+            if (canvas.width !== displayWidth) {
+                canvas.width = displayWidth;
+                canvas.height = displayWidth;
+            }
+            this.cellSize = canvas.width / (World_1.World.WORLD_SIZE + 1);
+            this.drawingSize = this.cellSize * World_1.World.WORLD_SIZE;
+        };
+        Playground.prototype.draw = function () {
+            var _this = this;
+            requestAnimationFrame(function () { _this.draw(); });
+            this.time.update();
+            if (this.isRunning) {
+                this.world.update(this.time.delta);
+                if (this.world.robot.action == World_1.RobotAction.None) {
+                    this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
+                }
+            }
+            var ctx = this.ctx;
+            var canvas = this.canvas;
+            this.resize();
+            ctx.fillStyle = "#eeeeee";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            this.drawGrid();
+            if (!this.assets.hasMoreToLoad()) {
+                this.drawWorld();
+            }
+        };
+        Playground.prototype.drawImage = function (img, x, y, w, h) {
+            x |= 0;
+            y |= 0;
+            w |= 0;
+            h |= 0;
+            this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
+        };
+        Playground.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
+            x |= 0;
+            y |= 0;
+            w |= 0;
+            h |= 0;
+            this.ctx.save();
+            this.ctx.translate(x + w / 2, this.drawingSize - y - h + h / 2);
+            this.ctx.rotate(Math.PI / 180 * angle);
+            this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            this.ctx.restore();
+        };
+        Playground.prototype.drawText = function (text, x, y, color) {
+            if (color === void 0) { color = "#000000"; }
+            x |= 0;
+            y |= 0;
+            var ctx = this.ctx;
+            ctx.fillStyle = color;
+            ctx.font = this.cellSize * 0.5 + "pt monospace";
+            var metrics = ctx.measureText(text);
+            ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
+        };
+        Playground.prototype.drawWorld = function () {
+            var ctx = this.ctx;
+            var canvas = this.canvas;
+            var cellSize = this.cellSize;
+            var drawingSize = this.drawingSize;
+            ctx.save();
+            ctx.translate(this.cellSize, 0);
+            for (var y = 0; y < drawingSize; y += cellSize) {
+                for (var x = 0; x < drawingSize; x += cellSize) {
+                    var img = null;
+                    var wx = (x / cellSize);
+                    var wy = (y / cellSize);
+                    var obj = this.world.getTile(wx, wy);
+                    if (!obj)
+                        continue;
+                    switch (obj.kind) {
+                        case "wall":
+                            img = this.assets.getImage("img/wall.png");
+                            break;
+                        case "number":
+                            this.drawText("" + obj.value, x, y);
+                            break;
+                        case "letter":
+                            this.drawText("" + obj.value, x, y);
+                            break;
+                        default: assertNever(obj);
+                    }
+                    if (img)
+                        this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
+                }
+            }
+            var robot = this.world.robot;
+            this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
+            ctx.restore();
+        };
+        Playground.prototype.drawGrid = function () {
+            var ctx = this.ctx;
+            var canvas = this.canvas;
+            for (var y = 0; y < World_1.World.WORLD_SIZE; y++) {
+                this.drawText("" + y, 0, y * this.cellSize, "#aaaaaa");
+            }
+            for (var x = 0; x < World_1.World.WORLD_SIZE; x++) {
+                this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#aaaaaa");
+            }
+            ctx.save();
+            ctx.translate(this.cellSize, 0);
+            ctx.strokeStyle = "#7f7f7f";
+            ctx.beginPath();
+            ctx.setLineDash([2, 2]);
+            for (var y = 0; y <= World_1.World.WORLD_SIZE; y++) {
+                ctx.moveTo(0, y * this.cellSize);
+                ctx.lineTo(this.drawingSize, y * this.cellSize);
+            }
+            for (var x = 0; x <= World_1.World.WORLD_SIZE; x++) {
+                ctx.moveTo(x * this.cellSize, 0);
+                ctx.lineTo(x * this.cellSize, this.drawingSize);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        };
+        return Playground;
+    }(Widget));
+    exports.Playground = Playground;
 });
 //# sourceMappingURL=paperbots.js.map

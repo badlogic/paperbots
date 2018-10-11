@@ -31,6 +31,10 @@ body {
 	flex-direction: column;
 }
 
+#pb-canvas-container {
+	user-select: none;
+}
+
 #pb-debugger input[disabled] {
 	color: #888888;
 }
@@ -90,6 +94,7 @@ body {
 }
 
 #pb-debugger-vm {
+	display: none;
 	flex: 1;
 	overflow: auto;
 	margin: 1em 0 0 1em;

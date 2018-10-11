@@ -6899,7 +6899,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var DEFAULT_SOURCE = "\nwhile true do\n\tforward()\nend\n";
+    var DEFAULT_SOURCE = "\nwhile true do\n\tforward()\n\tforward()\n\tturnLeft()\nend\n";
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -7240,66 +7240,12 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     _this.selectedTool = value;
                 });
             }
-            var functions = this.container.find("#pb-canvas-tools-running input");
-            for (var i = 0; i < functions.length; i++) {
-                $(functions[i]).click(function (fun) {
-                    var value = fun.target.value;
-                    if (value == "forward()") {
-                        _this.world.robot.setAction(_this.world, World_1.RobotAction.Forward);
-                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-                    }
-                    if (value == "turnLeft()") {
-                        _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnLeft);
-                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-                    }
-                    if (value == "turnRight()") {
-                        _this.world.robot.setAction(_this.world, World_1.RobotAction.TurnRight);
-                        _this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-                    }
-                    if (value == "print()") {
-                        var number = null;
-                        while (number == null) {
-                            number = prompt("Please enter a number between 0-99.", "0");
-                            if (!number)
-                                return;
-                            try {
-                                number = parseInt(number, 10);
-                                if (number < 0 || number > 99 || isNaN(number)) {
-                                    alert("The number must be between 0-99.");
-                                    number = null;
-                                }
-                            }
-                            catch (e) {
-                                alert("The number must be between 0-99.");
-                                number = null;
-                            }
-                        }
-                        var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
-                        var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
-                        var tile = _this.world.getTile(x, y);
-                        if (!tile || tile.kind != "wall") {
-                            _this.world.setTile(x, y, World_1.World.newNumber(number));
-                        }
-                    }
-                    if (value == "scan()") {
-                        var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
-                        var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
-                        var tile = _this.world.getTile(x, y);
-                        if (!tile || tile.kind != "number") {
-                            alert("There is no number on the cell in front of the robot.\n\nAssume value of 0.");
-                        }
-                        else {
-                            alert("Number in cell in front of the robot: " + tile.value);
-                        }
-                    }
-                });
-            }
             this.input = new Utils_2.Input(this.canvas);
             this.toolsHandler = {
                 down: function (x, y) {
-                    var cellSize = _this.canvas.clientWidth / (World_1.World.WORLD_SIZE + 1);
+                    var cellSize = _this.canvas.width / (World_1.World.WORLD_SIZE + 1);
                     x = ((x / cellSize) | 0) - 1;
-                    y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
+                    y = (((_this.canvas.height - y) / cellSize) | 0) - 1;
                     if (_this.selectedTool == "Wall") {
                         _this.world.setTile(x, y, World_1.World.newWall());
                     }
@@ -7461,9 +7407,11 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             var canvas = this.canvas;
             var realToCSSPixels = window.devicePixelRatio;
             var displayWidth = Math.floor(canvas.clientWidth * realToCSSPixels);
-            if (canvas.width !== displayWidth) {
+            var displayHeight = Math.floor(canvas.clientHeight * realToCSSPixels);
+            if (canvas.width !== displayWidth || canvas.height != displayHeight) {
+                console.log("Resize: canvas " + canvas.width + "x" + canvas.height + ", display " + displayWidth + "x" + displayHeight + ", ratio " + realToCSSPixels);
                 canvas.width = displayWidth;
-                canvas.height = displayWidth;
+                canvas.height = displayHeight;
             }
             this.cellSize = canvas.width / (World_1.World.WORLD_SIZE + 1);
             this.drawingSize = this.cellSize * World_1.World.WORLD_SIZE;
@@ -7523,12 +7471,10 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             var drawingSize = this.drawingSize;
             ctx.save();
             ctx.translate(this.cellSize, 0);
-            for (var y = 0; y < drawingSize; y += cellSize) {
-                for (var x = 0; x < drawingSize; x += cellSize) {
+            for (var y = 0; y < World_1.World.WORLD_SIZE; y++) {
+                for (var x = 0; x < World_1.World.WORLD_SIZE; x++) {
                     var img = null;
-                    var wx = (x / cellSize);
-                    var wy = (y / cellSize);
-                    var obj = this.world.getTile(wx, wy);
+                    var obj = this.world.getTile(x, y);
                     if (!obj)
                         continue;
                     switch (obj.kind) {
@@ -7543,8 +7489,10 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                             break;
                         default: assertNever(obj);
                     }
+                    var wx = x * cellSize;
+                    var wy = y * cellSize;
                     if (img)
-                        this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
+                        this.drawRotatedImage(img, wx, wy, cellSize, cellSize, 0);
                 }
             }
             var robot = this.world.robot;

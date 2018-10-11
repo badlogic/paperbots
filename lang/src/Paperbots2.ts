@@ -15,11 +15,20 @@ export class Select { constructor(public startLine: number, public startColumn: 
 export class AnnounceExternalFunctions { constructor(public functions: compiler.ExternalFunctions) {} }
 export type Event = SourceChanged | Run | Debug | Step | Stop | LineChange | Selection;
 
+// const DEFAULT_SOURCE = `
+// while true do
+// 	forward()
+// end
+// `
+
 const DEFAULT_SOURCE = `
 while true do
 	forward()
+	forward()
+	turnLeft()
 end
 `
+
 export interface EventListener {
 	onEvent(event: Event);
 }
@@ -465,64 +474,12 @@ export class Playground extends Widget {
 			});
 		}
 
-		let functions = this.container.find("#pb-canvas-tools-running input");
-		for (var i = 0; i < functions.length; i++) {
-			$(functions[i]).click((fun) => {
-				let value = (fun.target as HTMLInputElement).value;
-				if (value == "forward()") {
-					this.world.robot.setAction(this.world, RobotAction.Forward);
-					this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-				}
-				if (value == "turnLeft()") {
-					this.world.robot.setAction(this.world, RobotAction.TurnLeft);
-					this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-				}
-				if (value == "turnRight()") {
-					this.world.robot.setAction(this.world, RobotAction.TurnRight);
-					this.container.find("#pb-canvas-tools-running input").prop("disabled", true);
-				}
-				if (value == "print()") {
-					var number = null;
-					while (number == null) {
-						number = prompt("Please enter a number between 0-99.", "0");
-						if (!number) return;
-						try {
-							number = parseInt(number, 10);
-							if (number < 0 || number > 99 || isNaN(number)) {
-								alert("The number must be between 0-99.");
-								number = null;
-							}
-						} catch (e) {
-							alert("The number must be between 0-99.");
-							number = null;
-						}
-					}
-					let x = this.world.robot.data.x + this.world.robot.data.dirX;
-					let y = this.world.robot.data.y + this.world.robot.data.dirY;
-					let tile = this.world.getTile(x, y);
-					if (!tile || tile.kind != "wall") {
-						this.world.setTile(x, y, World.newNumber(number));
-					}
-				}
-				if (value == "scan()") {
-					let x = this.world.robot.data.x + this.world.robot.data.dirX;
-					let y = this.world.robot.data.y + this.world.robot.data.dirY;
-					let tile = this.world.getTile(x, y);
-					if (!tile || tile.kind != "number") {
-						alert("There is no number on the cell in front of the robot.\n\nAssume value of 0.")
-					} else {
-						alert("Number in cell in front of the robot: " + tile.value)
-					}
-				}
-			});
-		}
-
 		this.input = new Input(this.canvas);
 		this.toolsHandler = {
 			down: (x, y) => {
-				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
+				let cellSize = this.canvas.width / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
-				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
+				y = (((this.canvas.height - y) / cellSize) | 0) - 1;
 
 				if (this.selectedTool == "Wall") {
 					this.world.setTile(x, y, World.newWall());
@@ -682,11 +639,13 @@ export class Playground extends Widget {
 	resize () {
 		let canvas = this.canvas;
 		let realToCSSPixels = window.devicePixelRatio;
-		let displayWidth  = Math.floor(canvas.clientWidth  * realToCSSPixels);
+		let displayWidth  = Math.floor(canvas.clientWidth * realToCSSPixels);
+		let displayHeight  = Math.floor(canvas.clientHeight * realToCSSPixels);
 
-		if (canvas.width  !== displayWidth) {
+		if (canvas.width  !== displayWidth || canvas.height != displayHeight) {
+			console.log(`Resize: canvas ${canvas.width}x${canvas.height}, display ${displayWidth}x${displayHeight}, ratio ${realToCSSPixels}`)
 			canvas.width  = displayWidth;
-			canvas.height  = displayWidth;
+			canvas.height  = displayHeight;
 		}
 		this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
 		this.drawingSize = this.cellSize * World.WORLD_SIZE;
@@ -755,12 +714,10 @@ export class Playground extends Widget {
 		ctx.save();
 		ctx.translate(this.cellSize, 0);
 
-		for (var y = 0; y < drawingSize; y += cellSize) {
-				for (var x = 0; x < drawingSize; x += cellSize) {
+		for (var y = 0; y < World.WORLD_SIZE; y++) {
+			for (var x = 0; x < World.WORLD_SIZE; x ++) {
 				var img = null;
-				let wx = (x / cellSize);
-				let wy = (y / cellSize);
-				let obj = this.world.getTile(wx, wy);
+				let obj = this.world.getTile(x, y);
 				if (!obj) continue;
 
 				switch(obj.kind) {
@@ -776,7 +733,9 @@ export class Playground extends Widget {
 					default: assertNever(obj);
 				}
 
-				if (img) this.drawRotatedImage(img, x, y, cellSize, cellSize, 0);
+				let wx = x * cellSize;
+				let wy = y * cellSize;
+				if (img) this.drawRotatedImage(img, wx, wy, cellSize, cellSize, 0);
 			}
 		}
 

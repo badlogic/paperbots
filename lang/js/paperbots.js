@@ -6204,11 +6204,11 @@ define("Paperbots", ["require", "exports", "Utils", "Compiler", "World"], functi
             this.eventBus.addListener(this["debugger"]);
             this.eventBus.addListener(this.playground);
             var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
-            dom.append(this.playground.render());
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this.editor.render());
             editorAndDebugger.append(this["debugger"].render());
             dom.append(editorAndDebugger);
+            dom.append(this.playground.render());
             $(parent).append(dom);
         }
         Paperbots2.prototype.onEvent = function (event) {

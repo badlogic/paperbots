@@ -96,7 +96,6 @@ export class Paperbots2 implements EventListener {
 			<div id="pb-main">
 			</div>
 		`);
-		dom.append(this.playground.render());
 
 		let editorAndDebugger = $(/*html */`
 			<div id ="pb-editor-and-debugger">
@@ -105,6 +104,7 @@ export class Paperbots2 implements EventListener {
 		editorAndDebugger.append(this.editor.render());
 		editorAndDebugger.append(this.debugger.render());
 		dom.append(editorAndDebugger);
+		dom.append(this.playground.render());
 		$(parent).append(dom);
 	}
 

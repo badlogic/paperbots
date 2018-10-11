@@ -21,13 +21,40 @@ export type Event = SourceChanged | Run | Debug | Step | Stop | LineChange | Sel
 // end
 // `
 
+// const DEFAULT_SOURCE = `
+// while true do
+// 	forward()
+// 	forward()
+// 	turnLeft()
+// end
+// `
+
 const DEFAULT_SOURCE = `
-while true do
-	forward()
-	forward()
-	turnLeft()
+fun forwardUntilNumber (n: number)
+	while true do
+		if scan() == n then return end
+		forward()
+	end
 end
+
+forwardUntilNumber(3)
+
+turnRight()
+forward()
+forward()
+
+repeat 4 times
+	forward()
+	print(3)
+	forward()
+	print(3)
+	turnRight()
+end
+
+print(10)
+alert("Oh no!")
 `
+
 
 export interface EventListener {
 	onEvent(event: Event);
@@ -137,6 +164,7 @@ export class Debugger extends Widget {
 					if (!this.vm) return;
 					this.vm.run(1000);
 					if (this.vm.state == compiler.VMState.Completed) {
+						alert("Program complete.");
 						this.bus.event(new Stop())
 						return;
 					}
@@ -171,6 +199,7 @@ export class Debugger extends Widget {
 			this.vm.stepOver();
 			this.bus.event(new Step(this.vm.getLineNumber()));
 			if (this.vm.state == compiler.VMState.Completed) {
+				alert("Program complete.");
 				this.bus.event(new Stop())
 				return;
 			}
@@ -180,6 +209,7 @@ export class Debugger extends Widget {
 			this.vm.stepInto();
 			this.bus.event(new Step(this.vm.getLineNumber()));
 			if (this.vm.state == compiler.VMState.Completed) {
+				alert("Program complete.");
 				this.bus.event(new Stop())
 				return;
 			}
@@ -446,13 +476,6 @@ export class Playground extends Widget {
 						<input type="button" value="Number">
 						<input type="button" value="Letter">
 					</div>
-					<div id="pb-canvas-tools-running" style="display:none;">
-						<input type="button" value="forward()">
-						<input type="button" value="turnLeft()">
-						<input type="button" value="turnRight()">
-						<input type="button" value="print()">
-						<input type="button" value="scan()">
-					</div>
 				</div>
 				<canvas id="pb-canvas"></canvas>
 			</div>
@@ -611,6 +634,46 @@ export class Playground extends Widget {
 			return asyncResult;
 		});
 
+		ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, (number) => {
+			if (number < 0 || number > 99 || isNaN(number)) {
+				alert("The number must be between 0-99.");
+				number = null;
+			}
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			if (!tile || tile.kind != "wall") {
+				this.world.setTile(x, y, World.newNumber(number));
+			}
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			let check = () => {
+				asyncResult.completed = true;
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+
+		ext.addFunction("scan", [], "number", false, () => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			if (!tile || tile.kind != "number") {
+				return -1;
+			} else {
+				return tile.value;
+			}
+		});
+
+		ext.addFunction("isWallAhead", [], "boolean", false, () => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			return tile && tile.kind == "wall";
+		});
+
 		this.bus.event(new AnnounceExternalFunctions(ext));
 	}
 
@@ -657,9 +720,6 @@ export class Playground extends Widget {
 
 		if (this.isRunning) {
 			this.world.update(this.time.delta);
-			if (this.world.robot.action == RobotAction.None) {
-				this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
-			}
 		}
 
 		let ctx = this.ctx;
@@ -720,21 +780,22 @@ export class Playground extends Widget {
 				let obj = this.world.getTile(x, y);
 				if (!obj) continue;
 
+				let wx = x * cellSize;
+				let wy = y * cellSize;
+
 				switch(obj.kind) {
 					case "wall":
 						img = this.assets.getImage("img/wall.png");
 						break;
 					case "number":
-						this.drawText("" + obj.value, x, y);
+						this.drawText("" + obj.value, wx, wy);
 						break;
 					case "letter":
-						this.drawText("" + obj.value, x, y);
+						this.drawText("" + obj.value, wx, wy);
 						break;
 					default: assertNever(obj);
 				}
 
-				let wx = x * cellSize;
-				let wy = y * cellSize;
 				if (img) this.drawRotatedImage(img, wx, wy, cellSize, cellSize, 0);
 			}
 		}

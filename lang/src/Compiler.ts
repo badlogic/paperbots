@@ -660,6 +660,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 				case "==":
 				case "!=":
 					if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.name}' to a '${node.right.type.name}'.`, node.location);
+					node.type = BooleanType;
 					break;
 				case "and":
 				case "or":
@@ -1275,17 +1276,21 @@ export class VirtualMachine {
 		let frame = this.frames[frameIndex];
 		let lineInfoIndex = frame.code.lineInfos[frame.pc].index;
 		while(true) {
-			if (this.asyncPromise) return;
-			if (this.frames.length == 0) return;
+			if (this.asyncPromise)
+				return;
+			if (this.frames.length == 0)
+				return;
 
 			let currFrameIndex = this.frames.length - 1;
 			let currFrame = this.frames[currFrameIndex];
 			let currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
 
 			if (currFrameIndex == frameIndex)
-				if (lineInfoIndex != currLineInfoIndex) return;
+				if (lineInfoIndex != currLineInfoIndex)
+					return;
 
-			if (currFrameIndex < frameIndex) return;
+			if (currFrameIndex < frameIndex)
+				return;
 
 			this.step();
 		}

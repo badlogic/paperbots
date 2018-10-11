@@ -5038,6 +5038,7 @@ define("Compiler", ["require", "exports", "Parser"], function (require, exports,
                     case "!=":
                         if (node.left.type != node.right.type)
                             throw new CompilerError("Can not compare a '" + node.left.type.name + "' to a '" + node.right.type.name + "'.", node.location);
+                        node.type = exports.BooleanType;
                         break;
                     case "and":
                     case "or":
@@ -6899,7 +6900,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var DEFAULT_SOURCE = "\nwhile true do\n\tforward()\n\tforward()\n\tturnLeft()\nend\n";
+    var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scan() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -6973,6 +6974,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                             return;
                         _this.vm.run(1000);
                         if (_this.vm.state == compiler.VMState.Completed) {
+                            alert("Program complete.");
                             _this.bus.event(new Stop());
                             return;
                         }
@@ -7002,6 +7004,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                 _this.vm.stepOver();
                 _this.bus.event(new Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == compiler.VMState.Completed) {
+                    alert("Program complete.");
                     _this.bus.event(new Stop());
                     return;
                 }
@@ -7010,6 +7013,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                 _this.vm.stepInto();
                 _this.bus.event(new Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == compiler.VMState.Completed) {
+                    alert("Program complete.");
                     _this.bus.event(new Stop());
                     return;
                 }
@@ -7224,7 +7228,7 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
         }
         Playground.prototype.render = function () {
             var _this = this;
-            this.container = $("\n\t\t\t<div id=\"pb-canvas-container\">\n\t\t\t\t<div id=\"pb-canvas-tools\">\n\t\t\t\t\t<div id=\"pb-canvas-tools-editing\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div id=\"pb-canvas-tools-running\" style=\"display:none;\">\n\t\t\t\t\t\t<input type=\"button\" value=\"forward()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"turnLeft()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"turnRight()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"print()\">\n\t\t\t\t\t\t<input type=\"button\" value=\"scan()\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
+            this.container = $("\n\t\t\t<div id=\"pb-canvas-container\">\n\t\t\t\t<div id=\"pb-canvas-tools\">\n\t\t\t\t\t<div id=\"pb-canvas-tools-editing\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
             this.canvas = this.container.find("#pb-canvas")[0];
             this.ctx = this.canvas.getContext("2d");
             this.assets.loadImage("img/wall.png");
@@ -7380,6 +7384,44 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                 requestAnimationFrame(check);
                 return asyncResult;
             });
+            ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, function (number) {
+                if (number < 0 || number > 99 || isNaN(number)) {
+                    alert("The number must be between 0-99.");
+                    number = null;
+                }
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                if (!tile || tile.kind != "wall") {
+                    _this.world.setTile(x, y, World_1.World.newNumber(number));
+                }
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var check = function () {
+                    asyncResult.completed = true;
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("scan", [], "number", false, function () {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                if (!tile || tile.kind != "number") {
+                    return -1;
+                }
+                else {
+                    return tile.value;
+                }
+            });
+            ext.addFunction("isWallAhead", [], "boolean", false, function () {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                return tile && tile.kind == "wall";
+            });
             this.bus.event(new AnnounceExternalFunctions(ext));
         };
         Playground.prototype.onEvent = function (event) {
@@ -7422,9 +7464,6 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
             this.time.update();
             if (this.isRunning) {
                 this.world.update(this.time.delta);
-                if (this.world.robot.action == World_1.RobotAction.None) {
-                    this.container.find("#pb-canvas-tools-running input").prop("disabled", false);
-                }
             }
             var ctx = this.ctx;
             var canvas = this.canvas;
@@ -7477,20 +7516,20 @@ define("Paperbots2", ["require", "exports", "Utils", "Compiler", "World"], funct
                     var obj = this.world.getTile(x, y);
                     if (!obj)
                         continue;
+                    var wx = x * cellSize;
+                    var wy = y * cellSize;
                     switch (obj.kind) {
                         case "wall":
                             img = this.assets.getImage("img/wall.png");
                             break;
                         case "number":
-                            this.drawText("" + obj.value, x, y);
+                            this.drawText("" + obj.value, wx, wy);
                             break;
                         case "letter":
-                            this.drawText("" + obj.value, x, y);
+                            this.drawText("" + obj.value, wx, wy);
                             break;
                         default: assertNever(obj);
                     }
-                    var wx = x * cellSize;
-                    var wy = y * cellSize;
                     if (img)
                         this.drawRotatedImage(img, wx, wy, cellSize, cellSize, 0);
                 }

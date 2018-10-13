@@ -1,4 +1,3 @@
-/* Layout */
 html {
 	box-sizing: border-box;
 }
@@ -8,64 +7,111 @@ body {
 	color: 333333;
 	margin: 0;
 	padding: 20px;
+	font-family: Arial, Helvetica, sans-serif;
 }
 
-.pb-container {
+#pb-main {
+	width: 100%;
+	height: 100vh;
 	display: flex;
 	flex-direction: row;
-	max-width: 1200px;
 }
 
 #pb-canvas-container {
+	user-select: none;
+}
+
+#pb-debugger input[disabled] {
+	color: #888888;
+}
+
+#pb-editor-and-debugger {
+	display: flex;
+	height: 100%;
 	width: 100%;
+}
+
+#pb-code-editor {
+	width: 70%;
+	flex: 1;
 	display: flex;
 	flex-direction: column;
 }
 
-#pb-canvas-tools {
-	margin-bottom: 0.5em;
+#pb-debugger {
+	width: 30%;
+	height: 100%;
+	padding: 0 1em 0 1em;
+	display: flex;
+	flex-direction: row;
+}
+
+#pb-debugger-locals-callstack {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+#pb-debugger-locals {
+	flex: 1;
+	background: #ffffff;
+	overflow: auto;
+}
+
+#pb-debugger-callstack {
+	flex: 1;
+	background: #ffffff;
+	overflow: auto;
+}
+
+.pb-debugger-label {
+	margin: 0.4em 0 0.4em 0;
+	font-size: 0.8em;
+}
+
+.pb-debugger-callstack-frame {
+	padding: 0 1em 0 1em;
+	font-size: 0.8em;
+}
+
+.pb-debugger-local {
+	padding: 0 1em 0 1em;
+	font-size: 0.8em;
+}
+
+#pb-debugger-vm {
+	display: none;
+	flex: 1;
+	overflow: auto;
+	margin: 1em 0 0 1em;
+	font-family: monospace;
+	font-size: 0.8em;
+	background: #fff;
+	color: #000;
+	white-space: pre;
+}
+
+.selected {
+	background: rgba(76, 175, 80, 0.32);
+}
+
+#pb-code-editor-code-mirror {
+	width: 100%;
+	flex: 1;
+	overflow: auto;
+}
+
+#pb-code-editor-error {
+	font-family: monospace;
+	overflow: auto;
+	background: #cc0000;
+	color: #eeeeee;
+	padding: 1em;
 }
 
 #pb-canvas {
-	width: 100%;
-	max-width: 544px;
-	background: grey;
-	image-rendering: -moz-crisp-edges;
-  	image-rendering: -webkit-crisp-edges;
-  	image-rendering: pixelated;
-	image-rendering: crisp-edges;
-}
-
-#pb-canvas-tools .selected {
-	background: green;
-	color: #dddddd;
-}
-
-#pb-editor-container {
-	width: 100%;
-	max-width: 590px;
-	display: flex;
-	flex-direction: column;
-}
-
-#pb-editor {
-	height: 100%;
-	min-height: 512px;
-	max-height: 512px;
-	margin-bottom: 1px;
-	position: relative;
-}
-
-#pb-editor-tools {
-	margin-bottom: 0.5em;
-}
-
-#pb-output {
-	background: lightgrey;
-	color: black;
-	padding: 1em;
-	margin: 0;
-	white-space: pre-wrap;
+	width: 512px;
+	height: 512px;
 }
 
 /* CodeMirror styles */

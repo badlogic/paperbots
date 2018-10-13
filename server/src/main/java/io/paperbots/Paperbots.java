@@ -51,7 +51,7 @@ public class Paperbots {
 			try {
 				FileWatcher.watch(staticFiles, () -> {
 					for (WsSession session : wsClients.values()) {
-						Log.info("Static content changed, telling websocket clients. Hello");
+						Log.info("Static content changed, telling websocket clients.");
 						session.send("Reload");
 					}
 				});

@@ -1,11 +1,8 @@
-import {SyntaxError, IFileRange, parse} from "./Parser";
+import { SyntaxError, IFileRange, parse } from "./Parser";
+import { assertNever } from "./Utils"
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) { }
-}
-
-function assertNever(x: never): never {
-	throw new Error("This should never happen");
 }
 
 export interface Identifier {

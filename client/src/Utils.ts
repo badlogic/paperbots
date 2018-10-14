@@ -246,3 +246,15 @@ export class AssetManager {
 		return this.toLoad.length;
 	}
 }
+
+
+export function setElementEnabled(el: JQuery, enabled: boolean) {
+	if (enabled)
+		el.removeAttr("disabled");
+	else
+		el.attr("disabled", "true");
+}
+
+export function assertNever(x: never): never {
+	throw new Error("This should never happen");
+}

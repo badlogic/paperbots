@@ -1,0 +1,11 @@
+Hi {{name}}!
+
+Thank you for signing up for Paperbots! Please copy the below
+code and paste it into the dialog in your browser.
+
+{{code}}
+
+We sincerely hope you enjoy Paperbots!
+
+Happy coding,
+The Paperbots team

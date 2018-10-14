@@ -61,6 +61,10 @@
 		<basissite.version>1.6-SNAPSHOT</basissite.version>
 		<javalin.version>1.7.0</javalin.version>
 		<slf4jsimple.version>1.7.25</slf4jsimple.version>
+		<mysql-connector.version>8.0.12</mysql-connector.version>
+		<java-mail.version>1.6.1</java-mail.version>
+		<jdbi.version>3.3.0</jdbi.version>
+		<junit.version>4.12</junit.version>
 	</properties>
 
 	<dependencies>
@@ -69,18 +73,49 @@
 			<artifactId>site</artifactId>
 			<version>${basissite.version}</version>
 		</dependency>
-	
+
 		<dependency>
 			<groupId>io.javalin</groupId>
 			<artifactId>javalin</artifactId>
 			<version>${javalin.version}</version>
 		</dependency>
 
- 		<dependency>
+		<dependency>
+			<groupId>io.javalin</groupId>
+			<artifactId>javalin</artifactId>
+			<version>${javalin.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jdbi</groupId>
+			<artifactId>jdbi3-core</artifactId>
+			<version>${jdbi.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>${mysql-connector.version}</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 			<version>${slf4jsimple.version}</version>
- 		</dependency>
+		</dependency>
+		
+		<dependency>
+		    <groupId>com.sun.mail</groupId>
+		    <artifactId>javax.mail</artifactId>
+		    <version>${java-mail.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

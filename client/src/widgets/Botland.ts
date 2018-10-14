@@ -1,4 +1,5 @@
-import { EventBus, Widget, AnnounceExternalFunctions, Stop, Run, Debug } from "../Paperbots"
+import * as events from "./Events"
+import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../Compiler"
 
@@ -22,7 +23,7 @@ export class Botland extends Widget {
 	private toolsHandler: InputListener;
 	private isRunning = false;
 
-	constructor(bus: EventBus) {
+	constructor(bus: events.EventBus) {
 		super(bus);
 
 		this.worldData = new WorldData();
@@ -250,18 +251,18 @@ export class Botland extends Widget {
 			return tile && tile.kind == "number";
 		});
 
-		this.bus.event(new AnnounceExternalFunctions(ext));
+		this.bus.event(new events.AnnounceExternalFunctions(ext));
 	}
 
 	onEvent(event: Event) {
-		if (event instanceof Stop) {
+		if (event instanceof events.Stop) {
 			this.input.addListener(this.toolsHandler);
 			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
 				setElementEnabled($(element), true);
 			});
 			this.world = new World(this.worldData);
 			this.isRunning = false;
-		} else if(event instanceof Run || event instanceof Debug) {
+		} else if(event instanceof events.Run || event instanceof events.Debug) {
 			this.input.removeListener(this.toolsHandler);
 			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
 				setElementEnabled($(element), false);

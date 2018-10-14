@@ -1,6 +1,7 @@
-import {TextMarker} from "codemirror";
-import { Paperbots, Widget, SourceChanged, Run, Stop, Debug, Step, Select, LineChange, AnnounceExternalFunctions } from "../Paperbots";
-import * as compiler from "Compiler"
+import { TextMarker } from "codemirror";
+import { Widget } from "./Widget"
+import * as events from "./Events"
+import * as compiler from "../Compiler"
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
 
@@ -60,13 +61,13 @@ export class Editor extends Widget {
 
 			this.editor.on("change", (instance, change) => {
 				let module = this.compile();
-				this.bus.event(new SourceChanged(this.editor.getDoc().getValue(), module));
+				this.bus.event(new events.SourceChanged(this.editor.getDoc().getValue(), module));
 			});
 
 			this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
 
 			let module = this.compile();
-			this.bus.event(new SourceChanged(this.editor.getDoc().getValue(), module));
+			this.bus.event(new events.SourceChanged(this.editor.getDoc().getValue(), module));
 		});
 		this.error = dom.find("#pb-code-editor-error");
 		this.error.hide();
@@ -112,19 +113,19 @@ export class Editor extends Widget {
 	}
 
 	onEvent(event: Event) {
-		if (event instanceof Run || event instanceof Debug) {
+		if (event instanceof events.Run || event instanceof events.Debug) {
 			this.editor.setOption("readOnly", true);
-		} else if (event instanceof Stop) {
+		} else if (event instanceof events.Stop) {
 			this.editor.setOption("readOnly", false);
 			this.editor.focus();
-		} else if (event instanceof Step || event instanceof LineChange) {
+		} else if (event instanceof events.Step || event instanceof events.LineChange) {
 			this.setLine(event.line - 1);
-		} else if (event instanceof Select) {
+		} else if (event instanceof events.Select) {
 			this.editor.getDoc().setSelection(
 				{line: event.startLine - 1, ch: event.startColumn - 1},
 				{line: event.endLine - 1, ch: event.endColumn - 1}
 			);
-		} else if (event instanceof AnnounceExternalFunctions) {
+		} else if (event instanceof events.AnnounceExternalFunctions) {
 			this.ext = event.functions;
 		}
 	}

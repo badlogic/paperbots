@@ -1,4 +1,5 @@
-import { Widget, Run, Stop, Step, LineChange, Select, SourceChanged, Debug } from "../Paperbots";
+import { Widget } from "./Widget"
+import * as events from "./Events"
 import { setElementEnabled } from "../Utils";
 import * as compiler from "../Compiler";
 
@@ -48,21 +49,21 @@ export class Debugger extends Widget {
 				this.vm = new compiler.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);										;
 				this.run.val("Stop");
 				setElementEnabled(this.debug, false);
-				this.bus.event(new Run())
+				this.bus.event(new events.Run())
 
 				let advance = () => {
 					if (!this.vm) return;
 					this.vm.run(1000);
 					if (this.vm.state == compiler.VMState.Completed) {
 						alert("Program complete.");
-						this.bus.event(new Stop())
+						this.bus.event(new events.Stop())
 						return;
 					}
 					requestAnimationFrame(advance);
 				};
 				requestAnimationFrame(advance);
 			} else {
-				this.bus.event(new Stop())
+				this.bus.event(new events.Stop())
 			}
 		});
 
@@ -73,10 +74,10 @@ export class Debugger extends Widget {
 				setElementEnabled(this.run, false);
 				setElementEnabled(this.stepOver, true);
 				setElementEnabled(this.stepInto, true);
-				this.bus.event(new Debug())
-				this.bus.event(new Step(this.vm.getLineNumber()));
+				this.bus.event(new events.Debug())
+				this.bus.event(new events.Step(this.vm.getLineNumber()));
 			} else {
-				this.bus.event(new Stop())
+				this.bus.event(new events.Stop())
 			}
 		});
 
@@ -87,20 +88,20 @@ export class Debugger extends Widget {
 
 		this.stepOver.click(() => {
 			this.vm.stepOver();
-			this.bus.event(new Step(this.vm.getLineNumber()));
+			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			if (this.vm.state == compiler.VMState.Completed) {
 				alert("Program complete.");
-				this.bus.event(new Stop())
+				this.bus.event(new events.Stop())
 				return;
 			}
 		});
 
 		this.stepInto.click(() => {
 			this.vm.stepInto();
-			this.bus.event(new Step(this.vm.getLineNumber()));
+			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			if (this.vm.state == compiler.VMState.Completed) {
 				alert("Program complete.");
-				this.bus.event(new Stop())
+				this.bus.event(new events.Stop())
 				return;
 			}
 		});
@@ -128,7 +129,7 @@ export class Debugger extends Widget {
 
 				dom.click(() => {
 					this.selectedFrame = frame;
-					this.bus.event(new LineChange(lineInfo.line));
+					this.bus.event(new events.LineChange(lineInfo.line));
 					this.renderState();
 				})
 
@@ -145,7 +146,7 @@ export class Debugger extends Widget {
 					dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
 					dom.click(() => {
 						let location = slot.symbol.name.location;
-						this.bus.event(new Select(
+						this.bus.event(new events.Select(
 							location.start.line,
 							location.start.column,
 							location.end.line,
@@ -193,7 +194,7 @@ export class Debugger extends Widget {
 	onEvent(event: Event) {
 		let {run, debug, stepOver, stepInto, dom} = this;
 
-		if (event instanceof SourceChanged) {
+		if (event instanceof events.SourceChanged) {
 			if (event.module) {
 				this.lastModule = event.module;
 				setElementEnabled(this.run, true);
@@ -204,7 +205,7 @@ export class Debugger extends Widget {
 				dom.find("input").attr("disabled", "true");
 				// TODO hide debugger view
 			}
-		} else if (event instanceof Stop) {
+		} else if (event instanceof events.Stop) {
 			this.run.val("Run")
 			this.debug.val("Debug");
 			setElementEnabled(this.run, true);
@@ -212,7 +213,7 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepOver, false);
 			setElementEnabled(this.stepInto, false);
 			this.vm = null;
-		} else if (event instanceof Step) {
+		} else if (event instanceof events.Step) {
 			if (this.vm && this.vm.frames.length > 0) {
 				this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
 			}

@@ -5957,7 +5957,92 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compiler"], function (require, exports, Paperbots_1, Utils_2, compiler) {
+define("widgets/Events", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var SourceChanged = (function () {
+        function SourceChanged(source, module) {
+            this.source = source;
+            this.module = module;
+        }
+        return SourceChanged;
+    }());
+    exports.SourceChanged = SourceChanged;
+    var Run = (function () {
+        function Run() {
+        }
+        return Run;
+    }());
+    exports.Run = Run;
+    var Debug = (function () {
+        function Debug() {
+        }
+        return Debug;
+    }());
+    exports.Debug = Debug;
+    var Step = (function () {
+        function Step(line) {
+            this.line = line;
+        }
+        return Step;
+    }());
+    exports.Step = Step;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
+    var LineChange = (function () {
+        function LineChange(line) {
+            this.line = line;
+        }
+        return LineChange;
+    }());
+    exports.LineChange = LineChange;
+    var Select = (function () {
+        function Select(startLine, startColumn, endLine, endColumn) {
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
+        }
+        return Select;
+    }());
+    exports.Select = Select;
+    var AnnounceExternalFunctions = (function () {
+        function AnnounceExternalFunctions(functions) {
+            this.functions = functions;
+        }
+        return AnnounceExternalFunctions;
+    }());
+    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var EventBus = (function () {
+        function EventBus() {
+            this.listeners = new Array();
+        }
+        EventBus.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        EventBus.prototype.event = function (event) {
+            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        };
+        return EventBus;
+    }());
+    exports.EventBus = EventBus;
+});
+define("widgets/Widget", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Widget = (function () {
+        function Widget(bus) {
+            this.bus = bus;
+        }
+        return Widget;
+    }());
+    exports.Widget = Widget;
+});
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "Compiler"], function (require, exports, Widget_1, events, Utils_2, compiler) {
     "use strict";
     exports.__esModule = true;
     var Debugger = (function (_super) {
@@ -5984,14 +6069,14 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                     ;
                     _this.run.val("Stop");
                     Utils_2.setElementEnabled(_this.debug, false);
-                    _this.bus.event(new Paperbots_1.Run());
+                    _this.bus.event(new events.Run());
                     var advance_1 = function () {
                         if (!_this.vm)
                             return;
                         _this.vm.run(1000);
                         if (_this.vm.state == compiler.VMState.Completed) {
                             alert("Program complete.");
-                            _this.bus.event(new Paperbots_1.Stop());
+                            _this.bus.event(new events.Stop());
                             return;
                         }
                         requestAnimationFrame(advance_1);
@@ -5999,7 +6084,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                     requestAnimationFrame(advance_1);
                 }
                 else {
-                    _this.bus.event(new Paperbots_1.Stop());
+                    _this.bus.event(new events.Stop());
                 }
             });
             this.debug.click(function () {
@@ -6009,28 +6094,28 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                     Utils_2.setElementEnabled(_this.run, false);
                     Utils_2.setElementEnabled(_this.stepOver, true);
                     Utils_2.setElementEnabled(_this.stepInto, true);
-                    _this.bus.event(new Paperbots_1.Debug());
-                    _this.bus.event(new Paperbots_1.Step(_this.vm.getLineNumber()));
+                    _this.bus.event(new events.Debug());
+                    _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 }
                 else {
-                    _this.bus.event(new Paperbots_1.Stop());
+                    _this.bus.event(new events.Stop());
                 }
             });
             this.stepOver.click(function () {
                 _this.vm.stepOver();
-                _this.bus.event(new Paperbots_1.Step(_this.vm.getLineNumber()));
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == compiler.VMState.Completed) {
                     alert("Program complete.");
-                    _this.bus.event(new Paperbots_1.Stop());
+                    _this.bus.event(new events.Stop());
                     return;
                 }
             });
             this.stepInto.click(function () {
                 _this.vm.stepInto();
-                _this.bus.event(new Paperbots_1.Step(_this.vm.getLineNumber()));
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == compiler.VMState.Completed) {
                     alert("Program complete.");
-                    _this.bus.event(new Paperbots_1.Stop());
+                    _this.bus.event(new events.Stop());
                     return;
                 }
             });
@@ -6054,7 +6139,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                         dom.addClass("selected");
                     dom.click(function () {
                         _this.selectedFrame = frame;
-                        _this.bus.event(new Paperbots_1.LineChange(lineInfo.line));
+                        _this.bus.event(new events.LineChange(lineInfo.line));
                         _this.renderState();
                     });
                     _this.callstack.append(dom);
@@ -6067,7 +6152,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                         dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
                         dom.click(function () {
                             var location = slot.symbol.name.location;
-                            _this.bus.event(new Paperbots_1.Select(location.start.line, location.start.column, location.end.line, location.end.column));
+                            _this.bus.event(new events.Select(location.start.line, location.start.column, location.end.line, location.end.column));
                         });
                         _this.locals.append(dom);
                     });
@@ -6099,7 +6184,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
         };
         Debugger.prototype.onEvent = function (event) {
             var _a = this, run = _a.run, debug = _a.debug, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
-            if (event instanceof Paperbots_1.SourceChanged) {
+            if (event instanceof events.SourceChanged) {
                 if (event.module) {
                     this.lastModule = event.module;
                     Utils_2.setElementEnabled(this.run, true);
@@ -6111,7 +6196,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                     dom.find("input").attr("disabled", "true");
                 }
             }
-            else if (event instanceof Paperbots_1.Stop) {
+            else if (event instanceof events.Stop) {
                 this.run.val("Run");
                 this.debug.val("Debug");
                 Utils_2.setElementEnabled(this.run, true);
@@ -6120,7 +6205,7 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
                 Utils_2.setElementEnabled(this.stepInto, false);
                 this.vm = null;
             }
-            else if (event instanceof Paperbots_1.Step) {
+            else if (event instanceof events.Step) {
                 if (this.vm && this.vm.frames.length > 0) {
                     this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
                 }
@@ -6128,10 +6213,10 @@ define("widgets/Debugger", ["require", "exports", "Paperbots", "Utils", "Compile
             this.renderState();
         };
         return Debugger;
-    }(Paperbots_1.Widget));
+    }(Widget_1.Widget));
     exports.Debugger = Debugger;
 });
-define("widgets/Editor", ["require", "exports", "Paperbots", "Compiler"], function (require, exports, Paperbots_2, compiler) {
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_2, events, compiler) {
     "use strict";
     exports.__esModule = true;
     var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scan() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
@@ -6162,11 +6247,11 @@ define("widgets/Editor", ["require", "exports", "Paperbots", "Compiler"], functi
                 });
                 _this.editor.on("change", function (instance, change) {
                     var module = _this.compile();
-                    _this.bus.event(new Paperbots_2.SourceChanged(_this.editor.getDoc().getValue(), module));
+                    _this.bus.event(new events.SourceChanged(_this.editor.getDoc().getValue(), module));
                 });
                 _this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
                 var module = _this.compile();
-                _this.bus.event(new Paperbots_2.SourceChanged(_this.editor.getDoc().getValue(), module));
+                _this.bus.event(new events.SourceChanged(_this.editor.getDoc().getValue(), module));
             });
             this.error = dom.find("#pb-code-editor-error");
             this.error.hide();
@@ -6205,28 +6290,28 @@ define("widgets/Editor", ["require", "exports", "Paperbots", "Compiler"], functi
             this.editor.getDoc().setCursor(line, 1);
         };
         Editor.prototype.onEvent = function (event) {
-            if (event instanceof Paperbots_2.Run || event instanceof Paperbots_2.Debug) {
+            if (event instanceof events.Run || event instanceof events.Debug) {
                 this.editor.setOption("readOnly", true);
             }
-            else if (event instanceof Paperbots_2.Stop) {
+            else if (event instanceof events.Stop) {
                 this.editor.setOption("readOnly", false);
                 this.editor.focus();
             }
-            else if (event instanceof Paperbots_2.Step || event instanceof Paperbots_2.LineChange) {
+            else if (event instanceof events.Step || event instanceof events.LineChange) {
                 this.setLine(event.line - 1);
             }
-            else if (event instanceof Paperbots_2.Select) {
+            else if (event instanceof events.Select) {
                 this.editor.getDoc().setSelection({ line: event.startLine - 1, ch: event.startColumn - 1 }, { line: event.endLine - 1, ch: event.endColumn - 1 });
             }
-            else if (event instanceof Paperbots_2.AnnounceExternalFunctions) {
+            else if (event instanceof events.AnnounceExternalFunctions) {
                 this.ext = event.functions;
             }
         };
         return Editor;
-    }(Paperbots_2.Widget));
+    }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/Botland", ["require", "exports", "Paperbots", "Utils", "Compiler"], function (require, exports, Paperbots_3, Utils_3, compiler) {
+define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_3, Utils_3, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -6454,10 +6539,10 @@ define("widgets/Botland", ["require", "exports", "Paperbots", "Utils", "Compiler
                 var tile = _this.world.getTile(x, y);
                 return tile && tile.kind == "number";
             });
-            this.bus.event(new Paperbots_3.AnnounceExternalFunctions(ext));
+            this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
         Botland.prototype.onEvent = function (event) {
-            if (event instanceof Paperbots_3.Stop) {
+            if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
                     Utils_3.setElementEnabled($(element), true);
@@ -6465,7 +6550,7 @@ define("widgets/Botland", ["require", "exports", "Paperbots", "Utils", "Compiler
                 this.world = new World(this.worldData);
                 this.isRunning = false;
             }
-            else if (event instanceof Paperbots_3.Run || event instanceof Paperbots_3.Debug) {
+            else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
                     Utils_3.setElementEnabled($(element), false);
@@ -6597,7 +6682,7 @@ define("widgets/Botland", ["require", "exports", "Paperbots", "Utils", "Compiler
             ctx.restore();
         };
         return Botland;
-    }(Paperbots_3.Widget));
+    }(Widget_3.Widget));
     exports.Botland = Botland;
     var RobotAction;
     (function (RobotAction) {
@@ -6759,89 +6844,12 @@ define("widgets/Botland", ["require", "exports", "Paperbots", "Utils", "Compiler
     }());
     exports.World = World;
 });
-define("Paperbots", ["require", "exports", "widgets/Debugger", "widgets/Editor", "widgets/Botland"], function (require, exports, Debugger_1, Editor_1, Botland_1) {
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1) {
     "use strict";
     exports.__esModule = true;
-    var SourceChanged = (function () {
-        function SourceChanged(source, module) {
-            this.source = source;
-            this.module = module;
-        }
-        return SourceChanged;
-    }());
-    exports.SourceChanged = SourceChanged;
-    var Run = (function () {
-        function Run() {
-        }
-        return Run;
-    }());
-    exports.Run = Run;
-    var Debug = (function () {
-        function Debug() {
-        }
-        return Debug;
-    }());
-    exports.Debug = Debug;
-    var Step = (function () {
-        function Step(line) {
-            this.line = line;
-        }
-        return Step;
-    }());
-    exports.Step = Step;
-    var Stop = (function () {
-        function Stop() {
-        }
-        return Stop;
-    }());
-    exports.Stop = Stop;
-    var LineChange = (function () {
-        function LineChange(line) {
-            this.line = line;
-        }
-        return LineChange;
-    }());
-    exports.LineChange = LineChange;
-    var Select = (function () {
-        function Select(startLine, startColumn, endLine, endColumn) {
-            this.startLine = startLine;
-            this.startColumn = startColumn;
-            this.endLine = endLine;
-            this.endColumn = endColumn;
-        }
-        return Select;
-    }());
-    exports.Select = Select;
-    var AnnounceExternalFunctions = (function () {
-        function AnnounceExternalFunctions(functions) {
-            this.functions = functions;
-        }
-        return AnnounceExternalFunctions;
-    }());
-    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var EventBus = (function () {
-        function EventBus() {
-            this.listeners = new Array();
-        }
-        EventBus.prototype.addListener = function (listener) {
-            this.listeners.push(listener);
-        };
-        EventBus.prototype.event = function (event) {
-            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
-        };
-        return EventBus;
-    }());
-    exports.EventBus = EventBus;
-    var Widget = (function () {
-        function Widget(bus) {
-            this.bus = bus;
-        }
-        return Widget;
-    }());
-    exports.Widget = Widget;
     var Paperbots = (function () {
         function Paperbots(parent) {
-            this.eventBus = new EventBus();
+            this.eventBus = new Events_1.EventBus();
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.playground = new Botland_1.Botland(this.eventBus);

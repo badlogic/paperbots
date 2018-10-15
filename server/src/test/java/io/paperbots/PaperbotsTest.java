@@ -8,10 +8,11 @@ import io.paperbots.data.UserType;
 
 public class PaperbotsTest {
 	private static Paperbots paperbots;
+	private static Emails emails = new Emails.TestEmails();
 
 	@BeforeClass
 	public static void setup () {
-		paperbots = new Paperbots(Paperbots.setupDatabase(), new Emails(Paperbots.PAPERBOTS_EMAIL_PWD));
+		paperbots = new Paperbots(TestDatabase.setupDatabase(), emails);
 	}
 
 	@Test

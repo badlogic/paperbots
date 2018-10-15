@@ -24,6 +24,7 @@ import io.marioslab.basis.arguments.Arguments.ParsedArguments;
 import io.marioslab.basis.site.FileWatcher;
 import io.marioslab.basis.template.TemplateContext;
 import io.paperbots.PaperbotsException.PaperbotsError;
+import io.paperbots.data.SignupRequest;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
 
@@ -67,7 +68,7 @@ public class Paperbots {
 				throw new RuntimeException("Static file directory '" + staticFiles.getPath() + "' does not exist.");
 
 			Jdbi jdbi = setupDatabase();
-			Emails emails = new Emails(PAPERBOTS_EMAIL_PWD);
+			Emails emails = new Emails.JavaxEmails(PAPERBOTS_EMAIL_PWD);
 			Paperbots paperbots = new Paperbots(jdbi, emails);
 			setupEndpoints(paperbots, staticFiles, parsed.has(reloadArg), password);
 		} catch (Throwable e) {
@@ -146,6 +147,10 @@ public class Paperbots {
 				Log.info("Got an update. Shutting down.");
 				System.exit(-1);
 			}
+		});
+
+		app.post("/api/signup", ctx -> {
+			ctx.bodyAsClass(SignupRequest.class);
 		});
 	}
 

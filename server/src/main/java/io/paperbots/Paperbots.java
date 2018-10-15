@@ -2,29 +2,19 @@
 package io.paperbots;
 
 import java.io.File;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 
 import com.esotericsoftware.minlog.Log;
 
-import io.javalin.Javalin;
-import io.javalin.embeddedserver.Location;
-import io.javalin.embeddedserver.jetty.websocket.WebSocketHandler;
-import io.javalin.embeddedserver.jetty.websocket.WsSession;
 import io.marioslab.basis.arguments.Argument;
 import io.marioslab.basis.arguments.ArgumentWithValue.StringArgument;
 import io.marioslab.basis.arguments.Arguments;
 import io.marioslab.basis.arguments.Arguments.ParsedArguments;
-import io.marioslab.basis.site.FileWatcher;
 import io.marioslab.basis.template.TemplateContext;
 import io.paperbots.PaperbotsException.PaperbotsError;
-import io.paperbots.data.SignupRequest;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
 
@@ -45,32 +35,27 @@ public class Paperbots {
 
 	static {
 		PAPERBOTS_RELOAD_PWD = System.getenv("PAPERBOTS_RELOAD_PWD");
-		if (PAPERBOTS_RELOAD_PWD == null)
-			throw new IllegalStateException("PAPERBOTS_RELOAD_PWD environment variable does not exist.");
+		if (PAPERBOTS_RELOAD_PWD == null) throw new IllegalStateException("PAPERBOTS_RELOAD_PWD environment variable does not exist.");
 		PAPERBOTS_DB_PWD = System.getenv("PAPERBOTS_DB_PWD");
 		if (PAPERBOTS_DB_PWD == null) throw new IllegalStateException("PAPERBOTS_DB_PWD environment variable  does not exist.");
 		PAPERBOTS_EMAIL_PWD = System.getenv("PAPERBOTS_EMAIL_PWD");
-		if (PAPERBOTS_EMAIL_PWD == null)
-			throw new IllegalStateException("PAPERBOTS_EMAIL_PWD environment variable does not exist.");
+		if (PAPERBOTS_EMAIL_PWD == null) throw new IllegalStateException("PAPERBOTS_EMAIL_PWD environment variable does not exist.");
 	}
 
 	public static void main (String[] cliArgs) {
 		Arguments args = new Arguments();
 		StringArgument staticFilesArg = args.addArgument(new StringArgument("-s", "Static files directory.", "<dir>", false));
-		Argument reloadArg = args.addArgument(new Argument("-r",
-			"Whether to tell any browser websocket clients to\nreload the site when the output was\nre-generated", true));
+		Argument reloadArg = args
+			.addArgument(new Argument("-r", "Whether to tell any browser websocket clients to\nreload the site when the output was\nre-generated", true));
 
 		try {
 			ParsedArguments parsed = args.parse(cliArgs);
-			byte[] password = PAPERBOTS_RELOAD_PWD.getBytes("UTF-8");
 			File staticFiles = new File(parsed.getValue(staticFilesArg));
-			if (!staticFiles.exists())
-				throw new RuntimeException("Static file directory '" + staticFiles.getPath() + "' does not exist.");
 
-			Jdbi jdbi = setupDatabase();
+			Jdbi jdbi = Database.setupDatabase(false);
 			Emails emails = new Emails.JavaxEmails(PAPERBOTS_EMAIL_PWD);
 			Paperbots paperbots = new Paperbots(jdbi, emails);
-			setupEndpoints(paperbots, staticFiles, parsed.has(reloadArg), password);
+			new Server(paperbots, parsed.has(reloadArg), staticFiles);
 		} catch (Throwable e) {
 			Log.error(e.getMessage());
 			Log.debug("Exception", e);
@@ -78,80 +63,6 @@ public class Paperbots {
 			System.exit(-1);
 			return; // never reached
 		}
-	}
-
-	public static Jdbi setupDatabase () {
-		Properties properties = new Properties();
-		properties.setProperty("user", "root");
-		properties.setProperty("password", PAPERBOTS_DB_PWD);
-		properties.setProperty("useSSL", "false");
-		return Jdbi.create("jdbc:mysql://localhost/paperbots", properties);
-	}
-
-	private static void setupEndpoints (Paperbots paperbots, File staticFiles, boolean enableReloading, byte[] reloadPassword) {
-		Javalin app = Javalin.create().enableDynamicGzip().enableStaticFiles(staticFiles.getAbsolutePath(), Location.EXTERNAL)
-			.port(8001).start();
-
-		if (enableReloading) {
-			final Map<WebSocketHandler, WsSession> wsClients = new ConcurrentHashMap<>();
-			Thread generatorThread = new Thread((Runnable) () -> {
-				try {
-					FileWatcher.watch(staticFiles, () -> {
-						for (WsSession session : wsClients.values()) {
-							Log.info("Static content changed, telling websocket clients. Hello.");
-							session.send("Reload");
-						}
-					});
-				} catch (Throwable t) {
-					Log.error(t.getMessage());
-					Log.debug("Exception", t);
-				}
-			});
-			generatorThread.setDaemon(true);
-			generatorThread.start();
-
-			app.ws("/api/reloadws", ws -> {
-				Log.info("Setting up WebSocket reloading");
-
-				ws.onConnect(session -> {
-					Log.info("WebSocket client connected");
-					wsClients.put(ws, session);
-				});
-
-				ws.onClose( (session, statusCode, reason) -> {
-					Log.info("WebSocket client disconnected");
-					wsClients.remove(ws);
-				});
-
-				ws.onError( (session, throwable) -> {
-					Log.info("WebSocket client disconnected");
-					wsClients.remove(ws);
-				});
-			});
-		}
-
-		app.post("/api/reloadstatic", ctx -> {
-			String pwd = ctx.formParam("password");
-			if (MessageDigest.isEqual(pwd.getBytes(), reloadPassword)) {
-				new ProcessBuilder().command("git", "pull").start();
-				Log.info("Got new static content.");
-				ctx.response().getWriter().println("OK.");
-			}
-		});
-
-		app.post("/api/reload", ctx -> {
-			String pwd = ctx.formParam("password");
-			if (MessageDigest.isEqual(pwd.getBytes(), reloadPassword)) {
-				ctx.response().getWriter().println("OK.");
-				ctx.response().getWriter().flush();
-				Log.info("Got an update. Shutting down.");
-				System.exit(-1);
-			}
-		});
-
-		app.post("/api/signup", ctx -> {
-			ctx.bodyAsClass(SignupRequest.class);
-		});
 	}
 
 	private final Emails emails;
@@ -174,10 +85,17 @@ public class Paperbots {
 		jdbi.withHandle(handle -> {
 			// TODO this should be done in a transaction
 
+			// Check if that name exists
+			try {
+				handle.createQuery("SELECT name FROM users WHERE name=:name").bind("name", verifiedName).mapTo(String.class).findOnly();
+				throw new PaperbotsException(PaperbotsError.UserExists);
+			} catch (IllegalStateException t) {
+				// Fall through, name does not yet exist.
+			}
+
 			// Check if user exists
 			try {
-				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email").bind("email", verifiedEmail)
-					.mapToBean(User.class).findOnly();
+				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email").bind("email", verifiedEmail).mapToBean(User.class).findOnly();
 				sendCode(handle, user.getId(), user.getName(), verifiedEmail);
 				return null;
 			} catch (IllegalStateException t) {
@@ -186,9 +104,8 @@ public class Paperbots {
 
 			// Insert user and send verification email
 			try {
-				int id = handle.createUpdate("insert into users (name, email, type) value (:name, :email, :type)")
-					.bind("name", verifiedName).bind("email", verifiedEmail).bind("type", type).executeAndReturnGeneratedKeys("id")
-					.mapTo(Integer.class).findOnly();
+				int id = handle.createUpdate("insert into users (name, email, type) value (:name, :email, :type)").bind("name", verifiedName)
+					.bind("email", verifiedEmail).bind("type", type).executeAndReturnGeneratedKeys("id").mapTo(Integer.class).findOnly();
 				Log.info("Created user " + verifiedName);
 				sendCode(handle, id, verifiedName, verifiedEmail);
 			} catch (IllegalStateException t) {
@@ -198,27 +115,7 @@ public class Paperbots {
 		});
 	}
 
-	private void sendCode (Handle handle, int userId, String name, String email) {
-		// Check if we've send an email in the last 10 minutes, and if so, do nothing.
-		try {
-			int id = handle
-				.createQuery("select userId from userCodes where userId=:userId and created > DATE_SUB(NOW(), INTERVAL 10 MINUTE)")
-				.bind("userId", userId).mapTo(Integer.class).findOnly();
-			if (id == userId) return;
-		} catch (IllegalStateException e) {
-			// Fall through, generate new code and send email.
-		}
-
-		String code = generateId(5);
-		if (handle.createUpdate("insert into userCodes (userId, code) value (:userId, :code)").bind("userId", userId)
-			.bind("code", code).execute() != 1) {
-			throw new PaperbotsException(PaperbotsError.CouldNotCreateCode);
-		}
-		String message = Templates.SIGNUP.render(new TemplateContext().set("name", name).set("code", code));
-		emails.send(email, "Paperbots magic code", message);
-	}
-
-	public String verifyCode (String code) {
+	public TokenAndName verifyCode (String code) {
 		if (code == null) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Code must not be null.");
 		if (code.trim().length() == 0) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Code must not be empty.");
 
@@ -226,21 +123,75 @@ public class Paperbots {
 		return jdbi.withHandle(handle -> {
 			int userId = 0;
 			try {
-				userId = handle.createQuery("select userId from userCodes where code=:code").bind("code", verifiedCode)
-					.mapTo(Integer.class).findOnly();
+				userId = handle.createQuery("select userId from userCodes where code=:code").bind("code", verifiedCode).mapTo(Integer.class).findOnly();
 			} catch (IllegalStateException e) {
 				throw new PaperbotsException(PaperbotsError.CouldNotVerifyCode, e);
 			}
 
-			handle.createUpdate("delete from userCodes where code=:code and userId=:userId").bind("code", verifiedCode)
-				.bind("userId", userId).execute();
+			handle.createUpdate("delete from userCodes where code=:code and userId=:userId").bind("code", verifiedCode).bind("userId", userId).execute();
 
 			String token = generateId(32);
-			if (handle.createUpdate("insert into userTokens (userId, token) value (:userId, :token)").bind("userId", userId)
-				.bind("token", token).execute() != 1) {
+			if (handle.createUpdate("insert into userTokens (userId, token) value (:userId, :token)").bind("userId", userId).bind("token", token).execute() != 1) {
 				throw new PaperbotsException(PaperbotsError.CouldNotVerifyCode);
 			}
-			return token;
+
+			String name = handle.createQuery("select name from users where id=:userId").bind("userId", userId).mapTo(String.class).findOnly();
+			return new TokenAndName(token, name);
+		});
+	}
+
+	public void login (String email) {
+		if (email == null) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Email must not be null.");
+		if (email.trim().length() == 0) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Email must not be empty.");
+
+		final String verifiedEmail = email.trim();
+
+		jdbi.withHandle(handle -> {
+			// TODO this should be done in a transaction
+			try {
+				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email").bind("email", verifiedEmail).mapToBean(User.class).findOnly();
+				sendCode(handle, user.getId(), user.getName(), verifiedEmail);
+				return null;
+			} catch (IllegalStateException t) {
+				// User doesn't exist
+				throw new PaperbotsException(PaperbotsError.UserDoesNotExist);
+			}
+		});
+	}
+
+	private void sendCode (Handle handle, int userId, String name, String email) {
+		// Check if we've send an email in the last 10 minutes, and if so, do nothing.
+		try {
+			int id = handle.createQuery("select userId from userCodes where userId=:userId and created > DATE_SUB(NOW(), INTERVAL 10 MINUTE)")
+				.bind("userId", userId).mapTo(Integer.class).findOnly();
+			if (id == userId) return;
+		} catch (IllegalStateException e) {
+			// Fall through, generate new code and send email.
+		}
+
+		String code = generateId(5);
+		if (handle.createUpdate("insert into userCodes (userId, code) value (:userId, :code)").bind("userId", userId).bind("code", code).execute() != 1) {
+			throw new PaperbotsException(PaperbotsError.CouldNotCreateCode);
+		}
+		String message = Templates.SIGNUP.render(new TemplateContext().set("name", name).set("code", code));
+		emails.send(email, "Paperbots magic code", message);
+	}
+
+	public User getUserForToken (String token) {
+		if (token == null) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Token must not be null.");
+		if (token.trim().length() == 0) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Token must not be empty.");
+
+		final String verifiedToken = token.trim();
+
+		return jdbi.withHandle(handle -> {
+			// TODO this should be done in a transaction
+			try {
+				int userId = handle.createQuery("SELECT userId FROM userTokens WHERE token=:token").bind("token", verifiedToken).mapTo(Integer.class).findOnly();
+				User user = handle.createQuery("SELECT name, type FROM users WHERE id=:id").bind("id", userId).mapToBean(User.class).findOnly();
+				return user;
+			} catch (IllegalStateException t) {
+				throw new PaperbotsException(PaperbotsError.UserDoesNotExist);
+			}
 		});
 	}
 
@@ -252,5 +203,16 @@ public class Paperbots {
 		for (int i = 0; i < length; i++)
 			sb.append(_base62chars[random.nextInt(62)]);
 		return sb.toString();
+	}
+
+	public static class TokenAndName {
+		public String token;
+		public String name;
+
+		public TokenAndName (String token, String name) {
+			super();
+			this.token = token;
+			this.name = name;
+		}
 	}
 }

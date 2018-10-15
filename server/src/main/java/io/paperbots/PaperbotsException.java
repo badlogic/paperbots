@@ -3,7 +3,7 @@ package io.paperbots;
 
 public class PaperbotsException extends RuntimeException {
 	public static enum PaperbotsError {
-		InvalidArgument, ServerError, UserExists, CouldNotCreateUser, CouldNotSendEmail, CouldNotCreateCode, CouldNotVerifyCode
+		InvalidArgument, ServerError, UserDoesNotExist, UserExists, CouldNotCreateUser, CouldNotSendEmail, CouldNotCreateCode, CouldNotVerifyCode
 	}
 
 	private static final long serialVersionUID = -8984556916130982262L;
@@ -14,8 +14,7 @@ public class PaperbotsException extends RuntimeException {
 		this.error = error;
 	}
 
-	public PaperbotsException (PaperbotsError error, String message, Throwable cause, boolean enableSuppression,
-		boolean writableStackTrace) {
+	public PaperbotsException (PaperbotsError error, String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
 		super(message, cause, enableSuppression, writableStackTrace);
 		this.error = error;
 	}
@@ -37,5 +36,10 @@ public class PaperbotsException extends RuntimeException {
 
 	public PaperbotsError getError () {
 		return error;
+	}
+
+	@Override
+	public String getMessage () {
+		return error + (super.getMessage() == null ? "" : ": " + super.getMessage());
 	}
 }

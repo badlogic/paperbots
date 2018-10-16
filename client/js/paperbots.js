@@ -6966,7 +6966,127 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
     }());
     exports.World = World;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1) {
+define("widgets/SplitPane", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var SplitPane = (function () {
+        function SplitPane(leftPane, rightPane) {
+            var _this = this;
+            this.dom = $("\n\t\t\t<div class=\"pb-split-pane\">\n\t\t\t\t<div class=\"pb-split-pane-left\">\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-divider\"><div id=\"pb-split-pane-toggle\">&gt;</div></div>\n\t\t\t\t<div class=\"pb-split-pane-right\">\n\t\t\t\t</div>\n\t\t\t</div>");
+            this.left = this.dom.find(".pb-split-pane-left");
+            this.right = this.dom.find(".pb-split-pane-right");
+            this.left.append(leftPane);
+            this.right.append(rightPane);
+            this.toggle = this.dom.find("#pb-split-pane-toggle");
+            var divider = this.dom.find(".pb-divider");
+            var x = 0;
+            var splitX = 0;
+            var lastSplitPercentage = divider[0].offsetLeft / this.dom[0].clientWidth;
+            var dragged = false;
+            this.toggle.click(function (e) {
+                if (dragged)
+                    return;
+                if (_this.toggle.text() == ">") {
+                    lastSplitPercentage = divider[0].offsetLeft / _this.dom[0].clientWidth;
+                    _this.right[0].style.left = (_this.dom[0].clientWidth - 10) + "px";
+                    _this.right[0].style.width = "10px";
+                    divider[0].style.left = (_this.dom[0].clientWidth - 10) + "px";
+                    _this.left[0].style.width = (_this.dom[0].clientWidth - 10) + "px";
+                    divider.addClass("pb-split-pane-collapsed");
+                    _this.right.addClass("pb-hidden");
+                    _this.toggle.text("<");
+                }
+                else {
+                    splitX = lastSplitPercentage * _this.dom[0].clientWidth;
+                    _this.left[0].style.width = splitX + "px";
+                    divider[0].style.left = splitX + "px";
+                    _this.right[0].style.left = splitX + "px";
+                    _this.right[0].style.width = (_this.dom[0].clientWidth - splitX) + "px";
+                    divider.removeClass("pb-split-pane-collapsed");
+                    _this.right.removeClass("pb-hidden");
+                    _this.toggle.text(">");
+                }
+            });
+            window.addEventListener("resize", function () {
+                _this.resize();
+            }, true);
+            var down = function (clientX) {
+                $("*").css("user-select", "none");
+                x = clientX;
+                splitX = divider[0].offsetLeft;
+                dragged = false;
+                registerMove();
+            };
+            var up = function (clientX) {
+                $("*").css("user-select", "initial");
+                if (_this.toggle.text() == ">")
+                    lastSplitPercentage = divider[0].offsetLeft / _this.dom[0].clientWidth;
+                unregisterMove();
+            };
+            var move = function (clientX) {
+                var delta = (clientX - x);
+                var newSplitX = splitX + delta;
+                if (newSplitX < -_this.toggle[0].offsetLeft * 2)
+                    return;
+                if (newSplitX > _this.dom[0].clientWidth - divider[0].clientWidth)
+                    return;
+                divider[0].style.left = newSplitX + "px";
+                if (delta != 0) {
+                    divider.removeClass("pb-split-pane-collapsed");
+                    _this.right.removeClass("pb-hidden");
+                    _this.toggle.text(">");
+                    dragged = true;
+                }
+                _this.right[0].style.left = (newSplitX) + "px";
+                _this.right[0].style.width = (_this.dom[0].clientWidth - newSplitX) + "px";
+                _this.left[0].style.width = newSplitX + "px";
+            };
+            this.resize = function () {
+                if (_this.toggle.text() == ">") {
+                    splitX = lastSplitPercentage * _this.dom[0].clientWidth;
+                    _this.left[0].style.width = splitX + "px";
+                    divider[0].style.left = splitX + "px";
+                    _this.right[0].style.left = splitX + "px";
+                    _this.right[0].style.width = (_this.dom[0].clientWidth - splitX) + "px";
+                }
+                else {
+                    _this.right[0].style.left = (_this.dom[0].clientWidth - 10) + "px";
+                    _this.right[0].style.width = "10px";
+                    divider[0].style.left = (_this.dom[0].clientWidth - 10) + "px";
+                    _this.left[0].style.width = (_this.dom[0].clientWidth - 10) + "px";
+                }
+            };
+            divider[0].addEventListener("mousedown", function (e) { down(e.clientX); }, false);
+            window.addEventListener("mouseup", function (e) { up(e.clientX); }, false);
+            var mouseMove = function (e) {
+                move(e.clientX);
+            };
+            divider[0].addEventListener("touchstart", function (e) { down(e.changedTouches[0].clientX); });
+            window.addEventListener("touchend", function (e) { up(e.changedTouches[0].clientX); });
+            window.addEventListener("touchcancel", function (e) { up(e.changedTouches[0].clientX); });
+            var touchMove = function (e) {
+                move(e.changedTouches[0].clientX);
+            };
+            var registerMove = function () {
+                $(document.body).addClass("pb-noselect");
+                window.addEventListener("mousemove", mouseMove, true);
+                window.addEventListener("touchmove", touchMove, true);
+                _this.left[0].style.pointerEvents = "none";
+                _this.right[0].style.pointerEvents = "none";
+            };
+            var unregisterMove = function () {
+                $(document.body).removeClass("pb-noselect");
+                window.removeEventListener("mousemove", mouseMove, true);
+                window.removeEventListener("touchmove", touchMove, true);
+                _this.left[0].style.pointerEvents = "auto";
+                _this.right[0].style.pointerEvents = "auto";
+            };
+        }
+        return SplitPane;
+    }());
+    exports.SplitPane = SplitPane;
+});
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
@@ -6983,8 +7103,8 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
             editorAndDebugger.append(this.editor.render());
-            dom.append(editorAndDebugger);
-            dom.append(this.playground.render());
+            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, $(this.playground.render()));
+            dom.append(splitPane.dom);
             $(parent).append(dom);
         }
         Paperbots.prototype.onEvent = function (event) {

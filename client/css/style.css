@@ -19,15 +19,14 @@ body {
 }
 
 #pb-canvas-container {
-	user-select: none;
+	user-select: none !important;
 	max-width: 600px;
-	width: 40%;
+	padding: 0.5em;
 }
 
 #pb-editor-and-debugger {
 	display: flex;
 	height: 100%;
-	width: 60%;
 }
 
 #pb-code-editor {
@@ -38,9 +37,7 @@ body {
 }
 
 #pb-debugger {
-	width: 30%;
-	min-width: 250px;
-	max-width: 250px;
+	width: 250px;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -204,4 +201,56 @@ body {
 
 .compiler-error {
 	text-decoration: underline red;
+}
+
+/* Splitpane styles */
+/** Split pane housing a CodeEditor, FileEditor, FolderEditor or DescriptionEditor on the left, and the Preview on the right **/
+.pb-split-pane {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.pb-split-pane-left, .pb-split-pane-right {
+	position: absolute;
+	width: 50%;
+	height: 100%;
+}
+
+.pb-split-pane-right {
+	left: 50%;
+}
+
+#pb-split-pane-toggle {
+	display: none;
+	cursor: pointer;
+    z-index: 8;
+    background-color: #333;
+    color: #ccc;
+    position: absolute;
+    top: 50%;
+    width: 24px;
+    left: -7px;
+    text-align: center;
+    border-radius: 3px;
+}
+
+.pb-split-pane-collapsed #pb-split-pane-toggle {
+	left: -14px;
+	border-radius: 3px 0 0 3px;
+}
+
+.pb-divider {
+	position: absolute;
+	width: 5px;
+	height: 100%;
+	left: 50%;
+	background: #333;
+	z-index: 9999;
+	cursor: ew-resize;
+}
+
+.pb-split-pane .pb-editor-pane {
+	height: 100%;
+	overflow: auto;
 }

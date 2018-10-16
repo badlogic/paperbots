@@ -4,6 +4,7 @@ import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
 import { Botland } from "./widgets/Botland";
 import * as compiler from "./Compiler"
+import { SplitPane } from "./widgets/SplitPane";
 
 export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
@@ -30,8 +31,9 @@ export class Paperbots implements EventListener {
 		`);
 		editorAndDebugger.append(this.debugger.render());
 		editorAndDebugger.append(this.editor.render());
-		dom.append(editorAndDebugger);
-		dom.append(this.playground.render());
+
+		let splitPane = new SplitPane(editorAndDebugger, $(this.playground.render()));
+		dom.append(splitPane.dom);
 		$(parent).append(dom);
 	}
 

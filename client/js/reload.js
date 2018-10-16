@@ -4,6 +4,7 @@
 	var ws;
 	function setupWebSocket() {
 		console.log("Setting up reloader websocket.");
+		if (url.host != "localhost:8001") return;
 		ws = new WebSocket("ws://" + url.host + "/api/reloadws");
 		ws.onmessage = function () {
 			location.reload();

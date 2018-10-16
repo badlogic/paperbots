@@ -70,6 +70,7 @@ body {
 	font-weight: 500;
 	background: #333333;
 	color: #828282;
+	cursor: pointer;
 }
 
 .pb-debugger-callstack-frame {
@@ -111,6 +112,10 @@ body {
 	opacity: 1;
 }
 
+.pb-debugger-button:hover {
+	border: 1px solid #828282;
+}
+
 .pb-debugger-button[disabled] {
 	color: rgba(1, 1, 1, 0.2);
 	cursor: default;
@@ -123,7 +128,7 @@ body {
 }
 
 .pb-debugger-debug-icon {
-	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cdefs%3E%3Cstyle%3E.icon-canvas-transparent,.icon-vs-out{fill:%23252526}.icon-canvas-transparent{opacity:0}.icon-vs-action-green{fill:%2389d185}%3C/style%3E%3C/defs%3E%3Ctitle%3Econtinue%3C/title%3E%3Cpath class='icon-vs-action-green' d='M8.667 10.325v2.832c0 .308.06.843-.249.843H7.333v-.667H8v-2.126l-.115-.12a2.362 2.362 0 0 1-3.113.072C4 10.385 4.079 9.333 4.917 8h-2.25v.667H2V7.582c0-.309.535-.249.843-.249h2.736zm-2-6.992H6v-.666h1.3c.307 0 .7.147.7.455v2.23l.491.583a1.3 1.3 0 0 1 1.276-1.14.6.6 0 0 1 .233.026V3.333h.667v1.746a.413.413 0 0 0 .255.255h1.745V6h-1.489c.018 0 .028.1.028.2a1.31 1.31 0 0 1-1.141 1.288l.583.512h2.231c.308 0 .455.389.455.7V10h-.667v-.667h-1.68l-4.32-4.2zM8 0a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm6.667 8a6.634 6.634 0 0 1-1.508 4.216L3.784 2.841A6.662 6.662 0 0 1 14.667 8zM1.333 8a6.633 6.633 0 0 1 1.508-4.216l9.375 9.376A6.663 6.663 0 0 1 1.333 8z' id='iconBg'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cdefs%3E%3Cstyle%3E.icon-canvas-transparent,.icon-vs-out{fill:%23252526}.icon-canvas-transparent{opacity:0}.icon-vs-action-green{fill:%23f48771}%3C/style%3E%3C/defs%3E%3Ctitle%3Econtinue%3C/title%3E%3Cpath class='icon-vs-action-green' d='M8.667 10.325v2.832c0 .308.06.843-.249.843H7.333v-.667H8v-2.126l-.115-.12a2.362 2.362 0 0 1-3.113.072C4 10.385 4.079 9.333 4.917 8h-2.25v.667H2V7.582c0-.309.535-.249.843-.249h2.736zm-2-6.992H6v-.666h1.3c.307 0 .7.147.7.455v2.23l.491.583a1.3 1.3 0 0 1 1.276-1.14.6.6 0 0 1 .233.026V3.333h.667v1.746a.413.413 0 0 0 .255.255h1.745V6h-1.489c.018 0 .028.1.028.2a1.31 1.31 0 0 1-1.141 1.288l.583.512h2.231c.308 0 .455.389.455.7V10h-.667v-.667h-1.68l-4.32-4.2zM8 0a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm6.667 8a6.634 6.634 0 0 1-1.508 4.216L3.784 2.841A6.662 6.662 0 0 1 14.667 8zM1.333 8a6.633 6.633 0 0 1 1.508-4.216l9.375 9.376A6.663 6.663 0 0 1 1.333 8z' id='iconBg'/%3E%3C/svg%3E");
 }
 
 .pb-debugger-continue-icon {

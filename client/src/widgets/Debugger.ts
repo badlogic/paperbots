@@ -31,6 +31,7 @@ export class Debugger extends Widget {
 	private lastModule: compiler.Module = null;
 	private selectedFrame: compiler.Frame = null;
 	private state = DebuggerState.Stopped;
+	private snapshot: compiler.StepOverSnapshot = null;
 
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
@@ -46,12 +47,13 @@ export class Debugger extends Widget {
 					<div id="pb-debugger-step-out" class="pb-debugger-step-out-icon pb-debugger-button"></div>
 				</div>
 				<div id="pb-debugger-locals-callstack">
-					<div class="pb-debugger-label">VARIABLES</div>
+					<div id="pb-debugger-locals-label" class="pb-debugger-label">VARIABLES</div>
 					<div id="pb-debugger-locals"></div>
-					<div class="pb-debugger-label">CALL STACK</div>
+					<div id="pb-debugger-callstack-label" class="pb-debugger-label">CALL STACK</div>
 					<div id="pb-debugger-callstack"></div>
+					<div id="pb-debugger-vm-label"  class="pb-debugger-label">VM</div>
+					<div id="pb-debugger-vm"></div>
 				</div>
-				<div id="pb-debugger-vm"></div>
 			</div>
 		`);
 
@@ -75,6 +77,18 @@ export class Debugger extends Widget {
 		this.callstack = dom.find("#pb-debugger-callstack");
 		this.vmState = dom.find("#pb-debugger-vm");
 
+		dom.find("#pb-debugger-vm-label").click(() => {
+			this.vmState.toggle();
+		});
+
+		dom.find("#pb-debugger-callstack-label").click(() => {
+			this.callstack.toggle();
+		});
+
+		dom.find("#pb-debugger-locals-label").click(() => {
+			this.locals.toggle();
+		});
+
 		this.advanceVm = () => {
 			if (this.state != DebuggerState.Running) return;
 			this.vm.run(1000);
@@ -84,6 +98,7 @@ export class Debugger extends Widget {
 
 		this.run.click(() => {
 			this.state = DebuggerState.Running;
+			this.snapshot = null;
 			this.vm = new compiler.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
 			this.bus.event(new events.Run())
 			requestAnimationFrame(this.advanceVm);
@@ -91,12 +106,14 @@ export class Debugger extends Widget {
 
 		this.debug.click(() => {
 			this.state = DebuggerState.Paused;
+			this.snapshot = null;
 			this.vm = new compiler.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
 			this.bus.event(new events.Debug());
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 		});
 
 		this.pause.click(() => {
+			this.snapshot = null;
 			this.state = DebuggerState.Paused;
 			this.bus.event(new events.Pause());
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
@@ -105,11 +122,11 @@ export class Debugger extends Widget {
 		this.resume.click(() => {
 			this.state = DebuggerState.Running;
 			this.bus.event(new events.Resume());
-			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			requestAnimationFrame(this.advanceVm);
 		});
 
 		this.stop.click(() => {
+			this.snapshot = null;
 			this.state = DebuggerState.Stopped;
 			this.bus.event(new events.Stop());
 		});
@@ -119,8 +136,35 @@ export class Debugger extends Widget {
 			this.bus.event(new Step(this.vm.getLineNumber()));
 		});*/
 
+		let stepOverAsync = () => {
+			if (this.snapshot) {
+				this.state = DebuggerState.Running;
+				this.bus.event(new events.Resume());
+				this.snapshot = this.vm.stepOver(this.snapshot);
+				if (this.snapshot) requestAnimationFrame(stepOverAsync);
+				else {
+					this.state = DebuggerState.Paused;
+					this.bus.event(new events.Pause());
+					this.bus.event(new events.Step(this.vm.getLineNumber()));
+				}
+				return;
+			}
+		}
 		this.stepOver.click(() => {
-			this.vm.stepOver();
+			this.state = DebuggerState.Paused;
+
+			// If we got a snapshot, we need to switch
+			// to async handling of the step over until
+			// the async function has been completed.
+			this.snapshot = this.vm.stepOver();
+			if (this.snapshot) {
+				stepOverAsync();
+				return;
+			}
+
+			// Otherwise we had an step over with
+			// having to wait for an async call to
+			// complete.
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			if (this.vm.state == compiler.VMState.Completed) {
 				alert("Program complete.");

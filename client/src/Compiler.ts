@@ -1221,6 +1221,18 @@ export enum VMState {
 	Completed
 }
 
+/**
+ * Returned by VirtualMachine#stepOver in case
+ * an async function is being called. The caller
+ * needs to then give control back to the UI thread
+ * and call stepOver again with this snapshot, until null is returned.
+ */
+export interface StepOverSnapshot {
+	frameIndex: number,
+	frame: Frame,
+	lineInfoIndex: number
+}
+
 export class VirtualMachine {
 	state = VMState.Running;
 	frames = Array<Frame>();
@@ -1255,9 +1267,10 @@ export class VirtualMachine {
 		if (this.state == VMState.Completed) return;
 	}
 
-	stepOver () {
+
+	stepOver (lastSnapshot: StepOverSnapshot = null): StepOverSnapshot {
 		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
+		if (this.state == VMState.Completed) return null;
 
 		if (this.asyncPromise) {
 			if (this.asyncPromise.completed) {
@@ -1269,14 +1282,22 @@ export class VirtualMachine {
 			}
 		}
 
-		let frameIndex = this.frames.length - 1;
-		let frame = this.frames[frameIndex];
-		let lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+		let frameIndex = lastSnapshot ? lastSnapshot.frameIndex : this.frames.length - 1;
+		let frame = lastSnapshot ? lastSnapshot.frame : this.frames[frameIndex];
+		let lineInfoIndex = lastSnapshot ? lastSnapshot.lineInfoIndex : frame.code.lineInfos[frame.pc].index;
+		let snapshot: StepOverSnapshot = {
+			frameIndex: frameIndex,
+			frame: frame,
+			lineInfoIndex: lineInfoIndex
+		}
+		var executed = 0;
 		while(true) {
 			if (this.asyncPromise)
-				return;
+				return snapshot;
 			if (this.frames.length == 0)
-				return;
+				return null;
+			if (executed++ > 1000)
+				return snapshot;
 
 			let currFrameIndex = this.frames.length - 1;
 			let currFrame = this.frames[currFrameIndex];
@@ -1284,10 +1305,10 @@ export class VirtualMachine {
 
 			if (currFrameIndex == frameIndex)
 				if (lineInfoIndex != currLineInfoIndex)
-					return;
+					return null;
 
 			if (currFrameIndex < frameIndex)
-				return;
+				return null;
 
 			this.step();
 		}

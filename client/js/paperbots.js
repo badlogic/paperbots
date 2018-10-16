@@ -5736,11 +5736,12 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
             if (this.state == VMState.Completed)
                 return;
         };
-        VirtualMachine.prototype.stepOver = function () {
+        VirtualMachine.prototype.stepOver = function (lastSnapshot) {
+            if (lastSnapshot === void 0) { lastSnapshot = null; }
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
             if (this.state == VMState.Completed)
-                return;
+                return null;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
                     if (this.asyncFun.returnType != exports.NothingType) {
@@ -5750,22 +5751,30 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
                     this.asyncFun = null;
                 }
             }
-            var frameIndex = this.frames.length - 1;
-            var frame = this.frames[frameIndex];
-            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+            var frameIndex = lastSnapshot ? lastSnapshot.frameIndex : this.frames.length - 1;
+            var frame = lastSnapshot ? lastSnapshot.frame : this.frames[frameIndex];
+            var lineInfoIndex = lastSnapshot ? lastSnapshot.lineInfoIndex : frame.code.lineInfos[frame.pc].index;
+            var snapshot = {
+                frameIndex: frameIndex,
+                frame: frame,
+                lineInfoIndex: lineInfoIndex
+            };
+            var executed = 0;
             while (true) {
                 if (this.asyncPromise)
-                    return;
+                    return snapshot;
                 if (this.frames.length == 0)
-                    return;
+                    return null;
+                if (executed++ > 1000)
+                    return snapshot;
                 var currFrameIndex = this.frames.length - 1;
                 var currFrame = this.frames[currFrameIndex];
                 var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
                 if (currFrameIndex == frameIndex)
                     if (lineInfoIndex != currLineInfoIndex)
-                        return;
+                        return null;
                 if (currFrameIndex < frameIndex)
-                    return;
+                    return null;
                 this.step();
             }
         };
@@ -6070,11 +6079,12 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             _this.lastModule = null;
             _this.selectedFrame = null;
             _this.state = DebuggerState.Stopped;
+            _this.snapshot = null;
             return _this;
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-debugger-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.pause = dom.find("#pb-debugger-pause");
@@ -6092,6 +6102,15 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.locals = dom.find("#pb-debugger-locals");
             this.callstack = dom.find("#pb-debugger-callstack");
             this.vmState = dom.find("#pb-debugger-vm");
+            dom.find("#pb-debugger-vm-label").click(function () {
+                _this.vmState.toggle();
+            });
+            dom.find("#pb-debugger-callstack-label").click(function () {
+                _this.callstack.toggle();
+            });
+            dom.find("#pb-debugger-locals-label").click(function () {
+                _this.locals.toggle();
+            });
             this.advanceVm = function () {
                 if (_this.state != DebuggerState.Running)
                     return;
@@ -6101,17 +6120,20 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             };
             this.run.click(function () {
                 _this.state = DebuggerState.Running;
+                _this.snapshot = null;
                 _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
                 _this.bus.event(new events.Run());
                 requestAnimationFrame(_this.advanceVm);
             });
             this.debug.click(function () {
                 _this.state = DebuggerState.Paused;
+                _this.snapshot = null;
                 _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
                 _this.bus.event(new events.Debug());
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
             });
             this.pause.click(function () {
+                _this.snapshot = null;
                 _this.state = DebuggerState.Paused;
                 _this.bus.event(new events.Pause());
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
@@ -6119,15 +6141,35 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.resume.click(function () {
                 _this.state = DebuggerState.Running;
                 _this.bus.event(new events.Resume());
-                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 requestAnimationFrame(_this.advanceVm);
             });
             this.stop.click(function () {
+                _this.snapshot = null;
                 _this.state = DebuggerState.Stopped;
                 _this.bus.event(new events.Stop());
             });
+            var stepOverAsync = function () {
+                if (_this.snapshot) {
+                    _this.state = DebuggerState.Running;
+                    _this.bus.event(new events.Resume());
+                    _this.snapshot = _this.vm.stepOver(_this.snapshot);
+                    if (_this.snapshot)
+                        requestAnimationFrame(stepOverAsync);
+                    else {
+                        _this.state = DebuggerState.Paused;
+                        _this.bus.event(new events.Pause());
+                        _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+                    }
+                    return;
+                }
+            };
             this.stepOver.click(function () {
-                _this.vm.stepOver();
+                _this.state = DebuggerState.Paused;
+                _this.snapshot = _this.vm.stepOver();
+                if (_this.snapshot) {
+                    stepOverAsync();
+                    return;
+                }
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == compiler.VMState.Completed) {
                     alert("Program complete.");

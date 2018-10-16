@@ -6055,7 +6055,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div>\n\t\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">Parameters & Variables</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">Callstack</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div>\n\t\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.stepOver = dom.find("#pb-debugger-step-over");
@@ -6243,7 +6243,8 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                     fixedGutter: true,
                     extraKeys: {
                         "Tab": "indentAuto"
-                    }
+                    },
+                    theme: "monokai"
                 });
                 _this.editor.on("change", function (instance, change) {
                     var module = _this.compile();
@@ -6353,9 +6354,9 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.input = new Utils_3.Input(this.canvas);
             this.toolsHandler = {
                 down: function (x, y) {
-                    var cellSize = _this.canvas.width / (World.WORLD_SIZE + 1);
+                    var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                     x = ((x / cellSize) | 0) - 1;
-                    y = (((_this.canvas.height - y) / cellSize) | 0) - 1;
+                    y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
                     if (_this.selectedTool == "Wall") {
                         _this.world.setTile(x, y, World.newWall());
                     }
@@ -6566,7 +6567,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             var canvas = this.canvas;
             var realToCSSPixels = window.devicePixelRatio;
             var displayWidth = Math.floor(canvas.clientWidth * realToCSSPixels);
-            var displayHeight = Math.floor(canvas.clientHeight * realToCSSPixels);
+            var displayHeight = displayWidth;
             if (canvas.width !== displayWidth || canvas.height != displayHeight) {
                 console.log("Resize: canvas " + canvas.width + "x" + canvas.height + ", display " + displayWidth + "x" + displayHeight + ", ratio " + realToCSSPixels);
                 canvas.width = displayWidth;
@@ -6585,7 +6586,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             var ctx = this.ctx;
             var canvas = this.canvas;
             this.resize();
-            ctx.fillStyle = "#eeeeee";
+            ctx.fillStyle = "#252526";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             this.drawGrid();
             if (!this.assets.hasMoreToLoad()) {
@@ -6610,13 +6611,14 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
             this.ctx.restore();
         };
-        Botland.prototype.drawText = function (text, x, y, color) {
+        Botland.prototype.drawText = function (text, x, y, color, scale) {
             if (color === void 0) { color = "#000000"; }
+            if (scale === void 0) { scale = 1; }
             x |= 0;
             y |= 0;
             var ctx = this.ctx;
             ctx.fillStyle = color;
-            ctx.font = this.cellSize * 0.5 + "pt monospace";
+            ctx.font = this.cellSize * 0.5 * scale + "pt monospace";
             var metrics = ctx.measureText(text);
             ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
         };
@@ -6640,10 +6642,10 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                             img = this.assets.getImage("img/wall.png");
                             break;
                         case "number":
-                            this.drawText("" + obj.value, wx, wy);
+                            this.drawText("" + obj.value, wx, wy, "#97b757");
                             break;
                         case "letter":
-                            this.drawText("" + obj.value, wx, wy);
+                            this.drawText("" + obj.value, wx, wy, "#CA8D73");
                             break;
                         default: assertNever(obj);
                     }
@@ -6659,10 +6661,10 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             var ctx = this.ctx;
             var canvas = this.canvas;
             for (var y = 0; y < World.WORLD_SIZE; y++) {
-                this.drawText("" + y, 0, y * this.cellSize, "#aaaaaa");
+                this.drawText("" + y, 0, y * this.cellSize, "#828282", 0.8);
             }
             for (var x = 0; x < World.WORLD_SIZE; x++) {
-                this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#aaaaaa");
+                this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#828282", 0.8);
             }
             ctx.save();
             ctx.translate(this.cellSize, 0);
@@ -6859,8 +6861,8 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             this.eventBus.addListener(this.playground);
             var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
-            editorAndDebugger.append(this.editor.render());
             editorAndDebugger.append(this["debugger"].render());
+            editorAndDebugger.append(this.editor.render());
             dom.append(editorAndDebugger);
             dom.append(this.playground.render());
             $(parent).append(dom);

@@ -28,8 +28,8 @@ export class Paperbots implements EventListener {
 			<div id ="pb-editor-and-debugger">
 			</div>
 		`);
-		editorAndDebugger.append(this.editor.render());
 		editorAndDebugger.append(this.debugger.render());
+		editorAndDebugger.append(this.editor.render());
 		dom.append(editorAndDebugger);
 		dom.append(this.playground.render());
 		$(parent).append(dom);

@@ -1,13 +1,14 @@
-html {
+* {
 	box-sizing: border-box;
 }
 
 body {
-	background: #dddddd;
-	color: 333333;
+	background: #252526;
+	color:#ffffff;
 	margin: 0;
 	padding: 20px;
-	font-family: Arial, Helvetica, sans-serif;
+	font-family: -apple-system,BlinkMacSystemFont,Segoe WPC,Segoe UI,HelveticaNeue-Light,Ubuntu,Droid Sans,sans-serif;
+	font-size: 16px;
 }
 
 #pb-main {
@@ -19,16 +20,14 @@ body {
 
 #pb-canvas-container {
 	user-select: none;
-}
-
-#pb-debugger input[disabled] {
-	color: #888888;
+	max-width: 600px;
+	width: 40%;
 }
 
 #pb-editor-and-debugger {
 	display: flex;
 	height: 100%;
-	width: 100%;
+	width: 60%;
 }
 
 #pb-code-editor {
@@ -40,10 +39,21 @@ body {
 
 #pb-debugger {
 	width: 30%;
+	min-width: 250px;
+	max-width: 250px;
 	height: 100%;
-	padding: 0 1em 0 1em;
 	display: flex;
 	flex-direction: row;
+}
+
+#pb-debugger input {
+	width: 23%;
+	margin: 0;
+
+}
+
+#pb-debugger input[disabled] {
+	color: #888888;
 }
 
 #pb-debugger-locals-callstack {
@@ -54,29 +64,34 @@ body {
 
 #pb-debugger-locals {
 	flex: 1;
-	background: #ffffff;
-	overflow: auto;
+	background: #252526;
+	color: #ffffff;
 }
 
 #pb-debugger-callstack {
 	flex: 1;
-	background: #ffffff;
-	overflow: auto;
+	background: #252526;
+	color: #ffffff;
 }
 
 .pb-debugger-label {
-	margin: 0.4em 0 0.4em 0;
-	font-size: 0.8em;
+	padding: 0.25em 0.5em;
+	font-size: 14px;
+	font-weight: 500;
+	background: #333333;
+	color: #828282;
 }
 
 .pb-debugger-callstack-frame {
 	padding: 0 1em 0 1em;
-	font-size: 0.8em;
+	background: #252526;
+	color: #ffffff;
 }
 
 .pb-debugger-local {
 	padding: 0 1em 0 1em;
-	font-size: 0.8em;
+	background: #252526;
+	color: #ffffff;
 }
 
 #pb-debugger-vm {
@@ -85,9 +100,8 @@ body {
 	overflow: auto;
 	margin: 1em 0 0 1em;
 	font-family: monospace;
-	font-size: 0.8em;
-	background: #fff;
-	color: #000;
+	background: #252526;
+	color: #ffffff;
 	white-space: pre;
 }
 
@@ -110,14 +124,22 @@ body {
 }
 
 #pb-canvas {
-	width: 512px;
-	height: 512px;
+	width: 100%;
 }
 
 /* CodeMirror styles */
 .CodeMirror {
 	width: 100%;
 	height: 100%;
+	font-family: Monaco, "Courier New", monospace;
+    font-weight: normal;
+    font-size: 14px;
+    line-height: 18px;
+    letter-spacing: 0px
+}
+
+.CodeMirror-gutter {
+	margin-right: 0.5em;
 }
 
 .gutter-breakpoints {

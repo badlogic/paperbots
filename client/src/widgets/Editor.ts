@@ -56,7 +56,8 @@ export class Editor extends Widget {
 				fixedGutter: true,
 				extraKeys: {
 					"Tab": "indentAuto"
-				}
+				},
+				theme: "monokai"
 			});
 
 			this.editor.on("change", (instance, change) => {

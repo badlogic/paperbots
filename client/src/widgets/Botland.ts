@@ -65,9 +65,9 @@ export class Botland extends Widget {
 		this.input = new Input(this.canvas);
 		this.toolsHandler = {
 			down: (x, y) => {
-				let cellSize = this.canvas.width / (World.WORLD_SIZE + 1);
+				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
-				y = (((this.canvas.height - y) / cellSize) | 0) - 1;
+				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
 
 				if (this.selectedTool == "Wall") {
 					this.world.setTile(x, y, World.newWall());
@@ -280,7 +280,7 @@ export class Botland extends Widget {
 		let canvas = this.canvas;
 		let realToCSSPixels = window.devicePixelRatio;
 		let displayWidth  = Math.floor(canvas.clientWidth * realToCSSPixels);
-		let displayHeight  = Math.floor(canvas.clientHeight * realToCSSPixels);
+		let displayHeight  = displayWidth;
 
 		if (canvas.width  !== displayWidth || canvas.height != displayHeight) {
 			console.log(`Resize: canvas ${canvas.width}x${canvas.height}, display ${displayWidth}x${displayHeight}, ratio ${realToCSSPixels}`)
@@ -304,7 +304,7 @@ export class Botland extends Widget {
 		this.resize();
 
 
-		ctx.fillStyle = "#eeeeee";
+		ctx.fillStyle = "#252526";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 		this.drawGrid();
@@ -332,12 +332,12 @@ export class Botland extends Widget {
 		this.ctx.restore();
 	}
 
-	drawText(text: string, x: number, y: number, color = "#000000") {
+	drawText(text: string, x: number, y: number, color = "#000000", scale = 1) {
 		x |= 0;
 		y |= 0;
 		let ctx = this.ctx;
 		ctx.fillStyle = color;
-		ctx.font = this.cellSize * 0.5 + "pt monospace";
+		ctx.font = this.cellSize * 0.5 * scale + "pt monospace";
 		let metrics = ctx.measureText(text);
 		ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
 	}
@@ -365,10 +365,10 @@ export class Botland extends Widget {
 						img = this.assets.getImage("img/wall.png");
 						break;
 					case "number":
-						this.drawText("" + obj.value, wx, wy);
+						this.drawText("" + obj.value, wx, wy, "#97b757");
 						break;
 					case "letter":
-						this.drawText("" + obj.value, wx, wy);
+						this.drawText("" + obj.value, wx, wy, "#CA8D73");
 						break;
 					default: assertNever(obj);
 				}
@@ -394,11 +394,11 @@ export class Botland extends Widget {
 		let canvas = this.canvas;
 
 		for (var y = 0; y < World.WORLD_SIZE; y++) {
-			this.drawText("" + y, 0, y * this.cellSize, "#aaaaaa");
+			this.drawText("" + y, 0, y * this.cellSize, "#828282", 0.8);
 		}
 
 		for (var x = 0; x < World.WORLD_SIZE; x++) {
-			this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#aaaaaa");
+			this.drawText("" + x, x * this.cellSize + this.cellSize, -this.cellSize, "#828282", 0.8);
 		}
 
 		ctx.save();

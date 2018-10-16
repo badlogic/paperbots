@@ -27,9 +27,9 @@ export class Debugger extends Widget {
 						<input id="pb-debugger-step-over" type="button" value="Step over">
 						<input id="pb-debugger-step-into" type="button" value="Step into">
 					</div>
-					<div class="pb-debugger-label">Parameters & Variables</div>
+					<div class="pb-debugger-label">VARIABLES</div>
 					<div id="pb-debugger-locals"></div>
-					<div class="pb-debugger-label">Callstack</div>
+					<div class="pb-debugger-label">CALL STACK</div>
 					<div id="pb-debugger-callstack"></div>
 				</div>
 				<div id="pb-debugger-vm"></div>

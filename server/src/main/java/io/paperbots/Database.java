@@ -8,7 +8,7 @@ import org.jdbi.v3.core.Jdbi;
 
 public class Database {
 	public static Jdbi setupDatabase (boolean test) {
-		final String url = "jdbc:mysql://127.0.0.1/paperbots";
+		final String url = "jdbc:mysql://" + Paperbots.PAPERBOTS_DB_HOST + "/paperbots";
 		final String user = "root";
 		final String pwd = Paperbots.PAPERBOTS_DB_PWD;
 		final Jdbi jdbi;

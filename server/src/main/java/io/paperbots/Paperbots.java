@@ -30,6 +30,7 @@ import io.paperbots.data.UserType;
  */
 public class Paperbots {
 	public static final String PAPERBOTS_RELOAD_PWD;
+	public static final String PAPERBOTS_DB_HOST;
 	public static final String PAPERBOTS_DB_PWD;
 	public static final String PAPERBOTS_EMAIL_PWD;
 
@@ -40,6 +41,11 @@ public class Paperbots {
 		if (PAPERBOTS_DB_PWD == null) throw new IllegalStateException("PAPERBOTS_DB_PWD environment variable  does not exist.");
 		PAPERBOTS_EMAIL_PWD = System.getenv("PAPERBOTS_EMAIL_PWD");
 		if (PAPERBOTS_EMAIL_PWD == null) throw new IllegalStateException("PAPERBOTS_EMAIL_PWD environment variable does not exist.");
+
+		if (System.getenv("PAPERBOTS_DB_HOST") == null)
+			PAPERBOTS_DB_HOST = "127.0.0.1";
+		else
+			PAPERBOTS_DB_HOST = System.getenv("PAPERBOTS_DB_HOST");
 	}
 
 	public static void main (String[] cliArgs) {

@@ -108,6 +108,13 @@ body {
 	background-repeat: no-repeat;
 	display: inline-block;
 	cursor: pointer;
+	opacity: 1;
+}
+
+.pb-debugger-button[disabled] {
+	color: rgba(1, 1, 1, 0.2);
+	cursor: default;
+	opacity: 0.4;
 }
 
 .pb-debugger-run-icon {
@@ -137,6 +144,7 @@ body {
 
 .pb-debugger-step-out-icon {
 	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cdefs%3E%3Cstyle%3E.icon-canvas-transparent,.icon-vs-out{fill:%23252526}.icon-canvas-transparent{opacity:0}.icon-vs-bg{fill:%23c5c5c5}.icon-vs-action-blue{fill:%2375beff}%3C/style%3E%3C/defs%3E%3Ctitle%3Estep-out%3C/title%3E%3Cpath class='icon-canvas-transparent' d='M16 16H0V0h16z' id='canvas'/%3E%3Cpath class='icon-vs-bg' d='M8 11a2 2 0 1 1-2 2 2 2 0 0 1 2-2z' id='iconBg'/%3E%3Cpath class='icon-vs-action-blue' d='M3.97 4.72L8 .689l4.03 4.03-1.06 1.061L9 3.811V10H7V3.811L5.03 5.78z' id='colorAction'/%3E%3C/svg%3E");
+	display: none !important;
 }
 
 .pb-debugger-stop-icon {

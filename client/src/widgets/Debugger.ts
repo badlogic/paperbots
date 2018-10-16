@@ -169,7 +169,6 @@ export class Debugger extends Widget {
 		} else if (event instanceof events.Run) {
 			this.run.hide();
 			this.debug.hide();
-
 			this.pause.show();
 			this.stop.show();
 			this.stepOver.show()
@@ -182,22 +181,29 @@ export class Debugger extends Widget {
 		} else if (event instanceof events.Debug) {
 			this.run.hide();
 			this.debug.hide();
-
 			this.resume.show();
 			this.stop.show();
 			this.stepOver.show()
 			this.stepInto.show();
 			this.stepOut.show();
-
-			this.state = DebuggerState.Paused;
+			setElementEnabled(this.stepOver, true);
+			setElementEnabled(this.stepInto, true);
+			setElementEnabled(this.stepOut, true);
 		} else if (event instanceof events.Pause) {
-			this.state == DebuggerState.Paused;
+			this.resume.show();
+			this.pause.hide();
+			setElementEnabled(this.stepOver, true);
+			setElementEnabled(this.stepInto, true);
+			setElementEnabled(this.stepOut, true);
 		} else if (event instanceof events.Resume) {
-			this.state == DebuggerState.Running;
+			this.pause.show();
+			this.resume.hide();
+			setElementEnabled(this.stepOver, false);
+			setElementEnabled(this.stepInto, false);
+			setElementEnabled(this.stepOut, false);
 		} else if (event instanceof events.Stop) {
 			this.run.show();
 			this.debug.show();
-
 			this.pause.hide();
 			this.resume.hide();
 			this.stop.hide();
@@ -207,7 +213,9 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepOver, false);
 			setElementEnabled(this.stepInto, false);
 			setElementEnabled(this.stepOut, false);
-			this.state = DebuggerState.Stopped;
+			this.locals.empty();
+			this.callstack.empty();
+			this.vmState.empty();
 		} else if (event instanceof events.Step) {
 			if (this.vm && this.vm.frames.length > 0) {
 				this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
@@ -221,7 +229,7 @@ export class Debugger extends Widget {
 		this.locals.empty();
 		this.callstack.empty();
 		this.vmState.empty();
-		if (this.vm && this.vm.frames.length > 0) {
+		if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
 			this.vm.frames.slice(0).reverse().forEach(frame => {
 				let signature = compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
 				let lineInfo = frame.code.lineInfos[frame.pc];

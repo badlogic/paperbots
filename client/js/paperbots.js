@@ -6189,13 +6189,23 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.show();
                 this.stepInto.show();
                 this.stepOut.show();
-                this.state = DebuggerState.Paused;
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
             }
             else if (event instanceof events.Pause) {
-                this.state == DebuggerState.Paused;
+                this.resume.show();
+                this.pause.hide();
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
             }
             else if (event instanceof events.Resume) {
-                this.state == DebuggerState.Running;
+                this.pause.show();
+                this.resume.hide();
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
             }
             else if (event instanceof events.Stop) {
                 this.run.show();
@@ -6209,7 +6219,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 Utils_2.setElementEnabled(this.stepOver, false);
                 Utils_2.setElementEnabled(this.stepInto, false);
                 Utils_2.setElementEnabled(this.stepOut, false);
-                this.state = DebuggerState.Stopped;
+                this.locals.empty();
+                this.callstack.empty();
+                this.vmState.empty();
             }
             else if (event instanceof events.Step) {
                 if (this.vm && this.vm.frames.length > 0) {
@@ -6225,7 +6237,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.locals.empty();
             this.callstack.empty();
             this.vmState.empty();
-            if (this.vm && this.vm.frames.length > 0) {
+            if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
                 this.vm.frames.slice(0).reverse().forEach(function (frame) {
                     var signature = compiler.functionSignature(frame.code.ast);
                     var lineInfo = frame.code.lineInfos[frame.pc];

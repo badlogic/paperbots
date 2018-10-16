@@ -18,22 +18,74 @@ body {
 	flex-direction: row;
 }
 
+#pb-playground-and-docs {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+}
+
 #pb-canvas-container {
 	user-select: none !important;
-	max-width: 600px;
 	padding: 0.5em;
+}
+
+#pb-canvas {
+	width: 100%;
 }
 
 #pb-editor-and-debugger {
 	display: flex;
 	height: 100%;
+	width: 100%;
+}
+
+#pb-editor-and-docs {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
 }
 
 #pb-code-editor {
-	width: 70%;
-	flex: 1;
 	display: flex;
+	flex: 1;
 	flex-direction: column;
+}
+
+#pb-docs {
+	flex: 0.8;
+	padding: 1em;
+	background: #1e1e1e;
+	overflow: auto;
+}
+
+#pb-docs h1 {
+	margin-top: 0;
+}
+
+#pb-docs a {
+	color: orange;
+    text-decoration: none;
+    background-color: transparent;
+}
+
+.pb-docs-function-list {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.pb-docs-function-list li {
+	line-height: 2;
+}
+
+#pb-docs code {
+	padding: 0.2em 0.4em;
+    margin: 0;
+	color: orange;
+    background-color: #333333;
+    border-radius: 3px;
+    font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
 }
 
 #pb-debugger {
@@ -61,7 +113,7 @@ body {
 	color: #ffffff;
 }
 
-.pb-debugger-label {
+.pb-label {
 	padding: 0.25em 0.5em;
 	font-size: 14px;
 	font-weight: 500;
@@ -172,10 +224,6 @@ body {
 	padding: 1em;
 }
 
-#pb-canvas {
-	width: 100%;
-}
-
 /* CodeMirror styles */
 .CodeMirror {
 	width: 100%;
@@ -245,7 +293,7 @@ body {
 	width: 5px;
 	height: 100%;
 	left: 50%;
-	background: #333;
+	background: #252526;
 	z-index: 9999;
 	cursor: ew-resize;
 }

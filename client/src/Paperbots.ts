@@ -5,12 +5,14 @@ import { Editor } from "./widgets/Editor"
 import { Botland } from "./widgets/Botland";
 import * as compiler from "./Compiler"
 import { SplitPane } from "./widgets/SplitPane";
+import { Docs } from "./widgets/Docs";
 
 export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
 	private editor = new Editor(this.eventBus);
 	private debugger = new Debugger(this.eventBus);
 	private playground = new Botland(this.eventBus);
+	private docs = new Docs(this.eventBus);
 
 	constructor(parent: HTMLElement) {
 		// register all components with the bus
@@ -18,6 +20,7 @@ export class Paperbots implements EventListener {
 		this.eventBus.addListener(this.editor);
 		this.eventBus.addListener(this.debugger);
 		this.eventBus.addListener(this.playground);
+		this.eventBus.addListener(this.docs);
 
 		// Render the components
 		let dom = $(/*html*/ `
@@ -30,9 +33,29 @@ export class Paperbots implements EventListener {
 			</div>
 		`);
 		editorAndDebugger.append(this.debugger.render());
-		editorAndDebugger.append(this.editor.render());
 
-		let splitPane = new SplitPane(editorAndDebugger, $(this.playground.render()));
+		let editorAndDocs = $(/*html*/`
+			<div id="pb-editor-and-docs">
+			</div>
+		`)
+		editorAndDocs.append(this.editor.render());
+		let docs = this.docs.render();
+		let helpLabel = $(/*html*/`<div id="pb-docs-label" class="pb-label">HELP</div>`);
+		helpLabel.click(() => {
+			$(docs).toggle();
+		});
+		editorAndDocs.append(helpLabel);
+		editorAndDocs.append(docs);
+		editorAndDebugger.append(editorAndDocs);
+
+		let playgroundAndDescription = $(/*html*/`
+			<div id="pb-playground-and-description">
+			</div>
+		`);
+
+		playgroundAndDescription.append(this.playground.render());
+
+		let splitPane = new SplitPane(editorAndDebugger, playgroundAndDescription);
 		dom.append(splitPane.dom);
 		$(parent).append(dom);
 	}

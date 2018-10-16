@@ -47,11 +47,11 @@ export class Debugger extends Widget {
 					<div id="pb-debugger-step-out" class="pb-debugger-step-out-icon pb-debugger-button"></div>
 				</div>
 				<div id="pb-debugger-locals-callstack">
-					<div id="pb-debugger-locals-label" class="pb-debugger-label">VARIABLES</div>
+					<div id="pb-debugger-locals-label" class="pb-label">VARIABLES</div>
 					<div id="pb-debugger-locals"></div>
-					<div id="pb-debugger-callstack-label" class="pb-debugger-label">CALL STACK</div>
+					<div id="pb-debugger-callstack-label" class="pb-label">CALL STACK</div>
 					<div id="pb-debugger-callstack"></div>
-					<div id="pb-debugger-vm-label"  class="pb-debugger-label">VM</div>
+					<div id="pb-debugger-vm-label"  class="pb-label">VM</div>
 					<div id="pb-debugger-vm"></div>
 				</div>
 			</div>

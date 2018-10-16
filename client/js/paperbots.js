@@ -6086,7 +6086,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-debugger-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.pause = dom.find("#pb-debugger-pause");
@@ -7104,7 +7104,60 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_4) {
+    "use strict";
+    exports.__esModule = true;
+    var DOCS = [
+        {
+            name: "Functions",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Movement",
+                    entries: [
+                        {
+                            name: "forward()",
+                            desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                        },
+                        {
+                            name: "turnLeft()",
+                            desc: "Rotates the robot in-plae to the left by 90 degrees (counter-clock-wise)."
+                        },
+                        {
+                            name: "turnRight()",
+                            desc: "Rotates the robot in-plae to the right by 90 degrees (clock-wise)."
+                        }
+                    ],
+                    subCategories: []
+                }
+            ]
+        },
+        {
+            name: "Statements",
+            entries: [],
+            subCategories: []
+        }
+    ];
+    var Docs = (function (_super) {
+        __extends(Docs, _super);
+        function Docs(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Docs.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            return dom[0];
+        };
+        Docs.prototype.onEvent = function (event) {
+        };
+        Docs.prototype.generateDocs = function () {
+            DOCS.forEach(function (category) {
+            });
+        };
+        return Docs;
+    }(Widget_4.Widget));
+    exports.Docs = Docs;
+});
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
@@ -7113,15 +7166,28 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.playground = new Botland_1.Botland(this.eventBus);
+            this.docs = new Docs_1.Docs(this.eventBus);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
             this.eventBus.addListener(this.playground);
+            this.eventBus.addListener(this.docs);
             var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
-            editorAndDebugger.append(this.editor.render());
-            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, $(this.playground.render()));
+            var editorAndDocs = $("\n\t\t\t<div id=\"pb-editor-and-docs\">\n\t\t\t</div>\n\t\t");
+            editorAndDocs.append(this.editor.render());
+            var docs = this.docs.render();
+            var helpLabel = $("<div id=\"pb-docs-label\" class=\"pb-label\">HELP</div>");
+            helpLabel.click(function () {
+                $(docs).toggle();
+            });
+            editorAndDocs.append(helpLabel);
+            editorAndDocs.append(docs);
+            editorAndDebugger.append(editorAndDocs);
+            var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-playground-and-description\">\n\t\t\t</div>\n\t\t");
+            playgroundAndDescription.append(this.playground.render());
+            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
         }

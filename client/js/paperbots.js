@@ -5980,6 +5980,24 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return Debug;
     }());
     exports.Debug = Debug;
+    var Pause = (function () {
+        function Pause() {
+        }
+        return Pause;
+    }());
+    exports.Pause = Pause;
+    var Resume = (function () {
+        function Resume() {
+        }
+        return Resume;
+    }());
+    exports.Resume = Resume;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
     var Step = (function () {
         function Step(line) {
             this.line = line;
@@ -5987,12 +6005,6 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return Step;
     }());
     exports.Step = Step;
-    var Stop = (function () {
-        function Stop() {
-        }
-        return Stop;
-    }());
-    exports.Stop = Stop;
     var LineChange = (function () {
         function LineChange(line) {
             this.line = line;
@@ -6045,61 +6057,74 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
 define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "Compiler"], function (require, exports, Widget_1, events, Utils_2, compiler) {
     "use strict";
     exports.__esModule = true;
+    var DebuggerState;
+    (function (DebuggerState) {
+        DebuggerState[DebuggerState["Stopped"] = 0] = "Stopped";
+        DebuggerState[DebuggerState["Running"] = 1] = "Running";
+        DebuggerState[DebuggerState["Paused"] = 2] = "Paused";
+    })(DebuggerState = exports.DebuggerState || (exports.DebuggerState = {}));
     var Debugger = (function (_super) {
         __extends(Debugger, _super);
         function Debugger() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.lastModule = null;
             _this.selectedFrame = null;
+            _this.state = DebuggerState.Stopped;
             return _this;
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div>\n\t\t\t\t\t\t<input id=\"pb-debugger-run\" type=\"button\" value=\"Run\">\n\t\t\t\t\t\t<input id=\"pb-debugger-debug\" type=\"button\" value=\"Debug\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-over\" type=\"button\" value=\"Step over\">\n\t\t\t\t\t\t<input id=\"pb-debugger-step-into\" type=\"button\" value=\"Step into\">\n\t\t\t\t\t</div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div class=\"pb-debugger-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div class=\"pb-debugger-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
+            this.pause = dom.find("#pb-debugger-pause");
+            this.resume = dom.find("#pb-debugger-continue");
+            this.stop = dom.find("#pb-debugger-stop");
             this.stepOver = dom.find("#pb-debugger-step-over");
             this.stepInto = dom.find("#pb-debugger-step-into");
+            this.stepOut = dom.find("#pb-debugger-step-out");
+            this.pause.hide();
+            this.resume.hide();
+            this.stop.hide();
+            this.stepOver.hide();
+            this.stepInto.hide();
+            this.stepOut.hide();
             this.locals = dom.find("#pb-debugger-locals");
             this.callstack = dom.find("#pb-debugger-callstack");
             this.vmState = dom.find("#pb-debugger-vm");
+            this.advanceVm = function () {
+                if (_this.state != DebuggerState.Running)
+                    return;
+                _this.vm.run(1000);
+                _this.checkVmStopped();
+                requestAnimationFrame(_this.advanceVm);
+            };
             this.run.click(function () {
-                if (_this.run.val() == "Run") {
-                    _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
-                    ;
-                    _this.run.val("Stop");
-                    Utils_2.setElementEnabled(_this.debug, false);
-                    _this.bus.event(new events.Run());
-                    var advance_1 = function () {
-                        if (!_this.vm)
-                            return;
-                        _this.vm.run(1000);
-                        if (_this.vm.state == compiler.VMState.Completed) {
-                            alert("Program complete.");
-                            _this.bus.event(new events.Stop());
-                            return;
-                        }
-                        requestAnimationFrame(advance_1);
-                    };
-                    requestAnimationFrame(advance_1);
-                }
-                else {
-                    _this.bus.event(new events.Stop());
-                }
+                _this.state = DebuggerState.Running;
+                _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.bus.event(new events.Run());
+                requestAnimationFrame(_this.advanceVm);
             });
             this.debug.click(function () {
-                if (_this.debug.val() == "Debug") {
-                    _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
-                    _this.debug.val("Stop");
-                    Utils_2.setElementEnabled(_this.run, false);
-                    Utils_2.setElementEnabled(_this.stepOver, true);
-                    Utils_2.setElementEnabled(_this.stepInto, true);
-                    _this.bus.event(new events.Debug());
-                    _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                }
-                else {
-                    _this.bus.event(new events.Stop());
-                }
+                _this.state = DebuggerState.Paused;
+                _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.bus.event(new events.Debug());
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+            });
+            this.pause.click(function () {
+                _this.state = DebuggerState.Paused;
+                _this.bus.event(new events.Pause());
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+            });
+            this.resume.click(function () {
+                _this.state = DebuggerState.Running;
+                _this.bus.event(new events.Resume());
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+                requestAnimationFrame(_this.advanceVm);
+            });
+            this.stop.click(function () {
+                _this.state = DebuggerState.Stopped;
+                _this.bus.event(new events.Stop());
             });
             this.stepOver.click(function () {
                 _this.vm.stepOver();
@@ -6121,6 +6146,77 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             });
             dom.find("input").attr("disabled", "true");
             return dom[0];
+        };
+        Debugger.prototype.checkVmStopped = function () {
+            if (this.vm.state == compiler.VMState.Completed) {
+                this.state = DebuggerState.Stopped;
+                alert("Program complete.");
+                this.bus.event(new events.Stop());
+                return;
+            }
+        };
+        Debugger.prototype.onEvent = function (event) {
+            var _a = this, run = _a.run, debug = _a.debug, pause = _a.pause, resume = _a.resume, stop = _a.stop, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
+            if (event instanceof events.SourceChanged) {
+                if (event.module) {
+                    this.lastModule = event.module;
+                    Utils_2.setElementEnabled(this.run, true);
+                    Utils_2.setElementEnabled(this.debug, true);
+                }
+                else {
+                    this.lastModule = null;
+                    Utils_2.setElementEnabled(this.run, false);
+                    Utils_2.setElementEnabled(this.debug, false);
+                }
+            }
+            else if (event instanceof events.Run) {
+                this.run.hide();
+                this.debug.hide();
+                this.pause.show();
+                this.stop.show();
+                this.stepOver.show();
+                Utils_2.setElementEnabled(this.stepOver, false);
+                this.stepInto.show();
+                Utils_2.setElementEnabled(this.stepInto, false);
+                this.stepOut.show();
+                Utils_2.setElementEnabled(this.stepOut, false);
+            }
+            else if (event instanceof events.Debug) {
+                this.run.hide();
+                this.debug.hide();
+                this.resume.show();
+                this.stop.show();
+                this.stepOver.show();
+                this.stepInto.show();
+                this.stepOut.show();
+                this.state = DebuggerState.Paused;
+            }
+            else if (event instanceof events.Pause) {
+                this.state == DebuggerState.Paused;
+            }
+            else if (event instanceof events.Resume) {
+                this.state == DebuggerState.Running;
+            }
+            else if (event instanceof events.Stop) {
+                this.run.show();
+                this.debug.show();
+                this.pause.hide();
+                this.resume.hide();
+                this.stop.hide();
+                this.stepOver.hide();
+                this.stepInto.hide();
+                this.stepOut.hide();
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
+                this.state = DebuggerState.Stopped;
+            }
+            else if (event instanceof events.Step) {
+                if (this.vm && this.vm.frames.length > 0) {
+                    this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
+                }
+            }
+            this.renderState();
         };
         Debugger.prototype.renderState = function () {
             var _this = this;
@@ -6181,36 +6277,6 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 output += "\n";
             });
             this.vmState.html(output);
-        };
-        Debugger.prototype.onEvent = function (event) {
-            var _a = this, run = _a.run, debug = _a.debug, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
-            if (event instanceof events.SourceChanged) {
-                if (event.module) {
-                    this.lastModule = event.module;
-                    Utils_2.setElementEnabled(this.run, true);
-                    Utils_2.setElementEnabled(this.debug, true);
-                }
-                else {
-                    this.lastModule = null;
-                    this.vm = null;
-                    dom.find("input").attr("disabled", "true");
-                }
-            }
-            else if (event instanceof events.Stop) {
-                this.run.val("Run");
-                this.debug.val("Debug");
-                Utils_2.setElementEnabled(this.run, true);
-                Utils_2.setElementEnabled(this.debug, true);
-                Utils_2.setElementEnabled(this.stepOver, false);
-                Utils_2.setElementEnabled(this.stepInto, false);
-                this.vm = null;
-            }
-            else if (event instanceof events.Step) {
-                if (this.vm && this.vm.frames.length > 0) {
-                    this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
-                }
-            }
-            this.renderState();
         };
         return Debugger;
     }(Widget_1.Widget));

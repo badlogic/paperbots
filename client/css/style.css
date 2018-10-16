@@ -107,6 +107,7 @@ body {
 
 .selected {
 	background: rgba(76, 175, 80, 0.32);
+	color: #ffffff;
 }
 
 #pb-code-editor-code-mirror {

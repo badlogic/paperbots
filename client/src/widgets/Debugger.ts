@@ -141,13 +141,18 @@ export class Debugger extends Widget {
 				this.state = DebuggerState.Running;
 				this.bus.event(new events.Resume());
 				this.snapshot = this.vm.stepOver(this.snapshot);
-				if (this.snapshot) requestAnimationFrame(stepOverAsync);
-				else {
+				if (this.snapshot) {
+					requestAnimationFrame(stepOverAsync);
+				} else {
+					if (this.vm.state == compiler.VMState.Completed) {
+						alert("Program complete.");
+						this.bus.event(new events.Stop())
+						return;
+					}
 					this.state = DebuggerState.Paused;
 					this.bus.event(new events.Pause());
 					this.bus.event(new events.Step(this.vm.getLineNumber()));
 				}
-				return;
 			}
 		}
 		this.stepOver.click(() => {

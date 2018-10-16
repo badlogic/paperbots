@@ -237,6 +237,17 @@ export class Botland extends Widget {
 			}
 		});
 
+		ext.addFunction("scanLetter", [], "string", false, () => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			if (!tile || tile.kind != "letter") {
+				return "";
+			} else {
+				return tile.value;
+			}
+		});
+
 		ext.addFunction("isWallAhead", [], "boolean", false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;

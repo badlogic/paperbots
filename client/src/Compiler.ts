@@ -1294,8 +1294,10 @@ export class VirtualMachine {
 		while(true) {
 			if (this.asyncPromise)
 				return snapshot;
-			if (this.frames.length == 0)
+			if (this.frames.length == 0) {
+				this.state = VMState.Completed;
 				return null;
+			}
 			if (executed++ > 1000)
 				return snapshot;
 

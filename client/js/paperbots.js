@@ -5763,8 +5763,10 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
             while (true) {
                 if (this.asyncPromise)
                     return snapshot;
-                if (this.frames.length == 0)
+                if (this.frames.length == 0) {
+                    this.state = VMState.Completed;
                     return null;
+                }
                 if (executed++ > 1000)
                     return snapshot;
                 var currFrameIndex = this.frames.length - 1;
@@ -6153,14 +6155,19 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     _this.state = DebuggerState.Running;
                     _this.bus.event(new events.Resume());
                     _this.snapshot = _this.vm.stepOver(_this.snapshot);
-                    if (_this.snapshot)
+                    if (_this.snapshot) {
                         requestAnimationFrame(stepOverAsync);
+                    }
                     else {
+                        if (_this.vm.state == compiler.VMState.Completed) {
+                            alert("Program complete.");
+                            _this.bus.event(new events.Stop());
+                            return;
+                        }
                         _this.state = DebuggerState.Paused;
                         _this.bus.event(new events.Pause());
                         _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                     }
-                    return;
                 }
             };
             this.stepOver.click(function () {
@@ -6643,6 +6650,17 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 var tile = _this.world.getTile(x, y);
                 if (!tile || tile.kind != "number") {
                     return -1;
+                }
+                else {
+                    return tile.value;
+                }
+            });
+            ext.addFunction("scanLetter", [], "string", false, function () {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                if (!tile || tile.kind != "letter") {
+                    return "";
                 }
                 else {
                     return tile.value;

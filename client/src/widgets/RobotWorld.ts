@@ -7,7 +7,7 @@ function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);
 }
 
-export class Botland extends Widget {
+export class RobotWorld extends Widget {
 	private container: JQuery<HTMLElement>;
 	private canvas: HTMLCanvasElement;
 	private world: World;
@@ -63,6 +63,7 @@ export class Botland extends Widget {
 		}
 
 		this.input = new Input(this.canvas);
+		var dragged = false;
 		this.toolsHandler = {
 			down: (x, y) => {
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
@@ -74,6 +75,7 @@ export class Botland extends Widget {
 				} else if (this.selectedTool == "Floor") {
 					this.world.setTile(x, y, null);
 				}
+				dragged = false;
 			},
 			up: (x, y) => {
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
@@ -119,6 +121,7 @@ export class Botland extends Widget {
 						this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
 						this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 					} else {
+						if (dragged) return;
 						this.world.robot.turnLeft();
 					}
 				}
@@ -138,6 +141,7 @@ export class Botland extends Widget {
 					this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
 					this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
 				}
+				dragged = true;
 			}
 		};
 		this.input.addListener(this.toolsHandler);
@@ -150,6 +154,22 @@ export class Botland extends Widget {
 
 		ext.addFunction("forward", [], "nothing", true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Forward);
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			let check = () => {
+				if (this.world.robot.action == RobotAction.None) {
+					asyncResult.completed = true;
+					return;
+				}
+				requestAnimationFrame(check);
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+		ext.addFunction("backward", [], "nothing", true, () => {
+			this.world.robot.setAction(this.world, RobotAction.Backward);
 			let asyncResult: compiler.AsyncPromise<void> = {
 				completed: false,
 				value: null
@@ -217,7 +237,7 @@ export class Botland extends Widget {
 				completed: false,
 				value: null
 			}
-			var num = 3;
+			var num = 1;
 			let check = () => {
 				if (num-- > 0) {
 					requestAnimationFrame(check);
@@ -231,7 +251,7 @@ export class Botland extends Widget {
 
 		ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, (letter) => {
 			if (letter.trim().length != 1) {
-				alert("The string consist of exactly 1 letter, got '" + letter + "' instead.");
+				alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
 				return {
 					completed: true,
 					value: null
@@ -299,6 +319,98 @@ export class Botland extends Widget {
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			return tile && tile.kind == "letter";
+		});
+		ext.addFunction("distanceToWall", [], "number", false, () => {
+			let dirX = this.world.robot.data.dirX;
+			let dirY = this.world.robot.data.dirY;
+			let x = this.world.robot.data.x + dirX;
+			let y = this.world.robot.data.y + dirY;
+			var distance = 0;
+			var tile = this.world.getTile(x, y);
+			while(true) {
+				if (tile && tile.kind == "wall") break;
+				distance++;
+				x += dirX;
+				y += dirY;
+				tile = this.world.getTile(x, y);
+			}
+			return distance;
+		});
+		ext.addFunction("getDirection", [], "number", false, () => {
+			let dirX = this.world.robot.data.dirX;
+			let dirY = this.world.robot.data.dirY;
+			if (dirX == 1 && dirY == 0) return 0;
+			if (dirX == 0 && dirY == 1) return 1;
+			if (dirX == -1 && dirY == 0) return 2;
+			if (dirX == 0 && dirY == -1) return 2;
+			return 0;
+		});
+		ext.addFunction("getX", [], "number", false, () => {
+			return this.world.robot.data.x;
+		});
+		ext.addFunction("getY", [], "number", false, () => {
+			return this.world.robot.data.y;
+		});
+		ext.addFunction("getSpeed", [], "number", false, () => {
+			return 1 / this.world.robot.moveDuration;
+		});
+		ext.addFunction("setSpeed", [new compiler.ExternalFunctionParameter("speed", "number")], "nothing", false, (speed) => {
+			if (speed < 0) {
+				alert("The robot's speed must be >= 0.");
+				return;
+			}
+			this.world.robot.moveDuration = 1 / speed;
+		});
+		ext.addFunction("getTurningSpeed", [], "number", false, () => {
+			return this.world.robot.turnDuration;
+		});
+		ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("seconds", "number")], "nothing", false, (speed) => {
+			if (speed < 0) {
+				alert("The robot's turning speed must be >= 0.");
+				return;
+			}
+			this.world.robot.turnDuration = speed;
+		});
+		ext.addFunction("buildWall", [], "nothing", true, (speed) => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			this.world.setTile(x, y, World.newWall());
+
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			var num = 1;
+			let check = () => {
+				if (num-- > 0) {
+					requestAnimationFrame(check);
+					return;
+				}
+				asyncResult.completed = true;
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+		ext.addFunction("destroyWall", [], "nothing", true, (speed) => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			if (tile && tile.kind == "wall") this.world.setTile(x, y, null);
+
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			var num = 1;
+			let check = () => {
+				if (num-- > 0) {
+					requestAnimationFrame(check);
+					return;
+				}
+				asyncResult.completed = true;
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
 		});
 
 		this.bus.event(new events.AnnounceExternalFunctions(ext));
@@ -472,6 +584,7 @@ export class Botland extends Widget {
 
 export enum RobotAction {
 	Forward,
+	Backward,
 	TurnLeft,
 	TurnRight,
 	None
@@ -480,16 +593,18 @@ export enum RobotAction {
 export class RobotData {
 	constructor(
 	public x = 0,
-	public y = 15,
+	public y = 0,
 	public dirX = 1,
 	public dirY = 0,
 	public angle = 0) {}
 }
 
 export class Robot {
-	static readonly FORWARD_DURATION = 0.25;
+	static readonly MOVE_DURATION = 0.25;
 	static readonly TURN_DURATION = 0.25;
 
+	moveDuration = Robot.MOVE_DURATION;
+	turnDuration = Robot.TURN_DURATION;
 	action = RobotAction.None;
 	actionTime = 0;
 	startX = 0;
@@ -526,6 +641,19 @@ export class Robot {
 				this.targetY = this.startY;
 			}
 			break;
+		case RobotAction.Backward: {
+			this.startX = this.data.x;
+			this.startY = this.data.y;
+			this.targetX = this.data.x - this.data.dirX;
+			this.targetY = this.data.y - this.data.dirY;
+			console.log(this.targetX + ", " + this.targetY);
+			let tile = world.getTile(this.targetX, this.targetY);
+			if (tile && tile.kind == "wall") {
+				this.targetX = this.startX;
+				this.targetY = this.startY;
+			}
+			break;
+		}
 		case RobotAction.TurnLeft: {
 			this.startAngle = this.data.angle;
 			this.targetAngle = this.data.angle - 90;
@@ -552,7 +680,19 @@ export class Robot {
 		this.actionTime += delta;
 		switch (this.action) {
 			case RobotAction.Forward: {
-				let percentage = this.actionTime / Robot.FORWARD_DURATION;
+				let percentage = this.actionTime / this.moveDuration;
+				if (percentage >= 1) {
+					this.action = RobotAction.None;
+					this.data.x = this.targetX;
+					this.data.y = this.targetY;
+				} else {
+					this.data.x = this.startX + (this.targetX - this.startX) * percentage;
+					this.data.y = this.startY + (this.targetY - this.startY) * percentage;
+				}
+				break;
+			}
+			case RobotAction.Backward: {
+				let percentage = this.actionTime / this.moveDuration;
 				if (percentage >= 1) {
 					this.action = RobotAction.None;
 					this.data.x = this.targetX;
@@ -565,7 +705,7 @@ export class Robot {
 			}
 			case RobotAction.TurnLeft:
 			case RobotAction.TurnRight: {
-				let percentage = this.actionTime / Robot.TURN_DURATION;
+				let percentage = this.actionTime / this.turnDuration;
 				if (percentage >= 1) {
 					this.action = RobotAction.None;
 					this.data.angle = this.targetAngle;

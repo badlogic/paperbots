@@ -4992,6 +4992,7 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
             this.lookup = {};
             var externals = this;
             externals.addFunction("alert", [new ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
+            externals.addFunction("alert", [new ExternalFunctionParameter("value", "number")], "nothing", false, function (value) { alert(value); });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "boolean")], "string", false, function (value) { return "" + value; });
             externals.addFunction("length", [new ExternalFunctionParameter("value", "string")], "number", false, function (value) { return value.length; });
@@ -6341,7 +6342,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_2, events, compiler) {
     "use strict";
     exports.__esModule = true;
-    var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scanNumber() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
+    var DEFAULT_SOURCE = "";
     var Editor = (function (_super) {
         __extends(Editor, _super);
         function Editor() {
@@ -6443,15 +6444,15 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_3, Utils_3, compiler) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_3, Utils_3, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
         throw new Error("Unexpected object: " + x);
     }
-    var Botland = (function (_super) {
-        __extends(Botland, _super);
-        function Botland(bus) {
+    var RobotWorld = (function (_super) {
+        __extends(RobotWorld, _super);
+        function RobotWorld(bus) {
             var _this = _super.call(this, bus) || this;
             _this.assets = new Utils_3.AssetManager();
             _this.selectedTool = "Robot";
@@ -6464,7 +6465,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             _this.world = new World(_this.worldData);
             return _this;
         }
-        Botland.prototype.render = function () {
+        RobotWorld.prototype.render = function () {
             var _this = this;
             this.container = $("\n\t\t\t<div id=\"pb-canvas-container\">\n\t\t\t\t<div id=\"pb-canvas-tools\">\n\t\t\t\t\t<div id=\"pb-canvas-tools-editing\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
             this.canvas = this.container.find("#pb-canvas")[0];
@@ -6483,6 +6484,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 });
             }
             this.input = new Utils_3.Input(this.canvas);
+            var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
                     var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
@@ -6494,6 +6496,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                     else if (_this.selectedTool == "Floor") {
                         _this.world.setTile(x, y, null);
                     }
+                    dragged = false;
                 },
                 up: function (x, y) {
                     var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
@@ -6545,6 +6548,8 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                             _this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                         }
                         else {
+                            if (dragged)
+                                return;
                             _this.world.robot.turnLeft();
                         }
                     }
@@ -6565,17 +6570,34 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                         _this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
                         _this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
                     }
+                    dragged = true;
                 }
             };
             this.input.addListener(this.toolsHandler);
             this.announceExternals();
             return this.container[0];
         };
-        Botland.prototype.announceExternals = function () {
+        RobotWorld.prototype.announceExternals = function () {
             var _this = this;
             var ext = new compiler.ExternalFunctions();
             ext.addFunction("forward", [], "nothing", true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var check = function () {
+                    if (_this.world.robot.action == RobotAction.None) {
+                        asyncResult.completed = true;
+                        return;
+                    }
+                    requestAnimationFrame(check);
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("backward", [], "nothing", true, function () {
+                _this.world.robot.setAction(_this.world, RobotAction.Backward);
                 var asyncResult = {
                     completed: false,
                     value: null
@@ -6640,7 +6662,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                     completed: false,
                     value: null
                 };
-                var num = 3;
+                var num = 1;
                 var check = function () {
                     if (num-- > 0) {
                         requestAnimationFrame(check);
@@ -6653,7 +6675,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             });
             ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, function (letter) {
                 if (letter.trim().length != 1) {
-                    alert("The string consist of exactly 1 letter, got '" + letter + "' instead.");
+                    alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
                     return {
                         completed: true,
                         value: null
@@ -6720,9 +6742,105 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 var tile = _this.world.getTile(x, y);
                 return tile && tile.kind == "letter";
             });
+            ext.addFunction("distanceToWall", [], "number", false, function () {
+                var dirX = _this.world.robot.data.dirX;
+                var dirY = _this.world.robot.data.dirY;
+                var x = _this.world.robot.data.x + dirX;
+                var y = _this.world.robot.data.y + dirY;
+                var distance = 0;
+                var tile = _this.world.getTile(x, y);
+                while (true) {
+                    if (tile && tile.kind == "wall")
+                        break;
+                    distance++;
+                    x += dirX;
+                    y += dirY;
+                    tile = _this.world.getTile(x, y);
+                }
+                return distance;
+            });
+            ext.addFunction("getDirection", [], "number", false, function () {
+                var dirX = _this.world.robot.data.dirX;
+                var dirY = _this.world.robot.data.dirY;
+                if (dirX == 1 && dirY == 0)
+                    return 0;
+                if (dirX == 0 && dirY == 1)
+                    return 1;
+                if (dirX == -1 && dirY == 0)
+                    return 2;
+                if (dirX == 0 && dirY == -1)
+                    return 2;
+                return 0;
+            });
+            ext.addFunction("getX", [], "number", false, function () {
+                return _this.world.robot.data.x;
+            });
+            ext.addFunction("getY", [], "number", false, function () {
+                return _this.world.robot.data.y;
+            });
+            ext.addFunction("getSpeed", [], "number", false, function () {
+                return 1 / _this.world.robot.moveDuration;
+            });
+            ext.addFunction("setSpeed", [new compiler.ExternalFunctionParameter("speed", "number")], "nothing", false, function (speed) {
+                if (speed < 0) {
+                    alert("The robot's speed must be >= 0.");
+                    return;
+                }
+                _this.world.robot.moveDuration = 1 / speed;
+            });
+            ext.addFunction("getTurningSpeed", [], "number", false, function () {
+                return _this.world.robot.turnDuration;
+            });
+            ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("seconds", "number")], "nothing", false, function (speed) {
+                if (speed < 0) {
+                    alert("The robot's turning speed must be >= 0.");
+                    return;
+                }
+                _this.world.robot.turnDuration = speed;
+            });
+            ext.addFunction("buildWall", [], "nothing", true, function (speed) {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                _this.world.setTile(x, y, World.newWall());
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var num = 1;
+                var check = function () {
+                    if (num-- > 0) {
+                        requestAnimationFrame(check);
+                        return;
+                    }
+                    asyncResult.completed = true;
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("destroyWall", [], "nothing", true, function (speed) {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                if (tile && tile.kind == "wall")
+                    _this.world.setTile(x, y, null);
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var num = 1;
+                var check = function () {
+                    if (num-- > 0) {
+                        requestAnimationFrame(check);
+                        return;
+                    }
+                    asyncResult.completed = true;
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
             this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
-        Botland.prototype.onEvent = function (event) {
+        RobotWorld.prototype.onEvent = function (event) {
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
@@ -6740,10 +6858,10 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 this.isRunning = true;
             }
         };
-        Botland.prototype.getWorld = function () {
+        RobotWorld.prototype.getWorld = function () {
             return this.world;
         };
-        Botland.prototype.resize = function () {
+        RobotWorld.prototype.resize = function () {
             var canvas = this.canvas;
             var realToCSSPixels = window.devicePixelRatio;
             var displayWidth = Math.floor(canvas.clientWidth * realToCSSPixels);
@@ -6756,7 +6874,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.cellSize = canvas.width / (World.WORLD_SIZE + 1);
             this.drawingSize = this.cellSize * World.WORLD_SIZE;
         };
-        Botland.prototype.draw = function () {
+        RobotWorld.prototype.draw = function () {
             var _this = this;
             requestAnimationFrame(function () { _this.draw(); });
             this.time.update();
@@ -6773,14 +6891,14 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 this.drawWorld();
             }
         };
-        Botland.prototype.drawImage = function (img, x, y, w, h) {
+        RobotWorld.prototype.drawImage = function (img, x, y, w, h) {
             x |= 0;
             y |= 0;
             w |= 0;
             h |= 0;
             this.ctx.drawImage(img, x, this.drawingSize - y - h, w, h);
         };
-        Botland.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
+        RobotWorld.prototype.drawRotatedImage = function (img, x, y, w, h, angle) {
             x |= 0;
             y |= 0;
             w |= 0;
@@ -6791,7 +6909,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
             this.ctx.restore();
         };
-        Botland.prototype.drawText = function (text, x, y, color, scale) {
+        RobotWorld.prototype.drawText = function (text, x, y, color, scale) {
             if (color === void 0) { color = "#000000"; }
             if (scale === void 0) { scale = 1; }
             x |= 0;
@@ -6802,7 +6920,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             var metrics = ctx.measureText(text);
             ctx.fillText(text, x + this.cellSize / 2 - metrics.width / 2, this.drawingSize - y - this.cellSize / 4);
         };
-        Botland.prototype.drawWorld = function () {
+        RobotWorld.prototype.drawWorld = function () {
             var ctx = this.ctx;
             var canvas = this.canvas;
             var cellSize = this.cellSize;
@@ -6837,7 +6955,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
             ctx.restore();
         };
-        Botland.prototype.drawGrid = function () {
+        RobotWorld.prototype.drawGrid = function () {
             var ctx = this.ctx;
             var canvas = this.canvas;
             for (var y = 0; y < World.WORLD_SIZE; y++) {
@@ -6863,20 +6981,21 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             ctx.setLineDash([]);
             ctx.restore();
         };
-        return Botland;
+        return RobotWorld;
     }(Widget_3.Widget));
-    exports.Botland = Botland;
+    exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
         RobotAction[RobotAction["Forward"] = 0] = "Forward";
-        RobotAction[RobotAction["TurnLeft"] = 1] = "TurnLeft";
-        RobotAction[RobotAction["TurnRight"] = 2] = "TurnRight";
-        RobotAction[RobotAction["None"] = 3] = "None";
+        RobotAction[RobotAction["Backward"] = 1] = "Backward";
+        RobotAction[RobotAction["TurnLeft"] = 2] = "TurnLeft";
+        RobotAction[RobotAction["TurnRight"] = 3] = "TurnRight";
+        RobotAction[RobotAction["None"] = 4] = "None";
     })(RobotAction = exports.RobotAction || (exports.RobotAction = {}));
     var RobotData = (function () {
         function RobotData(x, y, dirX, dirY, angle) {
             if (x === void 0) { x = 0; }
-            if (y === void 0) { y = 15; }
+            if (y === void 0) { y = 0; }
             if (dirX === void 0) { dirX = 1; }
             if (dirY === void 0) { dirY = 0; }
             if (angle === void 0) { angle = 0; }
@@ -6892,6 +7011,8 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
     var Robot = (function () {
         function Robot(data) {
             this.data = data;
+            this.moveDuration = Robot.MOVE_DURATION;
+            this.turnDuration = Robot.TURN_DURATION;
             this.action = RobotAction.None;
             this.actionTime = 0;
             this.startX = 0;
@@ -6925,6 +7046,19 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                         this.targetY = this.startY;
                     }
                     break;
+                case RobotAction.Backward: {
+                    this.startX = this.data.x;
+                    this.startY = this.data.y;
+                    this.targetX = this.data.x - this.data.dirX;
+                    this.targetY = this.data.y - this.data.dirY;
+                    console.log(this.targetX + ", " + this.targetY);
+                    var tile_1 = world.getTile(this.targetX, this.targetY);
+                    if (tile_1 && tile_1.kind == "wall") {
+                        this.targetX = this.startX;
+                        this.targetY = this.startY;
+                    }
+                    break;
+                }
                 case RobotAction.TurnLeft: {
                     this.startAngle = this.data.angle;
                     this.targetAngle = this.data.angle - 90;
@@ -6950,7 +7084,20 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             this.actionTime += delta;
             switch (this.action) {
                 case RobotAction.Forward: {
-                    var percentage = this.actionTime / Robot.FORWARD_DURATION;
+                    var percentage = this.actionTime / this.moveDuration;
+                    if (percentage >= 1) {
+                        this.action = RobotAction.None;
+                        this.data.x = this.targetX;
+                        this.data.y = this.targetY;
+                    }
+                    else {
+                        this.data.x = this.startX + (this.targetX - this.startX) * percentage;
+                        this.data.y = this.startY + (this.targetY - this.startY) * percentage;
+                    }
+                    break;
+                }
+                case RobotAction.Backward: {
+                    var percentage = this.actionTime / this.moveDuration;
                     if (percentage >= 1) {
                         this.action = RobotAction.None;
                         this.data.x = this.targetX;
@@ -6964,7 +7111,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 }
                 case RobotAction.TurnLeft:
                 case RobotAction.TurnRight: {
-                    var percentage = this.actionTime / Robot.TURN_DURATION;
+                    var percentage = this.actionTime / this.turnDuration;
                     if (percentage >= 1) {
                         this.action = RobotAction.None;
                         this.data.angle = this.targetAngle;
@@ -6977,7 +7124,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             }
             return this.action == RobotAction.None;
         };
-        Robot.FORWARD_DURATION = 0.25;
+        Robot.MOVE_DURATION = 0.25;
         Robot.TURN_DURATION = 0.25;
         return Robot;
     }());
@@ -7165,14 +7312,61 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
                             desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
                         },
                         {
+                            name: "<code>backward()</code>",
+                            anchor: "robot-backward",
+                            desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                        },
+                        {
                             name: "<code>turnLeft()</code>",
                             anchor: "robot-turn-left",
-                            desc: "Rotates the robot in-plae to the left by 90 degrees (counter-clock-wise)."
+                            desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
                         },
                         {
                             name: "<code>turnRight()</code>",
                             anchor: "robot-turn-right",
-                            desc: "Rotates the robot in-plae to the right by 90 degrees (clock-wise)."
+                            desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot State",
+                    desc: "",
+                    entries: [
+                        {
+                            name: "<code>getDirection(): number</code>",
+                            anchor: "robot-get-direction",
+                            desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+                        },
+                        {
+                            name: "<code>getX(): number</code>",
+                            anchor: "robot-get-x",
+                            desc: "Returns the robot's x coordinate on the grid."
+                        },
+                        {
+                            name: "<code>getY(): number</code>",
+                            anchor: "robot-get-y",
+                            desc: "Returns the robot's y coordinate on the grid."
+                        },
+                        {
+                            name: "<code>getSpeed(): number</code>",
+                            anchor: "robot-get-speed",
+                            desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                        },
+                        {
+                            name: "<code>setSpeed(speed: number)</code>",
+                            anchor: "robot-set-speed",
+                            desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                        },
+                        {
+                            name: "<code>getTurningSpeed(): number</code>",
+                            anchor: "robot-get-turning-speed",
+                            desc: "Returns how long it takes the robot to turn by 90 degrees in second."
+                        },
+                        {
+                            name: "<code>setTurningSpeed(seconds: number)</code>",
+                            anchor: "robot-set-turning-speed",
+                            desc: "Set how long it takes the robot to turn by 90 degrees in seconds. The number must be >= <code>0</code>. The <code>seconds</code> can be a decimal number. E.g. <code>0.5</code> means the robot turns by 90 degrees in half a second."
                         }
                     ],
                     subCategories: []
@@ -7215,6 +7409,21 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
                             name: "<code>isLetterAhead(): boolean</code>",
                             anchor: "robot-is-letter-ahead",
                             desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>distanceToWall(): number</code>",
+                            anchor: "robot-distance-to-wall",
+                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+                        },
+                        {
+                            name: "<code>buildWall()</code>",
+                            anchor: "robot-build-wall",
+                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+                        },
+                        {
+                            name: "<code>destroyWall()</code>",
+                            anchor: "robot-destroy-wall",
+                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
                         },
                         {
                             name: "<code>alert(message: string)</code>",
@@ -7330,7 +7539,7 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_5.Widget));
     exports.Description = Description;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1, Description_1) {
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
@@ -7338,7 +7547,7 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             this.eventBus = new Events_1.EventBus();
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
-            this.playground = new Botland_1.Botland(this.eventBus);
+            this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.eventBus.addListener(this);

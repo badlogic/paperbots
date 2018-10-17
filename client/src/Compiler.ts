@@ -282,6 +282,13 @@ export class ExternalFunctions {
 			(message: string) => { alert(message); }
 		)
 		externals.addFunction(
+			"alert",
+			[new ExternalFunctionParameter("value", "number")],
+			"nothing",
+			false,
+			(value: string) => { alert(value); }
+		)
+		externals.addFunction(
 			"toString",
 			[new ExternalFunctionParameter("value", "number")],
 			"string",

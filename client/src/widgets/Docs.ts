@@ -30,14 +30,61 @@ const DOCS: DocCategory[] = [
 					desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
 				},
 				{
+					name: "<code>backward()</code>",
+					anchor: "robot-backward",
+					desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+				},
+				{
 					name: "<code>turnLeft()</code>",
 					anchor: "robot-turn-left",
-					desc: "Rotates the robot in-plae to the left by 90 degrees (counter-clock-wise)."
+					desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
 				},
 				{
 					name: "<code>turnRight()</code>",
 					anchor: "robot-turn-right",
-					desc: "Rotates the robot in-plae to the right by 90 degrees (clock-wise)."
+					desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+				}
+			],
+			subCategories: []
+		},
+		{
+			name: "Robot State",
+			desc: "",
+			entries: [
+				{
+					name: "<code>getDirection(): number</code>",
+					anchor: "robot-get-direction",
+					desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+				},
+				{
+					name: "<code>getX(): number</code>",
+					anchor: "robot-get-x",
+					desc: "Returns the robot's x coordinate on the grid."
+				},
+				{
+					name: "<code>getY(): number</code>",
+					anchor: "robot-get-y",
+					desc: "Returns the robot's y coordinate on the grid."
+				},
+				{
+					name: "<code>getSpeed(): number</code>",
+					anchor: "robot-get-speed",
+					desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+				},
+				{
+					name: "<code>setSpeed(speed: number)</code>",
+					anchor: "robot-set-speed",
+					desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+				},
+				{
+					name: "<code>getTurningSpeed(): number</code>",
+					anchor: "robot-get-turning-speed",
+					desc: "Returns how long it takes the robot to turn by 90 degrees in second."
+				},
+				{
+					name: "<code>setTurningSpeed(seconds: number)</code>",
+					anchor: "robot-set-turning-speed",
+					desc: "Set how long it takes the robot to turn by 90 degrees in seconds. The number must be >= <code>0</code>. The <code>seconds</code> can be a decimal number. E.g. <code>0.5</code> means the robot turns by 90 degrees in half a second."
 				}
 			],
 			subCategories: []
@@ -80,6 +127,21 @@ const DOCS: DocCategory[] = [
 					name: "<code>isLetterAhead(): boolean</code>",
 					anchor: "robot-is-letter-ahead",
 					desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+				},
+				{
+					name: "<code>distanceToWall(): number</code>",
+					anchor: "robot-distance-to-wall",
+					desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+				},
+				{
+					name: "<code>buildWall()</code>",
+					anchor: "robot-build-wall",
+					desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+				},
+				{
+					name: "<code>destroyWall()</code>",
+					anchor: "robot-destroy-wall",
+					desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
 				},
 				{
 					name: "<code>alert(message: string)</code>",

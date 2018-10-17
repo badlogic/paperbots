@@ -2,7 +2,7 @@ import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import { EventBus, EventListener, Event } from "./widgets/Events"
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
-import { Botland } from "./widgets/Botland";
+import { RobotWorld } from "./widgets/RobotWorld";
 import * as compiler from "./Compiler"
 import { SplitPane } from "./widgets/SplitPane";
 import { Docs } from "./widgets/Docs";
@@ -12,7 +12,7 @@ export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
 	private editor = new Editor(this.eventBus);
 	private debugger = new Debugger(this.eventBus);
-	private playground = new Botland(this.eventBus);
+	private playground = new RobotWorld(this.eventBus);
 	private docs = new Docs(this.eventBus);
 	private desc = new Description(this.eventBus);
 

@@ -82,6 +82,11 @@ body {
 
 .pb-docs-toc-list li {
 	line-height: 2;
+	cursor: pointer;
+}
+
+.pb-docs-toc-list code:hover {
+	background: #666666 !important;
 }
 
 #pb-docs code {

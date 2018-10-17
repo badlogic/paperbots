@@ -218,7 +218,7 @@ body {
 }
 
 .selected {
-	background: rgba(76, 175, 80, 0.32);
+	background: #2196f34a;
 	color: #ffffff;
 }
 
@@ -257,6 +257,10 @@ body {
 
 .highlighted-line {
 	background:lightcoral;
+}
+
+.pb-debugged-line {
+	background: #2196f34a;
 }
 
 .compiler-error {

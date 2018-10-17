@@ -6348,6 +6348,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.markers = Array();
             _this.ext = new compiler.ExternalFunctions();
+            _this.lastLine = -1;
             return _this;
         }
         Editor.prototype.render = function () {
@@ -6410,14 +6411,22 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             return marker[0];
         };
         Editor.prototype.setLine = function (line) {
-            this.editor.getDoc().setCursor(line, 1);
+            if (this.lastLine != -1)
+                this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+            this.editor.addLineClass(line, "background", "pb-debugged-line");
+            this.lastLine = line;
         };
         Editor.prototype.onEvent = function (event) {
-            if (event instanceof events.Run || event instanceof events.Debug) {
+            if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
                 this.editor.setOption("readOnly", true);
+                if (this.lastLine != -1)
+                    this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
             }
             else if (event instanceof events.Stop) {
                 this.editor.setOption("readOnly", false);
+                if (this.lastLine != -1)
+                    this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+                this.lastLine = -1;
                 this.editor.focus();
             }
             else if (event instanceof events.Step || event instanceof events.LineChange) {

@@ -109,15 +109,22 @@ export class Editor extends Widget {
 		return marker[0];
 	}
 
+	private lastLine = -1;
 	setLine(line: number) {
-		this.editor.getDoc().setCursor(line, 1);
+		// this.editor.getDoc().setCursor(line, 1);
+		if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+		this.editor.addLineClass(line, "background", "pb-debugged-line");
+		this.lastLine = line;
 	}
 
 	onEvent(event: Event) {
-		if (event instanceof events.Run || event instanceof events.Debug) {
+		if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
 			this.editor.setOption("readOnly", true);
+			if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 		} else if (event instanceof events.Stop) {
 			this.editor.setOption("readOnly", false);
+			if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+			this.lastLine = -1;
 			this.editor.focus();
 		} else if (event instanceof events.Step || event instanceof events.LineChange) {
 			this.setLine(event.line - 1);

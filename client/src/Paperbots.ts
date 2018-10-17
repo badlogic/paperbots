@@ -1,5 +1,6 @@
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import { EventBus, EventListener, Event } from "./widgets/Events"
+import { Toolbar } from "./widgets/Toolbar";
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
 import { RobotWorld } from "./widgets/RobotWorld";
@@ -10,6 +11,7 @@ import { Description } from "./widgets/Description";
 
 export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
+	private toolbar = new Toolbar(this.eventBus);
 	private editor = new Editor(this.eventBus);
 	private debugger = new Debugger(this.eventBus);
 	private playground = new RobotWorld(this.eventBus);
@@ -19,6 +21,7 @@ export class Paperbots implements EventListener {
 	constructor(parent: HTMLElement) {
 		// register all components with the bus
 		this.eventBus.addListener(this);
+		this.eventBus.addListener(this.toolbar);
 		this.eventBus.addListener(this.editor);
 		this.eventBus.addListener(this.debugger);
 		this.eventBus.addListener(this.playground);
@@ -30,6 +33,8 @@ export class Paperbots implements EventListener {
 			<div id="pb-main">
 			</div>
 		`);
+
+		dom.append(this.toolbar.render());
 
 		let editorAndDebugger = $(/*html */`
 			<div id ="pb-editor-and-debugger">

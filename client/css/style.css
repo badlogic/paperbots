@@ -23,7 +23,8 @@ body {
 	flex-direction: column;
 	width: 100%;
 	height: 100%;
-	/*background: #252526;*/
+	align-items: center;
+	background: #252526;
 }
 
 #pb-canvas-container {
@@ -33,6 +34,7 @@ body {
 
 #pb-canvas {
 	width: 100%;
+	max-width: 544px;
 }
 
 #pb-editor-and-debugger {

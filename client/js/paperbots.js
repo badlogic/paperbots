@@ -6060,7 +6060,25 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
     }());
     exports.Widget = Widget;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "Compiler"], function (require, exports, Widget_1, events, Utils_2, compiler) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_1) {
+    "use strict";
+    exports.__esModule = true;
+    var Toolbar = (function (_super) {
+        __extends(Toolbar, _super);
+        function Toolbar(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Toolbar.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button-right\">PAPERBOTS</div>\n\t\t\t\t<div class=\"pb-toolbar-button-right\">Login</div>\n\t\t\t</div>\n\t\t");
+            return dom[0];
+        };
+        Toolbar.prototype.onEvent = function (event) {
+        };
+        return Toolbar;
+    }(Widget_1.Widget));
+    exports.Toolbar = Toolbar;
+});
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "Compiler"], function (require, exports, Widget_2, events, Utils_2, compiler) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -6335,10 +6353,10 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.vmState.html(output);
         };
         return Debugger;
-    }(Widget_1.Widget));
+    }(Widget_2.Widget));
     exports.Debugger = Debugger;
 });
-define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_2, events, compiler) {
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_3, events, compiler) {
     "use strict";
     exports.__esModule = true;
     var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scanNumber() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
@@ -6440,10 +6458,10 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             }
         };
         return Editor;
-    }(Widget_2.Widget));
+    }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_3, Utils_3, compiler) {
+define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_4, Utils_3, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -6864,7 +6882,7 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             ctx.restore();
         };
         return Botland;
-    }(Widget_3.Widget));
+    }(Widget_4.Widget));
     exports.Botland = Botland;
     var RobotAction;
     (function (RobotAction) {
@@ -7146,7 +7164,7 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_4) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
     "use strict";
     exports.__esModule = true;
     var DOCS = [
@@ -7309,10 +7327,10 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
             }
         };
         return Docs;
-    }(Widget_4.Widget));
+    }(Widget_5.Widget));
     exports.Docs = Docs;
 });
-define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
     "use strict";
     exports.__esModule = true;
     var Description = (function (_super) {
@@ -7327,27 +7345,30 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
         Description.prototype.onEvent = function (event) {
         };
         return Description;
-    }(Widget_5.Widget));
+    }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1, Description_1) {
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Toolbar_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1, Description_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
         function Paperbots(parent) {
             this.eventBus = new Events_1.EventBus();
+            this.toolbar = new Toolbar_1.Toolbar(this.eventBus);
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.playground = new Botland_1.Botland(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
             this.eventBus.addListener(this.playground);
             this.eventBus.addListener(this.docs);
             this.eventBus.addListener(this.desc);
             var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
+            dom.append(this.toolbar.render());
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
             var editorAndDocs = $("\n\t\t\t<div id=\"pb-editor-and-docs\">\n\t\t\t</div>\n\t\t");

@@ -282,41 +282,6 @@ export class ExternalFunctions {
 			(message: string) => { alert(message); }
 		)
 		externals.addFunction(
-			"alert",
-			[new ExternalFunctionParameter("message", "number")],
-			"nothing",
-			false,
-			(message: number) => { alert(message); }
-		)
-		externals.addFunction(
-			"alert",
-			[new ExternalFunctionParameter("message", "boolean")],
-			"nothing",
-			false,
-			(message: boolean) => { alert(message); }
-		)
-		externals.addFunction(
-			"print",
-			[new ExternalFunctionParameter("value", "number")],
-			"nothing",
-			false,
-			(message: string) => { console.log(message); }
-		)
-		externals.addFunction(
-			"print",
-			[new ExternalFunctionParameter("value", "boolean")],
-			"nothing",
-			false,
-			(message: string) => { console.log(message); }
-		)
-		externals.addFunction(
-			"print",
-			[new ExternalFunctionParameter("value", "string")],
-			"nothing",
-			false,
-			(message: string) => { console.log(message); }
-		)
-		externals.addFunction(
 			"toString",
 			[new ExternalFunctionParameter("value", "number")],
 			"string",

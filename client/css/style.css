@@ -18,11 +18,12 @@ body {
 	flex-direction: row;
 }
 
-#pb-playground-and-docs {
+#pb-playground-and-description {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
 	height: 100%;
+	/*background: #252526;*/
 }
 
 #pb-canvas-container {
@@ -44,6 +45,7 @@ body {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+    width: 0px;
 }
 
 #pb-code-editor {
@@ -54,9 +56,10 @@ body {
 
 #pb-docs {
 	flex: 0.8;
-	padding: 1em;
+	padding: 0 1em 0 1em;
 	background: #1e1e1e;
 	overflow: auto;
+	position: relative;
 }
 
 #pb-docs h1 {
@@ -69,13 +72,13 @@ body {
     background-color: transparent;
 }
 
-.pb-docs-function-list {
+.pb-docs-toc-list {
 	list-style-type: none;
 	margin: 0;
 	padding: 0;
 }
 
-.pb-docs-function-list li {
+.pb-docs-toc-list li {
 	line-height: 2;
 }
 
@@ -88,8 +91,15 @@ body {
     font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
 }
 
+#pb-docs hr {
+	color: #1e1e1e;
+	border-color: #555;
+	border-style: solid;
+}
+
 #pb-debugger {
 	width: 250px;
+	min-width: 250px;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -267,6 +277,7 @@ body {
 
 .pb-split-pane-right {
 	left: 50%;
+	z-index: 8;
 }
 
 #pb-split-pane-toggle {
@@ -290,7 +301,7 @@ body {
 
 .pb-divider {
 	position: absolute;
-	width: 5px;
+	width: 10px;
 	height: 100%;
 	left: 50%;
 	background: #252526;

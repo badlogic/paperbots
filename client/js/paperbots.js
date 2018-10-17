@@ -4992,11 +4992,6 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
             this.lookup = {};
             var externals = this;
             externals.addFunction("alert", [new ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
-            externals.addFunction("alert", [new ExternalFunctionParameter("message", "number")], "nothing", false, function (message) { alert(message); });
-            externals.addFunction("alert", [new ExternalFunctionParameter("message", "boolean")], "nothing", false, function (message) { alert(message); });
-            externals.addFunction("print", [new ExternalFunctionParameter("value", "number")], "nothing", false, function (message) { console.log(message); });
-            externals.addFunction("print", [new ExternalFunctionParameter("value", "boolean")], "nothing", false, function (message) { console.log(message); });
-            externals.addFunction("print", [new ExternalFunctionParameter("value", "string")], "nothing", false, function (message) { console.log(message); });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "boolean")], "string", false, function (value) { return "" + value; });
             externals.addFunction("length", [new ExternalFunctionParameter("value", "string")], "number", false, function (value) { return value.length; });
@@ -6346,7 +6341,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_2, events, compiler) {
     "use strict";
     exports.__esModule = true;
-    var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scan() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
+    var DEFAULT_SOURCE = "\nfun forwardUntilNumber (n: number)\n\twhile true do\n\t\tif scanNumber() == n then return end\n\t\tforward()\n\tend\nend\n\nforwardUntilNumber(3)\n\nturnRight()\nforward()\nforward()\n\nrepeat 4 times\n\tforward()\n\tprint(3)\n\tforward()\n\tprint(3)\n\tturnRight()\nend\n\nprint(10)\nalert(\"Oh no!\")\n";
     var Editor = (function (_super) {
         __extends(Editor, _super);
         function Editor() {
@@ -6621,7 +6616,10 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
             ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, function (number) {
                 if (number < 0 || number > 99 || isNaN(number)) {
                     alert("The number must be between 0-99.");
-                    number = null;
+                    return {
+                        completed: true,
+                        value: null
+                    };
                 }
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
@@ -6644,7 +6642,36 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("scan", [], "number", false, function () {
+            ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, function (letter) {
+                if (letter.trim().length != 1) {
+                    alert("The string consist of exactly 1 letter, got '" + letter + "' instead.");
+                    return {
+                        completed: true,
+                        value: null
+                    };
+                }
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                if (!tile || tile.kind != "wall") {
+                    _this.world.setTile(x, y, World.newLetter(letter));
+                }
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                var num = 3;
+                var check = function () {
+                    if (num-- > 0) {
+                        requestAnimationFrame(check);
+                        return;
+                    }
+                    asyncResult.completed = true;
+                };
+                requestAnimationFrame(check);
+                return asyncResult;
+            });
+            ext.addFunction("scanNumber", [], "number", false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -6677,6 +6704,12 @@ define("widgets/Botland", ["require", "exports", "widgets/Events", "widgets/Widg
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile && tile.kind == "number";
+            });
+            ext.addFunction("isLetterAhead", [], "boolean", false, function () {
+                var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
+                var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
+                var tile = _this.world.getTile(x, y);
+                return tile && tile.kind == "letter";
             });
             this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
@@ -7110,22 +7143,74 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
     var DOCS = [
         {
             name: "Functions",
+            desc: "",
             entries: [],
             subCategories: [
                 {
                     name: "Movement",
+                    desc: "",
                     entries: [
                         {
-                            name: "forward()",
+                            name: "<code>forward()</code>",
+                            anchor: "robot-forward",
                             desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
                         },
                         {
-                            name: "turnLeft()",
+                            name: "<code>turnLeft()</code>",
+                            anchor: "robot-turn-left",
                             desc: "Rotates the robot in-plae to the left by 90 degrees (counter-clock-wise)."
                         },
                         {
-                            name: "turnRight()",
+                            name: "<code>turnRight()</code>",
+                            anchor: "robot-turn-right",
                             desc: "Rotates the robot in-plae to the right by 90 degrees (clock-wise)."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Input & Output",
+                    desc: "",
+                    entries: [
+                        {
+                            name: "<code>print(value: number)</code>",
+                            anchor: "robot-print-number",
+                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed."
+                        },
+                        {
+                            name: "<code>print(letter: string)</code>",
+                            anchor: "robot-print-letter",
+                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+                        },
+                        {
+                            name: "<code>scanNumber(): number</code>",
+                            anchor: "robot-scan-number",
+                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+                        },
+                        {
+                            name: "<code>scanLetter(): string</code>",
+                            anchor: "robot-scan-letter",
+                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
+                        },
+                        {
+                            name: "<code>isWallAhead(): boolean</code>",
+                            anchor: "robot-is-wall-ahead",
+                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isNumberAhead(): boolean</code>",
+                            anchor: "robot-is-number-ahead",
+                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isLetterAhead(): boolean</code>",
+                            anchor: "robot-is-letter-ahead",
+                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>alert(message: string)</code>",
+                            anchor: "lang-alert",
+                            desc: "Opens a dialog bog that displays the text given in <code>message</code>."
                         }
                     ],
                     subCategories: []
@@ -7134,8 +7219,27 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
         },
         {
             name: "Statements",
+            desc: "",
             entries: [],
-            subCategories: []
+            subCategories: [
+                {
+                    name: "Variables",
+                    desc: "Variables are really cool.",
+                    entries: [
+                        {
+                            name: "<code>var name = value</code>",
+                            anchor: "statement-var-decl",
+                            desc: "Foo bar."
+                        },
+                        {
+                            name: "<code>name = value</code>",
+                            anchor: "statement-assignment",
+                            desc: "Foo bar."
+                        }
+                    ],
+                    subCategories: []
+                },
+            ]
         }
     ];
     var Docs = (function (_super) {
@@ -7145,19 +7249,79 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
         }
         Docs.prototype.render = function () {
             var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            this.generateDocs(dom);
             return dom[0];
         };
         Docs.prototype.onEvent = function (event) {
         };
-        Docs.prototype.generateDocs = function () {
-            DOCS.forEach(function (category) {
+        Docs.prototype.generateDocs = function (container) {
+            var _this = this;
+            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
+            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
+            container.append(toc);
+            container.append(content);
+            DOCS.forEach(function (cat) {
+                _this.generateCategory(cat, container, toc, content, 2);
             });
+        };
+        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
+            var _this = this;
+            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
+            cat.entries.forEach(function (entry) {
+                var link = $("<a>" + entry.name + "</a>");
+                link.click(function () {
+                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
+                    container[0].scrollTop = target.offsetTop;
+                });
+                var li = $("<li></li>");
+                li.append(link);
+                entries.append(li);
+            });
+            toc.append(entries);
+            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            content.append($(this.block(cat.desc)));
+            cat.entries.forEach(function (entry) {
+                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
+            });
+            cat.subCategories.forEach(function (childCat) {
+                _this.generateCategory(childCat, container, toc, content, depth + 1);
+            });
+        };
+        Docs.prototype.block = function (desc) {
+            if (desc.trim() == "")
+                return "";
+            try {
+                $(desc);
+                return desc;
+            }
+            catch (e) {
+                return "<p>" + desc + "</p>";
+            }
         };
         return Docs;
     }(Widget_4.Widget));
     exports.Docs = Docs;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
+    "use strict";
+    exports.__esModule = true;
+    var Description = (function (_super) {
+        __extends(Description, _super);
+        function Description(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Description.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-description\"></div>\n\t\t");
+            return dom[0];
+        };
+        Description.prototype.onEvent = function (event) {
+        };
+        return Description;
+    }(Widget_5.Widget));
+    exports.Description = Description;
+});
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger", "widgets/Editor", "widgets/Botland", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Debugger_1, Editor_1, Botland_1, SplitPane_1, Docs_1, Description_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
@@ -7167,11 +7331,13 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.playground = new Botland_1.Botland(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
+            this.desc = new Description_1.Description(this.eventBus);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
             this.eventBus.addListener(this.playground);
             this.eventBus.addListener(this.docs);
+            this.eventBus.addListener(this.desc);
             var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
@@ -7187,6 +7353,7 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Debugger",
             editorAndDebugger.append(editorAndDocs);
             var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-playground-and-description\">\n\t\t\t</div>\n\t\t");
             playgroundAndDescription.append(this.playground.render());
+            playgroundAndDescription.append(this.desc.render());
             var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);

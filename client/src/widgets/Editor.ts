@@ -8,7 +8,7 @@ declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfig
 const DEFAULT_SOURCE = `
 fun forwardUntilNumber (n: number)
 	while true do
-		if scan() == n then return end
+		if scanNumber() == n then return end
 		forward()
 	end
 end

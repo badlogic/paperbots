@@ -6,6 +6,7 @@ import { Botland } from "./widgets/Botland";
 import * as compiler from "./Compiler"
 import { SplitPane } from "./widgets/SplitPane";
 import { Docs } from "./widgets/Docs";
+import { Description } from "./widgets/Description";
 
 export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
@@ -13,6 +14,7 @@ export class Paperbots implements EventListener {
 	private debugger = new Debugger(this.eventBus);
 	private playground = new Botland(this.eventBus);
 	private docs = new Docs(this.eventBus);
+	private desc = new Description(this.eventBus);
 
 	constructor(parent: HTMLElement) {
 		// register all components with the bus
@@ -21,6 +23,7 @@ export class Paperbots implements EventListener {
 		this.eventBus.addListener(this.debugger);
 		this.eventBus.addListener(this.playground);
 		this.eventBus.addListener(this.docs);
+		this.eventBus.addListener(this.desc);
 
 		// Render the components
 		let dom = $(/*html*/ `
@@ -54,6 +57,7 @@ export class Paperbots implements EventListener {
 		`);
 
 		playgroundAndDescription.append(this.playground.render());
+		playgroundAndDescription.append(this.desc.render());
 
 		let splitPane = new SplitPane(editorAndDebugger, playgroundAndDescription);
 		dom.append(splitPane.dom);

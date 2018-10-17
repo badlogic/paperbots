@@ -202,7 +202,10 @@ export class Botland extends Widget {
 		ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, (number) => {
 			if (number < 0 || number > 99 || isNaN(number)) {
 				alert("The number must be between 0-99.");
-				number = null;
+				return {
+					completed: true,
+					value: null
+				}
 			}
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
@@ -226,7 +229,37 @@ export class Botland extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("scan", [], "number", false, () => {
+		ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, (letter) => {
+			if (letter.trim().length != 1) {
+				alert("The string consist of exactly 1 letter, got '" + letter + "' instead.");
+				return {
+					completed: true,
+					value: null
+				}
+			}
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			if (!tile || tile.kind != "wall") {
+				this.world.setTile(x, y, World.newLetter(letter));
+			}
+			let asyncResult: compiler.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			var num = 3;
+			let check = () => {
+				if (num-- > 0) {
+					requestAnimationFrame(check);
+					return;
+				}
+				asyncResult.completed = true;
+			}
+			requestAnimationFrame(check);
+			return asyncResult;
+		});
+
+		ext.addFunction("scanNumber", [], "number", false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
@@ -260,6 +293,12 @@ export class Botland extends Widget {
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			return tile && tile.kind == "number";
+		});
+		ext.addFunction("isLetterAhead", [], "boolean", false, () => {
+			let x = this.world.robot.data.x + this.world.robot.data.dirX;
+			let y = this.world.robot.data.y + this.world.robot.data.dirY;
+			let tile = this.world.getTile(x, y);
+			return tile && tile.kind == "letter";
 		});
 
 		this.bus.event(new events.AnnounceExternalFunctions(ext));

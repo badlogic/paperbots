@@ -31,6 +31,7 @@ body {
 	user-select: none !important;
 	padding: 0.5em;
 	max-width: 600px;
+	width: 100%;
 }
 
 #pb-canvas {

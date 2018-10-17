@@ -6282,9 +6282,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.callstack.empty();
             this.vmState.empty();
             if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
-                this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                this.vm.frames.slice(0).reverse().forEach(function (frame, index) {
                     var signature = compiler.functionSignature(frame.code.ast);
-                    var lineInfo = frame.code.lineInfos[frame.pc];
+                    var lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
                     var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-callstack-frame\">\n\t\t\t\t\t</div>\n\t\t\t\t");
                     dom.text(signature + " line " + lineInfo.line);
                     if (frame == _this.selectedFrame)

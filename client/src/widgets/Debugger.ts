@@ -279,9 +279,9 @@ export class Debugger extends Widget {
 		this.callstack.empty();
 		this.vmState.empty();
 		if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
-			this.vm.frames.slice(0).reverse().forEach(frame => {
+			this.vm.frames.slice(0).reverse().forEach((frame, index) => {
 				let signature = compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
-				let lineInfo = frame.code.lineInfos[frame.pc];
+				let lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
 				let dom = $(/*html*/`
 					<div class="pb-debugger-callstack-frame">
 					</div>

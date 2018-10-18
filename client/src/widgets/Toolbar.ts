@@ -5,7 +5,6 @@ import { Api } from "../Api";
 
 export class Toolbar extends Widget {
 	save: JQuery;
-	copy: JQuery;
 	title: JQuery;
 	login: JQuery;
 	signup: JQuery;
@@ -21,7 +20,6 @@ export class Toolbar extends Widget {
 				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
 				<input id="pb-toolbar-title" type="text" value="Untitled project">
 				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
-				<div id="pb-toolbar-copy" class="pb-toolbar-button"><i class="far fa-copy"></i>Copy</div>
 				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
 				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i>Sign up</div>
 				<div id="pb-toolbar-user" class="pb-toolbar-button dropdown">
@@ -36,7 +34,6 @@ export class Toolbar extends Widget {
 		`);
 
 		this.save = dom.find("#pb-toolbar-save");
-		this.copy = dom.find("#pb-toolbar-copy");
 		this.title = dom.find("#pb-toolbar-title");
 
 		this.login = dom.find("#pb-toolbar-login");

@@ -1,7 +1,19 @@
-export type ErrorType = "InvalidArgument" | "InvalidEmailAddress" | "InvalidUserName" | "ServerError" | "UserDoesNotExist" | "UserExists" | "EmailExists" | "CouldNotCreateUser" | "CouldNotSendEmail" | "CouldNotCreateCode" | "CouldNotVerifyCode";
+export type ErrorType = "InvalidArgument" | "InvalidEmailAddress" | "InvalidUserName" | "ServerError" | "UserDoesNotExist" | "ProjectDoesNotExist" | "UserExists" | "EmailExists" | "CouldNotCreateUser" | "CouldNotSendEmail" | "CouldNotCreateCode" | "CouldNotVerifyCode" | "CouldNotSaveProject";
 
 export interface RequestError {
 	error: ErrorType
+}
+
+export interface Project {
+	code: string,
+	userName: string,
+	title: string,
+	description: string,
+	content: string,
+	contentObject: any;
+	created: string,
+	lastModified: string,
+	public: boolean
 }
 
 export class Api {
@@ -60,9 +72,35 @@ export class Api {
 		});
 	}
 
+	public static loadProject(projectId: string, success: (project: Project) => void, error: (e: RequestError) => void) {
+		this.request("api/project", { projectId: projectId },
+		(project: Project) => {
+			try {
+				project.contentObject = JSON.parse(project.content);
+			} catch (e) {
+				console.log(e);
+				error({error: "ServerError"});
+			}
+			success(project);
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
 	public static getUserName() {
 		return this.getCookie("name");
 	}
+
+	public static getProjectId() {
+		return this.getUrlParameter("projectId");
+	}
+
+	static getUrlParameter(name) {
+		name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+		var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+		var results = regex.exec(location.search);
+		return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+	};
 
 	static getCookie (key) {
 		if (!key) { return null; }

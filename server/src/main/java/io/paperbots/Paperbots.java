@@ -16,6 +16,7 @@ import io.marioslab.basis.arguments.Arguments;
 import io.marioslab.basis.arguments.Arguments.ParsedArguments;
 import io.marioslab.basis.template.TemplateContext;
 import io.paperbots.PaperbotsException.PaperbotsError;
+import io.paperbots.data.Project;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
 
@@ -219,10 +220,9 @@ public class Paperbots {
 		final String verifiedToken = token.trim();
 
 		return jdbi.withHandle(handle -> {
-			// TODO this should be done in a transaction
 			try {
 				int userId = handle.createQuery("SELECT userId FROM userTokens WHERE token=:token").bind("token", verifiedToken).mapTo(Integer.class).findOnly();
-				User user = handle.createQuery("SELECT name, type FROM users WHERE id=:id").bind("id", userId).mapToBean(User.class).findOnly();
+				User user = handle.createQuery("SELECT * FROM users WHERE id=:id").bind("id", userId).mapToBean(User.class).findOnly();
 				return user;
 			} catch (IllegalStateException t) {
 				throw new PaperbotsException(PaperbotsError.UserDoesNotExist);
@@ -230,11 +230,29 @@ public class Paperbots {
 		});
 	}
 
-	public void saveProject (String token, String code, String title, String description, String content) {
+	public String saveProject (String token, String code, String title, String description, String content, boolean isPublic) {
 		// Fetch the user based on the token
 		User user = getUserForToken(token);
 
-		//
+		// TODO implement
+		return null;
+	}
+
+	public Project getProject (String token, String projectId) {
+		User user = getUserForToken(token);
+
+		return jdbi.withHandle(handle -> {
+			// TODO this should be done in a transaction
+			try {
+				Project project = handle.createQuery("SELECT * FROM projects WHERE code=:code").bind("code", projectId).mapToBean(Project.class).findOnly();
+				if (!project.isPublic() && !project.getUserName().equals(user.getName())) {
+					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+				}
+				return project;
+			} catch (IllegalStateException t) {
+				throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+			}
+		});
 	}
 
 	private static char[] _base62chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();

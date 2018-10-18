@@ -111,6 +111,12 @@ public class Server {
 			paperbots.logout(token);
 		});
 
+		// Project management
+		app.post("/api/project", ctx -> {
+			ProjectRequest request = ctx.bodyAsClass(ProjectRequest.class);
+			ctx.json(paperbots.getProject(ctx.cookie("token"), request.projectId));
+		});
+
 		app.post("/api/exception", ctx -> {
 			throw new RuntimeException("This is a test");
 		});
@@ -182,17 +188,15 @@ public class Server {
 		}
 	}
 
-	public static class VerifyResponse {
-		public String token;
-		public String name;
+	public static class ProjectRequest {
+		public String projectId;
 
-		public VerifyResponse () {
+		public ProjectRequest () {
 		}
 
-		public VerifyResponse (String token, String name) {
+		public ProjectRequest (String projectId) {
 			super();
-			this.token = token;
-			this.name = name;
+			this.projectId = projectId;
 		}
 	}
 

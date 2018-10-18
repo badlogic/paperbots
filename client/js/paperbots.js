@@ -63,9 +63,33 @@ define("Api", ["require", "exports"], function (require, exports) {
                 error();
             });
         };
+        Api.loadProject = function (projectId, success, error) {
+            this.request("api/project", { projectId: projectId }, function (project) {
+                try {
+                    project.contentObject = JSON.parse(project.content);
+                }
+                catch (e) {
+                    console.log(e);
+                    error({ error: "ServerError" });
+                }
+                success(project);
+            }, function (e) {
+                error(e);
+            });
+        };
         Api.getUserName = function () {
             return this.getCookie("name");
         };
+        Api.getProjectId = function () {
+            return this.getUrlParameter("projectId");
+        };
+        Api.getUrlParameter = function (name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        };
+        ;
         Api.getCookie = function (key) {
             if (!key) {
                 return null;
@@ -6115,6 +6139,13 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
     }());
     exports.LoggedOut = LoggedOut;
     ;
+    var ProjectLoaded = (function () {
+        function ProjectLoaded(project) {
+            this.project = project;
+        }
+        return ProjectLoaded;
+    }());
+    exports.ProjectLoaded = ProjectLoaded;
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -6241,9 +6272,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-copy\" class=\"pb-toolbar-button\"><i class=\"far fa-copy\"></i>Copy</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<!--<a id=\"pb-toolbar-profile\"><i class=\"fas fa-user-circle\"></i> Profile</a>-->\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<!--<a id=\"pb-toolbar-profile\"><i class=\"fas fa-user-circle\"></i> Profile</a>-->\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.save = dom.find("#pb-toolbar-save");
-            this.copy = dom.find("#pb-toolbar-copy");
             this.title = dom.find("#pb-toolbar-title");
             this.login = dom.find("#pb-toolbar-login");
             this.login.click(function (e) {
@@ -7909,7 +7939,7 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1) {
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_2, Dialog_2) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
@@ -7954,7 +7984,32 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
+            var projectId = Api_2.Api.getProjectId();
+            if (projectId) {
+                this.loadProject(projectId);
+            }
         }
+        Paperbots.prototype.loadProject = function (id) {
+            var _this = this;
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
+            var spinner = content.find("#pb-spinner");
+            var error = content.find("#pb-error");
+            error.hide();
+            var dialog = new Dialog_2.Dialog("Loading", content[0], []);
+            dialog.show();
+            Api_2.Api.loadProject(id, function (project) {
+                dialog.hide();
+                _this.eventBus.event(new Events_2.ProjectLoaded(project));
+            }, function (error) {
+                dialog.hide();
+                if (error.error == "ProjectDoesNotExist") {
+                    Dialog_2.Dialog.alert("Sorry", $("<p>The project with id " + id + " does not exist.</p>"));
+                }
+                else {
+                    Dialog_2.Dialog.alert("Sorry", $("<p>Couldn't load project " + id + ".</p>"));
+                }
+            });
+        };
         Paperbots.prototype.onEvent = function (event) {
         };
         return Paperbots;

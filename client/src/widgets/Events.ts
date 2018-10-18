@@ -1,4 +1,5 @@
 import * as compiler from "../Compiler"
+import { Project } from "../Api";
 
 export class SourceChanged { constructor(public source: string, public module: compiler.Module | null) {}}
 export class Run { }
@@ -13,9 +14,13 @@ export class AnnounceExternalFunctions { constructor(public functions: compiler.
 
 export class LoggedIn { };
 export class LoggedOut { };
+
+export class ProjectLoaded { constructor(public project: Project) { } }
+
 export type Event =
 	SourceChanged | Run | Debug | Pause | Resume | Stop | Step | LineChange | Selection |
-	LoggedIn | LoggedOut;
+	LoggedIn | LoggedOut |
+	ProjectLoaded;
 
 export interface EventListener {
 	onEvent(event: Event);

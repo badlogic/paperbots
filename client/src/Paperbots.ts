@@ -1,5 +1,5 @@
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
-import { EventBus, EventListener, Event } from "./widgets/Events"
+import { EventBus, EventListener, Event, ProjectLoaded } from "./widgets/Events"
 import { Toolbar } from "./widgets/Toolbar";
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
@@ -8,6 +8,8 @@ import * as compiler from "./Compiler"
 import { SplitPane } from "./widgets/SplitPane";
 import { Docs } from "./widgets/Docs";
 import { Description } from "./widgets/Description";
+import { Api } from "./Api";
+import { Dialog } from "./widgets/Dialog";
 
 export class Paperbots implements EventListener {
 	private eventBus = new EventBus();
@@ -75,6 +77,39 @@ export class Paperbots implements EventListener {
 		let splitPane = new SplitPane(editorAndDebugger, playgroundAndDescription);
 		dom.append(splitPane.dom);
 		$(parent).append(dom);
+
+		// Check if we got a project id, and if so, try to load it
+		let projectId = Api.getProjectId();
+		if (projectId) {
+			this.loadProject(projectId);
+		}
+	}
+
+	loadProject (id: string) {
+		let content = $(/*html*/`
+		<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+			<p>Loading project ${id}, stay tuned!</p>
+			<div id="pb-spinner" class="fa-3x" style="text-align: center; margin: 0.5em"><i class="fas fa-spinner fa-pulse"></i></div>
+		</div>`
+		);
+		let spinner = content.find("#pb-spinner");
+		let error = content.find("#pb-error");
+		error.hide();
+
+		let dialog = new Dialog("Loading", content[0], []);
+		dialog.show();
+
+		Api.loadProject(id, (project) => {
+			dialog.hide();
+			this.eventBus.event(new ProjectLoaded(project));
+		}, (error) => {
+			dialog.hide();
+			if (error.error == "ProjectDoesNotExist") {
+				Dialog.alert("Sorry", $(`<p>The project with id ${id} does not exist.</p>`));
+			} else {
+				Dialog.alert("Sorry", $(`<p>Couldn't load project ${id}.</p>`));
+			}
+		});
 	}
 
 	onEvent(event: Event) {

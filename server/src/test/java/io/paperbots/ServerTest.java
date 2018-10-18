@@ -26,7 +26,6 @@ import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.Server.ErrorResponse;
 import io.paperbots.Server.SignupRequest;
 import io.paperbots.Server.VerifyRequest;
-import io.paperbots.Server.VerifyResponse;
 
 public class ServerTest {
 	private static Server server;
@@ -58,9 +57,7 @@ public class ServerTest {
 		}
 
 		// Verify the code we got via email and retrieve a token
-		VerifyResponse verified = post("http://localhost:8001/api/verify", new VerifyRequest(code), Server.VerifyResponse.class);
-		assertEquals("badlogic", verified.name);
-		assertEquals(32, verified.token.trim().length());
+		post("http://localhost:8001/api/verify", new VerifyRequest(code), Void.class);
 
 		// Check how we handle exceptions
 		try {

@@ -475,7 +475,7 @@ body {
 
 /* Dropdown Content (Hidden by Default) */
 .dropdown-content {
-    /* display: none; */
+    display: none;
     position: absolute;
 	background-color: #252526;
 	border-radius: 5px;

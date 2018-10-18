@@ -36,6 +36,7 @@ export class Debugger extends Widget {
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
 			<div id="pb-debugger">
+				<div class="pb-label">DEBUGGER</div>
 				<div id="pb-debugger-buttons">
 					<div id="pb-debugger-run" class="pb-debugger-run-icon pb-debugger-button"></div>
 					<div id="pb-debugger-debug" class="pb-debugger-debug-icon pb-debugger-button"></div>

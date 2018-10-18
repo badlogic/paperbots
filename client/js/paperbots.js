@@ -6070,7 +6070,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget"], function (re
             return _super.call(this, bus) || this;
         }
         Toolbar.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button-right\">PAPERBOTS</div>\n\t\t\t\t<div class=\"pb-toolbar-button-right\">Login</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button-right\">Paperbots</div>\n\t\t\t\t<!--<div class=\"pb-toolbar-button-right\">Login</div>-->\n\t\t\t</div>\n\t\t");
             return dom[0];
         };
         Toolbar.prototype.onEvent = function (event) {
@@ -6100,7 +6100,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div class=\"pb-label\">DEBUGGER</div>\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.pause = dom.find("#pb-debugger-pause");
@@ -7581,14 +7581,20 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
             var editorAndDocs = $("\n\t\t\t<div id=\"pb-editor-and-docs\">\n\t\t\t</div>\n\t\t");
-            editorAndDocs.append(this.editor.render());
-            var docs = this.docs.render();
+            var editor = this.editor.render();
+            var editorLabel = $("<div id=\"pb-docs-label\" class=\"pb-label\">PROGRAM</div>");
+            editorAndDocs.append(editorLabel);
+            editorLabel.click(function () {
+                $(editor).toggle();
+            });
+            editorAndDocs.append(editor);
+            var help = this.docs.render();
             var helpLabel = $("<div id=\"pb-docs-label\" class=\"pb-label\">HELP</div>");
             helpLabel.click(function () {
-                $(docs).toggle();
+                $(help).toggle();
             });
             editorAndDocs.append(helpLabel);
-            editorAndDocs.append(docs);
+            editorAndDocs.append(help);
             editorAndDebugger.append(editorAndDocs);
             var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-playground-and-description\">\n\t\t\t</div>\n\t\t");
             playgroundAndDescription.append(this.playground.render());

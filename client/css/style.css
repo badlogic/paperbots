@@ -20,7 +20,9 @@ body {
 
 #pb-toolbar {
 	width: 100%;
-	background: red;
+	padding: 0.25em 1em 0.25em 1em;
+	background: #252526;
+	border-bottom: 1px solid #ffa500c7;
 	display: flex;
 	flex-direction: row;
 	z-index: 5;
@@ -29,7 +31,7 @@ body {
 #pb-toolbar-logo {
 	font-size: 2em;
 	font-weight: 500;
-	color: orange;
+	color: hsla(39, 80%, 50%, 1);
 }
 
 .pb-toolbar-button-left {
@@ -82,7 +84,7 @@ body {
 }
 
 #pb-docs {
-	flex: 0.8;
+	flex: 1;
 	padding: 0 1em 0 1em;
 	background: #1e1e1e;
 	overflow: auto;

@@ -46,14 +46,22 @@ export class Paperbots implements EventListener {
 			<div id="pb-editor-and-docs">
 			</div>
 		`)
-		editorAndDocs.append(this.editor.render());
-		let docs = this.docs.render();
+
+		let editor = this.editor.render();
+		let editorLabel = $(/*html*/`<div id="pb-docs-label" class="pb-label">PROGRAM</div>`);
+		editorAndDocs.append(editorLabel);
+		editorLabel.click(() => {
+			$(editor).toggle();
+		});
+		editorAndDocs.append(editor);
+
+		let help = this.docs.render();
 		let helpLabel = $(/*html*/`<div id="pb-docs-label" class="pb-label">HELP</div>`);
 		helpLabel.click(() => {
-			$(docs).toggle();
+			$(help).toggle();
 		});
 		editorAndDocs.append(helpLabel);
-		editorAndDocs.append(docs);
+		editorAndDocs.append(help);
 		editorAndDebugger.append(editorAndDocs);
 
 		let playgroundAndDescription = $(/*html*/`

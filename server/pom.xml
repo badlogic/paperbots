@@ -124,6 +124,18 @@
 			<artifactId>flyway-core</artifactId>
 			<version>${flyway.version}</version>
 		</dependency>
+		
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.9.4</version>			
+		</dependency>
+		
+		<dependency>
+		    <groupId>commons-validator</groupId>
+		    <artifactId>commons-validator</artifactId>
+		    <version>1.6</version>
+		</dependency>
 
 		<dependency>
 			<groupId>junit</groupId>
@@ -137,14 +149,7 @@
 			<artifactId>httpclient</artifactId>
 			<version>4.5.6</version>
 			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.9.4</version>
-			<scope>test</scope>
-		</dependency>
+		</dependency>		
 	</dependencies>
 
 	<build>

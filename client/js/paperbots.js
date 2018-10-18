@@ -11,6 +11,55 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+define("Api", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Api = (function () {
+        function Api() {
+        }
+        Api.request = function (endpoint, data, success, error) {
+            $.ajax({
+                url: endpoint,
+                method: "POST",
+                contentType: "application/json",
+                processData: false,
+                data: JSON.stringify(data)
+            })
+                .done(function (response) {
+                success(response);
+            }).fail(function (e) {
+                console.log(e);
+                if (e.responseJSON)
+                    error(e.responseJSON);
+                else
+                    error({ error: "ServerError" });
+            });
+        };
+        Api.signup = function (email, name, success, error) {
+            this.request("api/signup", { email: email, name: name }, function (r) {
+                success();
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.login = function (emailOrUser, success, error) {
+            this.request("api/login", { email: emailOrUser }, function (r) {
+                success();
+            }, function (e) {
+                error(e.error == "UserDoesNotExist");
+            });
+        };
+        Api.verify = function (code, success, error) {
+            this.request("api/verify", { code: code }, function (r) {
+                success(r);
+            }, function (e) {
+                error(e.error == "CouldNotVerifyCode");
+            });
+        };
+        return Api;
+    }());
+    exports.Api = Api;
+});
 define("Parser", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -6036,6 +6085,27 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var ReceivedToken = (function () {
+        function ReceivedToken(token, name) {
+            this.token = token;
+            this.name = name;
+        }
+        return ReceivedToken;
+    }());
+    exports.ReceivedToken = ReceivedToken;
+    ;
+    var Save = (function () {
+        function Save() {
+        }
+        return Save;
+    }());
+    exports.Save = Save;
+    var Copy = (function () {
+        function Copy() {
+        }
+        return Copy;
+    }());
+    exports.Copy = Copy;
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -6061,7 +6131,98 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
     }());
     exports.Widget = Widget;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_1) {
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.focus();
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, $("<span>" + message + "</span>")[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
+});
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dialog", "Api"], function (require, exports, Widget_1, Dialog_1, Api_1) {
     "use strict";
     exports.__esModule = true;
     var Toolbar = (function (_super) {
@@ -6070,8 +6231,136 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget"], function (re
             return _super.call(this, bus) || this;
         }
         Toolbar.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button-right\">Paperbots</div>\n\t\t\t\t<!--<div class=\"pb-toolbar-button-right\">Login</div>-->\n\t\t\t</div>\n\t\t");
+            var _this = this;
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-copy\" class=\"pb-toolbar-button\"><i class=\"far fa-copy\"></i>Copy</div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-signin\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t</div>\n\t\t");
+            var signin = dom.find("#pb-toolbar-signin");
+            signin.click(function () {
+                _this.loginDialog().show();
+            });
+            var signup = dom.find("#pb-toolbar-signup");
+            signup.click(function () {
+                _this.signupDialog().show();
+            });
             return dom[0];
+        };
+        Toolbar.prototype.loginDialog = function () {
+            var _this = this;
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Enter your email address or user name below.</p>\n\t\t\t<input id=\"pb-signup-email-or-user\" class=\"pb-input-field\" placeholder=\"Email or username\">\n\t\t\t<div id=\"pb-error\"></div>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
+            var emailOrUser = content.find("#pb-signup-email-or-user");
+            emailOrUser.focus();
+            var spinner = content.find("#pb-spinner");
+            spinner.hide();
+            var error = content.find("#pb-error");
+            error.hide();
+            var dialog = new Dialog_1.Dialog("Sign in", content[0], ["Cancel", "Sign in"]);
+            dialog.buttons[0].click(function () {
+                dialog.hide();
+            });
+            dialog.buttons[1].click(function () {
+                Api_1.Api.login(emailOrUser.val(), function () {
+                    dialog.hide();
+                    _this.verifyDialog().show();
+                }, function (userDoesNotExist) {
+                    if (userDoesNotExist) {
+                        spinner.hide();
+                        dialog.buttons.forEach(function (button) { return button.show(); });
+                        error.show();
+                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, the email/user name you specified does not exist.\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                    }
+                    else {
+                        dialog.hide();
+                        _this.serverErrorDialog();
+                    }
+                });
+                error.hide();
+                spinner.show();
+                dialog.buttons.forEach(function (button) { return button.hide(); });
+            });
+            return dialog;
+        };
+        Toolbar.prototype.verifyDialog = function () {
+            var _this = this;
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>We have sent you an email with a magic code! Please enter it below.</p>\n\t\t\t<input id=\"pb-signup-code\" class=\"pb-input-field\" style=\"text-align: center;\" placeholder=\"Code\">\n\t\t\t<div id=\"pb-error\"></div>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
+            var emailOrUser = content.find("#pb-signup-code");
+            var spinner = content.find("#pb-spinner");
+            spinner.hide();
+            var error = content.find("#pb-error");
+            error.hide();
+            var dialog = new Dialog_1.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
+            dialog.buttons[0].click(function () {
+                dialog.hide();
+            });
+            dialog.buttons[1].click(function () {
+                Api_1.Api.verify(emailOrUser.val(), function (nameAndToken) {
+                    dialog.hide();
+                }, function (invalidCode) {
+                    if (invalidCode) {
+                        spinner.hide();
+                        dialog.buttons.forEach(function (button) { return button.show(); });
+                        error.show();
+                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, the code you entered is incorrect.\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                    }
+                    else {
+                        dialog.hide();
+                        _this.serverErrorDialog();
+                    }
+                });
+                error.hide();
+                spinner.show();
+                dialog.buttons.forEach(function (button) { return button.hide(); });
+            });
+            return dialog;
+        };
+        Toolbar.prototype.signupDialog = function () {
+            var _this = this;
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Enter your email address and user name below.</p>\n\t\t\t<input id=\"pb-signup-email\" class=\"pb-input-field\" placeholder=\"Email\">\n\t\t\t<input id=\"pb-signup-name\" class=\"pb-input-field\" placeholder=\"User name\">\n\t\t\t<p style=\"font-size: 12px\">User names must be between 4 and 25 characters, letters and digits only.</p>\n\t\t\t<div id=\"pb-error\"></div>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
+            var email = content.find("#pb-signup-email");
+            email.focus();
+            var name = content.find("#pb-signup-name");
+            var spinner = content.find("#pb-spinner");
+            spinner.hide();
+            var error = content.find("#pb-error");
+            error.hide();
+            var dialog = new Dialog_1.Dialog("Sign in", content[0], ["Cancel", "Sign up"]);
+            dialog.buttons[0].click(function () {
+                dialog.hide();
+            });
+            dialog.buttons[1].click(function () {
+                Api_1.Api.signup(email.val(), name.val(), function () {
+                    dialog.hide();
+                    _this.verifyDialog().show();
+                }, function (reqError) {
+                    if (reqError.error == "InvalidEmailAddress" || reqError.error == "InvalidUserName") {
+                        spinner.hide();
+                        dialog.buttons.forEach(function (button) { return button.show(); });
+                        error.show();
+                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, the email or user name you specified is invalid.\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                    }
+                    else if (reqError.error == "UserExists") {
+                        spinner.hide();
+                        dialog.buttons.forEach(function (button) { return button.show(); });
+                        error.show();
+                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, that name is not available. Please pick another one.\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                    }
+                    else if (reqError.error == "EmailExists") {
+                        spinner.hide();
+                        dialog.buttons.forEach(function (button) { return button.show(); });
+                        error.show();
+                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, that email is already registered. <a>Log in!</a>\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                    }
+                    else {
+                        dialog.hide();
+                        _this.serverErrorDialog();
+                    }
+                });
+                error.hide();
+                spinner.show();
+                dialog.buttons.forEach(function (button) { return button.hide(); });
+            });
+            return dialog;
+        };
+        Toolbar.prototype.serverErrorDialog = function () {
+            Dialog_1.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
         Toolbar.prototype.onEvent = function (event) {
         };

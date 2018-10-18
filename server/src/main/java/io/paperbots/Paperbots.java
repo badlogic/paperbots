@@ -4,6 +4,7 @@ package io.paperbots;
 import java.io.File;
 import java.security.SecureRandom;
 
+import org.apache.commons.validator.routines.EmailValidator;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 
@@ -88,6 +89,22 @@ public class Paperbots {
 		final String verifiedEmail = email.trim();
 		final String verifiedName = name.trim();
 
+		// Validate email so we don't create a db entry or send an email in vain.
+		if (!EmailValidator.getInstance().isValid(verifiedEmail)) {
+			throw new PaperbotsException(PaperbotsError.InvalidEmailAddress);
+		}
+
+		// Make sure the user name is 4-25 letters/digits only.
+		if (verifiedName.length() < 4 || verifiedName.length() > 25) {
+			throw new PaperbotsException(PaperbotsError.InvalidUserName);
+		}
+		for (int i = 0; i < verifiedName.length(); i++) {
+			char c = verifiedName.charAt(i);
+			if (!Character.isLetterOrDigit(c)) {
+				throw new PaperbotsException(PaperbotsError.InvalidUserName);
+			}
+		}
+
 		jdbi.withHandle(handle -> {
 			// TODO this should be done in a transaction
 
@@ -102,6 +119,9 @@ public class Paperbots {
 			// Check if user exists
 			try {
 				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email").bind("email", verifiedEmail).mapToBean(User.class).findOnly();
+				if (!verifiedName.equals(user.getName())) {
+					throw new PaperbotsException(PaperbotsError.EmailExists);
+				}
 				sendCode(handle, user.getId(), user.getName(), verifiedEmail);
 				return null;
 			} catch (IllegalStateException t) {
@@ -155,7 +175,8 @@ public class Paperbots {
 		jdbi.withHandle(handle -> {
 			// TODO this should be done in a transaction
 			try {
-				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email").bind("email", verifiedEmail).mapToBean(User.class).findOnly();
+				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email or name=:name").bind("email", verifiedEmail)
+					.bind("name", verifiedEmail).mapToBean(User.class).findOnly();
 				sendCode(handle, user.getId(), user.getName(), verifiedEmail);
 				return null;
 			} catch (IllegalStateException t) {

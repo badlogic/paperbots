@@ -3,7 +3,7 @@ package io.paperbots;
 
 public class PaperbotsException extends RuntimeException {
 	public static enum PaperbotsError {
-		InvalidArgument, ServerError, UserDoesNotExist, UserExists, CouldNotCreateUser, CouldNotSendEmail, CouldNotCreateCode, CouldNotVerifyCode
+		InvalidArgument, InvalidEmailAddress, InvalidUserName, ServerError, UserDoesNotExist, UserExists, EmailExists, CouldNotCreateUser, CouldNotSendEmail, CouldNotCreateCode, CouldNotVerifyCode
 	}
 
 	private static final long serialVersionUID = -8984556916130982262L;

@@ -166,6 +166,10 @@ body {
 	cursor: pointer;
 }
 
+.pb-label:hover {
+	background: #444;
+}
+
 .pb-debugger-callstack-frame {
 	padding: 0 1em 0 1em;
 	background: #252526;

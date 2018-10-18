@@ -230,6 +230,13 @@ public class Paperbots {
 		});
 	}
 
+	public void saveProject (String token, String code, String title, String description, String content) {
+		// Fetch the user based on the token
+		User user = getUserForToken(token);
+
+		//
+	}
+
 	private static char[] _base62chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
 	private static SecureRandom random = new SecureRandom();
 

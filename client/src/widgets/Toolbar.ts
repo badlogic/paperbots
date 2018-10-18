@@ -28,7 +28,7 @@ export class Toolbar extends Widget {
 					<i class="fas fa-user-circle"></i><span id="pb-user-name"></span>
 					<div class="dropdown-content">
 						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
-						<a id="pb-toolbar-profile"><i class="fas fa-user-circle"></i> Profile</a>
+						<!--<a id="pb-toolbar-profile"><i class="fas fa-user-circle"></i> Profile</a>-->
 						<a id="pb-toolbar-logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
 					</div>
 				</div>

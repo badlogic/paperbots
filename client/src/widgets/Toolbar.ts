@@ -110,7 +110,7 @@ export class Toolbar extends Widget {
 		let error = content.find("#pb-error");
 		error.hide();
 
-		let dialog = new Dialog("Sign in", content[0], ["Cancel", "Sign in"]);
+		let dialog = new Dialog("Log in", content[0], ["Cancel", "Log in"]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});

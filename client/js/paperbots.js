@@ -6305,7 +6305,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_1.Dialog("Sign in", content[0], ["Cancel", "Sign in"]);
+            var dialog = new Dialog_1.Dialog("Log in", content[0], ["Cancel", "Log in"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });

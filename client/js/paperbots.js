@@ -6787,7 +6787,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 if (dirX == -1 && dirY == 0)
                     return 2;
                 if (dirX == 0 && dirY == -1)
-                    return 2;
+                    return 3;
                 return 0;
             });
             ext.addFunction("getX", [], "number", false, function () {

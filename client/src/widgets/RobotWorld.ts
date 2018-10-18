@@ -342,7 +342,7 @@ export class RobotWorld extends Widget {
 			if (dirX == 1 && dirY == 0) return 0;
 			if (dirX == 0 && dirY == 1) return 1;
 			if (dirX == -1 && dirY == 0) return 2;
-			if (dirX == 0 && dirY == -1) return 2;
+			if (dirX == 0 && dirY == -1) return 3;
 			return 0;
 		});
 		ext.addFunction("getX", [], "number", false, () => {

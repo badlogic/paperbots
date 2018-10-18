@@ -4,11 +4,6 @@ export interface RequestError {
 	error: ErrorType
 }
 
-export interface NameAndToken {
-	name: string,
-	token: string
-}
-
 export class Api {
 	private static request <Data, Response>(endpoint: string, data: Data, success: (r: Response) => void, error: (e: RequestError) => void) {
 		$.ajax({
@@ -47,12 +42,30 @@ export class Api {
 		});
 	}
 
-	public static verify(code: string, success: (NameAndtoken) => void, error: (invalidCode: boolean) => void) {
+	public static verify(code: string, success: () => void, error: (invalidCode: boolean) => void) {
 		this.request("api/verify", { code: code },
-		(r: NameAndToken) => {
-			success(r);
+		() => {
+			success();
 		}, (e: RequestError) => {
 			error(e.error == "CouldNotVerifyCode");
 		});
+	}
+
+	public static logout(success: () => void, error: () => void) {
+		this.request("api/logout", { },
+		( ) => {
+			success();
+		}, (e: RequestError) => {
+			error();
+		});
+	}
+
+	public static getUserName() {
+		return this.getCookie("name");
+	}
+
+	static getCookie (key) {
+		if (!key) { return null; }
+		return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
 	}
 }

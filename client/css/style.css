@@ -31,7 +31,6 @@ body {
 	border-bottom: 1px solid #ffa500c7;
 	display: flex;
 	flex-direction: row;
-	z-index: 5;
 }
 
 .far, .fal, .fas {
@@ -466,4 +465,36 @@ body {
 
 .pb-dialog-error {
 	color: #ff0000;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    /* display: none; */
+    position: absolute;
+	background-color: #252526;
+	border-radius: 5px;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	z-index: 20000;
+	top: 33px;
+	left: -15px;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: #aaaaaa;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+	color: #ffffff;
 }

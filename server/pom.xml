@@ -65,7 +65,7 @@
 		<additionalparam>-Xdoclint:none</additionalparam>
 
 		<basissite.version>1.6-SNAPSHOT</basissite.version>
-		<javalin.version>1.7.0</javalin.version>
+		<javalin.version>2.3.0</javalin.version>
 		<slf4jsimple.version>1.7.25</slf4jsimple.version>
 		<mysql-connector.version>8.0.12</mysql-connector.version>
 		<java-mail.version>1.6.1</java-mail.version>

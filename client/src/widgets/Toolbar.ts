@@ -1,9 +1,16 @@
 import { Widget } from "./Widget"
-import { EventBus, Event } from "./Events";
+import { EventBus, Event, LoggedIn, LoggedOut } from "./Events";
 import { Dialog } from "./Dialog";
-import { Api, NameAndToken } from "../Api";
+import { Api } from "../Api";
 
 export class Toolbar extends Widget {
+	save: JQuery;
+	copy: JQuery;
+	title: JQuery;
+	login: JQuery;
+	signup: JQuery;
+	user: JQuery;
+
 	constructor(bus: EventBus) {
 		super(bus);
 	}
@@ -11,29 +18,82 @@ export class Toolbar extends Widget {
 	render(): HTMLElement {
 		let dom = $(/*html*/`
 			<div id="pb-toolbar">
-				<div id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</div>
+				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
+				<input id="pb-toolbar-title" type="text" value="Untitled project">
 				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
 				<div id="pb-toolbar-copy" class="pb-toolbar-button"><i class="far fa-copy"></i>Copy</div>
-				<input id="pb-toolbar-title" type="text" value="Untitled project">
-				<div id="pb-toolbar-signin" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
+				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
 				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i>Sign up</div>
+				<div id="pb-toolbar-user" class="pb-toolbar-button dropdown">
+					<i class="fas fa-user-circle"></i><span id="pb-user-name"></span>
+					<div class="dropdown-content">
+						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
+						<a id="pb-toolbar-profile"><i class="fas fa-user-circle"></i> Profile</a>
+						<a id="pb-toolbar-logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
+					</div>
+				</div>
 			</div>
 		`);
 
-		let signin = dom.find("#pb-toolbar-signin");
-		signin.click(() => {
-			this.loginDialog().show();
+		this.save = dom.find("#pb-toolbar-save");
+		this.copy = dom.find("#pb-toolbar-copy");
+		this.title = dom.find("#pb-toolbar-title");
+
+		this.login = dom.find("#pb-toolbar-login");
+		this.login.click((e) => {
+			this.loginDialog();
+			e.preventDefault();
 		});
 
-		let signup = dom.find("#pb-toolbar-signup");
-		signup.click(() => {
-			this.signupDialog().show();
+		this.signup = dom.find("#pb-toolbar-signup");
+		this.signup.click(() => {
+			this.signupDialog();
 		});
+		this.user = dom.find("#pb-toolbar-user");
+		var justClicked = false;
+		this.user.click(() => {
+			justClicked = true;
+			$(".dropdown-content").toggle();
+		});
+
+		dom.find("#pb-toolbar-logout").click(() => {
+			Api.logout(() => { this.bus.event(new LoggedOut()) }, () => { this.serverErrorDialog() });
+		});
+
+		this.setupLoginAndUser();
+
+		window.onclick = function(event) {
+			if (justClicked) {
+				justClicked = false;
+				return;
+			}
+			if (!(event.target as any).matches('#pb-toolbar-user')) {
+			  var dropdowns = document.getElementsByClassName("dropdown-content");
+			  var i;
+			  for (i = 0; i < dropdowns.length; i++) {
+				$(dropdowns[i]).hide();
+			  }
+			}
+		  }
 
 		return dom[0];
 	}
 
-	private loginDialog () {
+	private setupLoginAndUser () {
+		let userName = Api.getUserName();
+		if (userName) {
+			this.login.hide()
+			this.signup.hide();
+			this.user.find("#pb-user-name").text(userName);
+			this.user.show();
+		} else {
+			this.login.show()
+			this.signup.show();
+			this.user.hide();
+		}
+	}
+
+	private loginDialog (email: string = "") {
 		let content = $(/*html*/`
 		<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
 			<p>Enter your email address or user name below.</p>
@@ -44,6 +104,7 @@ export class Toolbar extends Widget {
 		);
 		let emailOrUser = content.find("#pb-signup-email-or-user");
 		emailOrUser.focus();
+		if (email.length > 0 ) emailOrUser.val(email);
 		let spinner = content.find("#pb-spinner");
 		spinner.hide()
 		let error = content.find("#pb-error");
@@ -57,7 +118,7 @@ export class Toolbar extends Widget {
 			Api.login(emailOrUser.val() as string,
 			() => {
 				dialog.hide();
-				this.verifyDialog().show();
+				this.verifyDialog();
 			},
 			(userDoesNotExist) => {
 				if (userDoesNotExist) {
@@ -78,10 +139,10 @@ export class Toolbar extends Widget {
 			spinner.show();
 			dialog.buttons.forEach(button => button.hide());
 		});
-		return dialog;
+		dialog.show();
 	}
 
-	private verifyDialog (): Dialog {
+	private verifyDialog () {
 		let content = $(/*html*/`
 		<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
 			<p>We have sent you an email with a magic code! Please enter it below.</p>
@@ -102,9 +163,9 @@ export class Toolbar extends Widget {
 		});
 		dialog.buttons[1].click(() => {
 			Api.verify(emailOrUser.val() as string,
-			(nameAndToken: NameAndToken) => {
+			() => {
 				dialog.hide();
-				// TODO store token locally
+				this.bus.event(new LoggedIn());
 			},
 			(invalidCode) => {
 				if (invalidCode) {
@@ -125,7 +186,7 @@ export class Toolbar extends Widget {
 			spinner.show();
 			dialog.buttons.forEach(button => button.hide());
 		})
-		return dialog;
+		dialog.show();
 	}
 
 	signupDialog () {
@@ -147,7 +208,7 @@ export class Toolbar extends Widget {
 		let error = content.find("#pb-error");
 		error.hide();
 
-		let dialog = new Dialog("Sign in", content[0], ["Cancel", "Sign up"]);
+		let dialog = new Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});
@@ -155,7 +216,7 @@ export class Toolbar extends Widget {
 			Api.signup(email.val() as string, name.val() as string,
 			() => {
 				dialog.hide();
-				this.verifyDialog().show();
+				this.verifyDialog();
 			},
 			(reqError) => {
 				if (reqError.error == "InvalidEmailAddress" || reqError.error == "InvalidUserName") {
@@ -180,11 +241,17 @@ export class Toolbar extends Widget {
 					spinner.hide();
 					dialog.buttons.forEach(button => button.show());
 					error.show();
-					error.html(/*html*/`
+					let content = $(/*html*/`
 						<p class="pb-dialog-error">
-							Sorry, that email is already registered. <a>Log in!</a>
+							Sorry, that email is already registered. <a id="pb-login-link" style="cursor: pointer">Log in!</a>
 						</p>
 					`);
+					content.find("#pb-login-link").click(() => {
+						dialog.hide();
+						this.loginDialog(email.val() as string);
+					})
+					error.empty();
+					error.append(content[0]);
 				} else {
 					dialog.hide();
 					this.serverErrorDialog();
@@ -194,7 +261,7 @@ export class Toolbar extends Widget {
 			spinner.show();
 			dialog.buttons.forEach(button => button.hide());
 		});
-		return dialog;
+		dialog.show();
 	}
 
 	serverErrorDialog () {
@@ -202,5 +269,8 @@ export class Toolbar extends Widget {
 	}
 
 	onEvent(event: Event) {
+		if (event instanceof LoggedIn || event instanceof LoggedOut) {
+			this.setupLoginAndUser();
+		}
 	}
 }

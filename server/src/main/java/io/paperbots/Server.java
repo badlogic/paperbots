@@ -9,10 +9,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.esotericsoftware.minlog.Log;
 
 import io.javalin.Javalin;
-import io.javalin.embeddedserver.Location;
-import io.javalin.embeddedserver.jetty.websocket.WebSocketHandler;
-import io.javalin.embeddedserver.jetty.websocket.WsSession;
+import io.javalin.staticfiles.Location;
+import io.javalin.websocket.WsHandler;
+import io.javalin.websocket.WsSession;
 import io.marioslab.basis.site.FileWatcher;
+import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.UserType;
 
@@ -23,10 +24,11 @@ public class Server {
 	public Server (Paperbots paperbots, boolean reload, File staticFiles) {
 		if (!staticFiles.exists()) throw new RuntimeException("Static file directory '" + staticFiles.getPath() + "' does not exist.");
 
-		app = Javalin.create().enableDynamicGzip().enableStaticFiles(staticFiles.getAbsolutePath(), Location.EXTERNAL);
+		app = Javalin.create().enableStaticFiles(staticFiles.getAbsolutePath(), Location.EXTERNAL);
 
+		// Websockets for local development
 		if (reload) {
-			final Map<WebSocketHandler, WsSession> wsClients = new ConcurrentHashMap<>();
+			final Map<WsHandler, WsSession> wsClients = new ConcurrentHashMap<>();
 			Thread generatorThread = new Thread((Runnable) () -> {
 				try {
 					FileWatcher.watch(staticFiles, () -> {
@@ -43,6 +45,7 @@ public class Server {
 			generatorThread.setDaemon(true);
 			generatorThread.start();
 
+			// Websockets for local development
 			app.ws("/api/reloadws", ws -> {
 				Log.info("Setting up WebSocket reloading");
 
@@ -63,25 +66,27 @@ public class Server {
 			});
 		}
 
+		// Reload API
 		app.post("/api/reloadstatic", ctx -> {
 			String pwd = ctx.formParam("password");
 			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.PAPERBOTS_RELOAD_PWD.getBytes())) {
 				new ProcessBuilder().command("git", "pull").start();
 				Log.info("Got new static content.");
-				ctx.response().getWriter().println("OK.");
+				ctx.result("OK");
 			}
 		});
 
 		app.post("/api/reload", ctx -> {
 			String pwd = ctx.formParam("password");
 			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.PAPERBOTS_RELOAD_PWD.getBytes())) {
-				ctx.response().getWriter().println("OK.");
-				ctx.response().getWriter().flush();
+				ctx.result("OK.");
+				ctx.res.flushBuffer();
 				Log.info("Got an update. Shutting down.");
 				System.exit(-1);
 			}
 		});
 
+		// User management
 		app.post("/api/signup", ctx -> {
 			SignupRequest request = ctx.bodyAsClass(SignupRequest.class);
 			paperbots.signup(request.name, request.email, UserType.user);
@@ -94,7 +99,16 @@ public class Server {
 
 		app.post("/api/verify", ctx -> {
 			VerifyRequest request = ctx.bodyAsClass(VerifyRequest.class);
-			ctx.json(paperbots.verifyCode(request.code));
+			TokenAndName tokenAndName = paperbots.verifyCode(request.code);
+			ctx.cookie("name", tokenAndName.name);
+			ctx.cookie("token", tokenAndName.token);
+		});
+
+		app.post("/api/logout", ctx -> {
+			String token = ctx.cookie("token");
+			ctx.cookie("name", "", -1);
+			ctx.cookie("token", "", -1);
+			paperbots.logout(token);
 		});
 
 		app.post("/api/exception", ctx -> {

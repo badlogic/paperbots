@@ -154,7 +154,8 @@ public class Paperbots {
 				throw new PaperbotsException(PaperbotsError.CouldNotVerifyCode, e);
 			}
 
-			handle.createUpdate("delete from userCodes where code=:code and userId=:userId").bind("code", verifiedCode).bind("userId", userId).execute();
+			// Delete ALL old user codes!
+			handle.createUpdate("delete from userCodes where userId=:userId").bind("code", verifiedCode).bind("userId", userId).execute();
 
 			String token = generateId(32);
 			if (handle.createUpdate("insert into userTokens (userId, token) value (:userId, :token)").bind("userId", userId).bind("token", token).execute() != 1) {
@@ -175,14 +176,21 @@ public class Paperbots {
 		jdbi.withHandle(handle -> {
 			// TODO this should be done in a transaction
 			try {
-				User user = handle.createQuery("SELECT id, name FROM users WHERE email=:email or name=:name").bind("email", verifiedEmail)
+				User user = handle.createQuery("SELECT id, name, email FROM users WHERE email=:email or name=:name").bind("email", verifiedEmail)
 					.bind("name", verifiedEmail).mapToBean(User.class).findOnly();
-				sendCode(handle, user.getId(), user.getName(), verifiedEmail);
+				sendCode(handle, user.getId(), user.getName(), user.getEmail());
 				return null;
 			} catch (IllegalStateException t) {
 				// User doesn't exist
 				throw new PaperbotsException(PaperbotsError.UserDoesNotExist);
 			}
+		});
+	}
+
+	public void logout (String token) {
+		jdbi.withHandle(handle -> {
+			handle.createUpdate("delete from userTokens where token=:token").bind("token", token).execute();
+			return null;
 		});
 	}
 

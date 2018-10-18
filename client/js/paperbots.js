@@ -50,11 +50,27 @@ define("Api", ["require", "exports"], function (require, exports) {
             });
         };
         Api.verify = function (code, success, error) {
-            this.request("api/verify", { code: code }, function (r) {
-                success(r);
+            this.request("api/verify", { code: code }, function () {
+                success();
             }, function (e) {
                 error(e.error == "CouldNotVerifyCode");
             });
+        };
+        Api.logout = function (success, error) {
+            this.request("api/logout", {}, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.getUserName = function () {
+            return this.getCookie("name");
+        };
+        Api.getCookie = function (key) {
+            if (!key) {
+                return null;
+            }
+            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
         };
         return Api;
     }());
@@ -6085,27 +6101,20 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var ReceivedToken = (function () {
-        function ReceivedToken(token, name) {
-            this.token = token;
-            this.name = name;
+    var LoggedIn = (function () {
+        function LoggedIn() {
         }
-        return ReceivedToken;
+        return LoggedIn;
     }());
-    exports.ReceivedToken = ReceivedToken;
+    exports.LoggedIn = LoggedIn;
     ;
-    var Save = (function () {
-        function Save() {
+    var LoggedOut = (function () {
+        function LoggedOut() {
         }
-        return Save;
+        return LoggedOut;
     }());
-    exports.Save = Save;
-    var Copy = (function () {
-        function Copy() {
-        }
-        return Copy;
-    }());
-    exports.Copy = Copy;
+    exports.LoggedOut = LoggedOut;
+    ;
     var EventBus = (function () {
         function EventBus() {
             this.listeners = new Array();
@@ -6222,7 +6231,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dialog", "Api"], function (require, exports, Widget_1, Dialog_1, Api_1) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api"], function (require, exports, Widget_1, Events_1, Dialog_1, Api_1) {
     "use strict";
     exports.__esModule = true;
     var Toolbar = (function (_super) {
@@ -6232,22 +6241,66 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<div id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-copy\" class=\"pb-toolbar-button\"><i class=\"far fa-copy\"></i>Copy</div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-signin\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t</div>\n\t\t");
-            var signin = dom.find("#pb-toolbar-signin");
-            signin.click(function () {
-                _this.loginDialog().show();
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-copy\" class=\"pb-toolbar-button\"><i class=\"far fa-copy\"></i>Copy</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-user-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            this.save = dom.find("#pb-toolbar-save");
+            this.copy = dom.find("#pb-toolbar-copy");
+            this.title = dom.find("#pb-toolbar-title");
+            this.login = dom.find("#pb-toolbar-login");
+            this.login.click(function (e) {
+                _this.loginDialog();
+                e.preventDefault();
             });
-            var signup = dom.find("#pb-toolbar-signup");
-            signup.click(function () {
-                _this.signupDialog().show();
+            this.signup = dom.find("#pb-toolbar-signup");
+            this.signup.click(function () {
+                _this.signupDialog();
             });
+            this.user = dom.find("#pb-toolbar-user");
+            var justClicked = false;
+            this.user.click(function () {
+                justClicked = true;
+                $(".dropdown-content").toggle();
+            });
+            dom.find("#pb-toolbar-logout").click(function () {
+                Api_1.Api.logout(function () { _this.bus.event(new Events_1.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+            });
+            this.setupLoginAndUser();
+            window.onclick = function (event) {
+                if (justClicked) {
+                    justClicked = false;
+                    return;
+                }
+                if (!event.target.matches('#pb-toolbar-user')) {
+                    var dropdowns = document.getElementsByClassName("dropdown-content");
+                    var i;
+                    for (i = 0; i < dropdowns.length; i++) {
+                        $(dropdowns[i]).hide();
+                    }
+                }
+            };
             return dom[0];
         };
-        Toolbar.prototype.loginDialog = function () {
+        Toolbar.prototype.setupLoginAndUser = function () {
+            var userName = Api_1.Api.getUserName();
+            if (userName) {
+                this.login.hide();
+                this.signup.hide();
+                this.user.find("#pb-user-name").text(userName);
+                this.user.show();
+            }
+            else {
+                this.login.show();
+                this.signup.show();
+                this.user.hide();
+            }
+        };
+        Toolbar.prototype.loginDialog = function (email) {
             var _this = this;
+            if (email === void 0) { email = ""; }
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Enter your email address or user name below.</p>\n\t\t\t<input id=\"pb-signup-email-or-user\" class=\"pb-input-field\" placeholder=\"Email or username\">\n\t\t\t<div id=\"pb-error\"></div>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
             var emailOrUser = content.find("#pb-signup-email-or-user");
             emailOrUser.focus();
+            if (email.length > 0)
+                emailOrUser.val(email);
             var spinner = content.find("#pb-spinner");
             spinner.hide();
             var error = content.find("#pb-error");
@@ -6259,7 +6312,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
             dialog.buttons[1].click(function () {
                 Api_1.Api.login(emailOrUser.val(), function () {
                     dialog.hide();
-                    _this.verifyDialog().show();
+                    _this.verifyDialog();
                 }, function (userDoesNotExist) {
                     if (userDoesNotExist) {
                         spinner.hide();
@@ -6276,7 +6329,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
                 spinner.show();
                 dialog.buttons.forEach(function (button) { return button.hide(); });
             });
-            return dialog;
+            dialog.show();
         };
         Toolbar.prototype.verifyDialog = function () {
             var _this = this;
@@ -6291,8 +6344,9 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_1.Api.verify(emailOrUser.val(), function (nameAndToken) {
+                Api_1.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
+                    _this.bus.event(new Events_1.LoggedIn());
                 }, function (invalidCode) {
                     if (invalidCode) {
                         spinner.hide();
@@ -6309,7 +6363,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
                 spinner.show();
                 dialog.buttons.forEach(function (button) { return button.hide(); });
             });
-            return dialog;
+            dialog.show();
         };
         Toolbar.prototype.signupDialog = function () {
             var _this = this;
@@ -6321,14 +6375,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_1.Dialog("Sign in", content[0], ["Cancel", "Sign up"]);
+            var dialog = new Dialog_1.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
                 Api_1.Api.signup(email.val(), name.val(), function () {
                     dialog.hide();
-                    _this.verifyDialog().show();
+                    _this.verifyDialog();
                 }, function (reqError) {
                     if (reqError.error == "InvalidEmailAddress" || reqError.error == "InvalidUserName") {
                         spinner.hide();
@@ -6346,7 +6400,13 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
                         spinner.hide();
                         dialog.buttons.forEach(function (button) { return button.show(); });
                         error.show();
-                        error.html("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, that email is already registered. <a>Log in!</a>\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                        var content_1 = $("\n\t\t\t\t\t\t<p class=\"pb-dialog-error\">\n\t\t\t\t\t\t\tSorry, that email is already registered. <a id=\"pb-login-link\" style=\"cursor: pointer\">Log in!</a>\n\t\t\t\t\t\t</p>\n\t\t\t\t\t");
+                        content_1.find("#pb-login-link").click(function () {
+                            dialog.hide();
+                            _this.loginDialog(email.val());
+                        });
+                        error.empty();
+                        error.append(content_1[0]);
                     }
                     else {
                         dialog.hide();
@@ -6357,12 +6417,15 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Dial
                 spinner.show();
                 dialog.buttons.forEach(function (button) { return button.hide(); });
             });
-            return dialog;
+            dialog.show();
         };
         Toolbar.prototype.serverErrorDialog = function () {
             Dialog_1.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
         Toolbar.prototype.onEvent = function (event) {
+            if (event instanceof Events_1.LoggedIn || event instanceof Events_1.LoggedOut) {
+                this.setupLoginAndUser();
+            }
         };
         return Toolbar;
     }(Widget_1.Widget));
@@ -7846,12 +7909,12 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_1, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1) {
+define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1) {
     "use strict";
     exports.__esModule = true;
     var Paperbots = (function () {
         function Paperbots(parent) {
-            this.eventBus = new Events_1.EventBus();
+            this.eventBus = new Events_2.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus);
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);

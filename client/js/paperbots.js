@@ -7271,6 +7271,13 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 return asyncResult;
             });
             ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, function (letter) {
+                if (letter.trim().length == 0) {
+                    return {
+                        completed: true,
+                        value: null
+                    };
+                }
+                ;
                 if (letter.trim().length != 1) {
                     alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
                     return {

@@ -259,6 +259,13 @@ export class RobotWorld extends Widget {
 		});
 
 		ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, (letter) => {
+			if (letter.trim().length == 0) {
+				return {
+					completed: true,
+					value: null
+				}
+			};
+
 			if (letter.trim().length != 1) {
 				alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
 				return {

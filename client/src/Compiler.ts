@@ -289,6 +289,13 @@ export class ExternalFunctions {
 			(value: string) => { alert(value); }
 		)
 		externals.addFunction(
+			"alert",
+			[new ExternalFunctionParameter("value", "boolean")],
+			"nothing",
+			false,
+			(value: string) => { alert(value); }
+		)
+		externals.addFunction(
 			"toString",
 			[new ExternalFunctionParameter("value", "number")],
 			"string",
@@ -321,7 +328,7 @@ export class ExternalFunctions {
 		)
 
 		externals.addFunction(
-			"wait",
+			"pause",
 			[new ExternalFunctionParameter("milliSeconds", "number")],
 			"number",
 			true,

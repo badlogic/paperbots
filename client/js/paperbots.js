@@ -5124,6 +5124,7 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
             var externals = this;
             externals.addFunction("alert", [new ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
             externals.addFunction("alert", [new ExternalFunctionParameter("value", "number")], "nothing", false, function (value) { alert(value); });
+            externals.addFunction("alert", [new ExternalFunctionParameter("value", "boolean")], "nothing", false, function (value) { alert(value); });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
             externals.addFunction("toString", [new ExternalFunctionParameter("value", "boolean")], "string", false, function (value) { return "" + value; });
             externals.addFunction("length", [new ExternalFunctionParameter("value", "string")], "number", false, function (value) { return value.length; });
@@ -5131,7 +5132,7 @@ define("Compiler", ["require", "exports", "Parser", "Utils"], function (require,
                 new ExternalFunctionParameter("value", "string"),
                 new ExternalFunctionParameter("index", "number")
             ], "string", false, function (value, index) { return value.charAt(index); });
-            externals.addFunction("wait", [new ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
+            externals.addFunction("pause", [new ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
                 var promise = {
                     completed: false,
                     value: 0
@@ -7252,7 +7253,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 if (!tile || tile.kind != "wall") {
-                    _this.world.setTile(x, y, World.newNumber(number));
+                    _this.world.setTile(x, y, World.newNumber(number | 0));
                 }
                 var asyncResult = {
                     completed: false,
@@ -7902,12 +7903,12 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
     var DOCS = [
         {
             name: "Functions",
-            desc: "",
+            desc: "Use the below functions to create your program.",
             entries: [],
             subCategories: [
                 {
-                    name: "Movement",
-                    desc: "",
+                    name: "Robot movement",
+                    desc: "Make the robot move with these functions.",
                     entries: [
                         {
                             name: "<code>forward()</code>",
@@ -7933,8 +7934,72 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
                     subCategories: []
                 },
                 {
-                    name: "Robot State",
-                    desc: "",
+                    name: "Robot input",
+                    desc: "Let the robot read information from its environment.",
+                    entries: [
+                        {
+                            name: "<code>scanNumber(): number</code>",
+                            anchor: "robot-scan-number",
+                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+                        },
+                        {
+                            name: "<code>scanLetter(): string</code>",
+                            anchor: "robot-scan-letter",
+                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
+                        },
+                        {
+                            name: "<code>isWallAhead(): boolean</code>",
+                            anchor: "robot-is-wall-ahead",
+                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isNumberAhead(): boolean</code>",
+                            anchor: "robot-is-number-ahead",
+                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isLetterAhead(): boolean</code>",
+                            anchor: "robot-is-letter-ahead",
+                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>distanceToWall(): number</code>",
+                            anchor: "robot-distance-to-wall",
+                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot output",
+                    desc: "Have the robot build and print stuff on the grid.",
+                    entries: [
+                        {
+                            name: "<code>print(value: number)</code>",
+                            anchor: "robot-print-number",
+                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
+                        },
+                        {
+                            name: "<code>print(letter: string)</code>",
+                            anchor: "robot-print-letter",
+                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+                        },
+                        {
+                            name: "<code>buildWall()</code>",
+                            anchor: "robot-build-wall",
+                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+                        },
+                        {
+                            name: "<code>destroyWall()</code>",
+                            anchor: "robot-destroy-wall",
+                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot status",
+                    desc: "Check the status of the robot.",
                     entries: [
                         {
                             name: "<code>getDirection(): number</code>",
@@ -7975,64 +8040,49 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
                     subCategories: []
                 },
                 {
-                    name: "Input & Output",
-                    desc: "",
+                    name: "Built-in",
+                    desc: "Functions to work with different data and for communicating with the user.",
                     entries: [
                         {
-                            name: "<code>print(value: number)</code>",
-                            anchor: "robot-print-number",
-                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed."
-                        },
-                        {
-                            name: "<code>print(letter: string)</code>",
-                            anchor: "robot-print-letter",
-                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
-                        },
-                        {
-                            name: "<code>scanNumber(): number</code>",
-                            anchor: "robot-scan-number",
-                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
-                        },
-                        {
-                            name: "<code>scanLetter(): string</code>",
-                            anchor: "robot-scan-letter",
-                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
-                        },
-                        {
-                            name: "<code>isWallAhead(): boolean</code>",
-                            anchor: "robot-is-wall-ahead",
-                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isNumberAhead(): boolean</code>",
-                            anchor: "robot-is-number-ahead",
-                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isLetterAhead(): boolean</code>",
-                            anchor: "robot-is-letter-ahead",
-                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>distanceToWall(): number</code>",
-                            anchor: "robot-distance-to-wall",
-                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
-                        },
-                        {
-                            name: "<code>buildWall()</code>",
-                            anchor: "robot-build-wall",
-                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
-                        },
-                        {
-                            name: "<code>destroyWall()</code>",
-                            anchor: "robot-destroy-wall",
-                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
-                        },
-                        {
                             name: "<code>alert(message: string)</code>",
-                            anchor: "lang-alert",
-                            desc: "Opens a dialog bog that displays the text given in <code>message</code>."
-                        }
+                            anchor: "lang-alert-string",
+                            desc: "Opens a dialog that displays the text given in <code>message</code>."
+                        },
+                        {
+                            name: "<code>alert(value: number)</code>",
+                            anchor: "lang-alert-number",
+                            desc: "Opens a dialog that displays the number given in <code>value</code>."
+                        },
+                        {
+                            name: "<code>alert(value: boolean)</code>",
+                            anchor: "lang-alert-boolean",
+                            desc: "Opens a dialog that displays the boolean given in <code>value</code>."
+                        },
+                        {
+                            name: "<code>toString(value: number): string</code>",
+                            anchor: "lang-to-string-number",
+                            desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
+                        },
+                        {
+                            name: "<code>toString(value: boolean): string</code>",
+                            anchor: "lang-to-string-number",
+                            desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
+                        },
+                        {
+                            name: "<code>length(text: string): number</code>",
+                            anchor: "lang-length-string",
+                            desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
+                        },
+                        {
+                            name: "<code>charAt(text: string, index: number): string</code>",
+                            anchor: "lang-char-at-string-number",
+                            desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
+                        },
+                        {
+                            name: "<code>pause(milliSeconds: number)</code>",
+                            anchor: "lang-wait",
+                            desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
+                        },
                     ],
                     subCategories: []
                 }

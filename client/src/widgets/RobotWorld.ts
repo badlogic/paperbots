@@ -240,7 +240,7 @@ export class RobotWorld extends Widget {
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			if (!tile || tile.kind != "wall") {
-				this.world.setTile(x, y, World.newNumber(number));
+				this.world.setTile(x, y, World.newNumber(number | 0));
 			}
 			let asyncResult: compiler.AsyncPromise<void> = {
 				completed: false,

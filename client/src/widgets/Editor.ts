@@ -124,13 +124,21 @@ export class Editor extends Widget {
 	setLine(line: number) {
 		if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 		this.editor.addLineClass(line, "background", "pb-debugged-line");
+		let rect = this.editor.getWrapperElement().getBoundingClientRect();
+    	let topVisibleLine = this.editor.lineAtHeight(rect.top, "window");
+		let bottomVisibleLine = this.editor.lineAtHeight(rect.bottom, "window");
+		if (line < topVisibleLine || line > bottomVisibleLine) {
+			let h = this.editor.getScrollInfo().clientHeight;
+  			let coords = this.editor.charCoords({line: line, ch: 0}, "local");
+  			this.editor.scrollTo(null, (coords.top + coords.bottom - h) / 2);
+		}
 		this.lastLine = line;
 	}
 
 	onEvent(event: Event) {
 		if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
 			this.editor.setOption("readOnly", true);
-			if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+			this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 		} else if (event instanceof events.Stop) {
 			this.editor.setOption("readOnly", false);
 			this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");

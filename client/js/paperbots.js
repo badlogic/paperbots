@@ -6992,14 +6992,21 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             if (this.lastLine != -1)
                 this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
             this.editor.addLineClass(line, "background", "pb-debugged-line");
+            var rect = this.editor.getWrapperElement().getBoundingClientRect();
+            var topVisibleLine = this.editor.lineAtHeight(rect.top, "window");
+            var bottomVisibleLine = this.editor.lineAtHeight(rect.bottom, "window");
+            if (line < topVisibleLine || line > bottomVisibleLine) {
+                var h = this.editor.getScrollInfo().clientHeight;
+                var coords = this.editor.charCoords({ line: line, ch: 0 }, "local");
+                this.editor.scrollTo(null, (coords.top + coords.bottom - h) / 2);
+            }
             this.lastLine = line;
         };
         Editor.prototype.onEvent = function (event) {
             var _this = this;
             if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
                 this.editor.setOption("readOnly", true);
-                if (this.lastLine != -1)
-                    this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+                this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
             }
             else if (event instanceof events.Stop) {
                 this.editor.setOption("readOnly", false);

@@ -495,7 +495,7 @@ table, th, td {
     position: absolute;
 	background-color: #252526;
 	border-radius: 5px;
-    min-width: 160px;
+    min-width: 130px;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
 	z-index: 20000;
 	top: 33px;

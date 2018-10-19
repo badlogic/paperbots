@@ -1,4 +1,4 @@
-import * as compiler from "../Compiler"
+import * as compiler from "../language/Compiler"
 import { Project } from "../Api";
 
 export class SourceChanged { constructor(public source: string, public module: compiler.Module | null) {}}

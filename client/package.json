@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "description": "Frontend for paperbots.io",
   "scripts": {
-    "dev": "concurrently \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs\"",
-    "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/Parser.ts src/grammar.pegjs && tsc"
+    "dev": "concurrently \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs\"",
+    "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs && tsc"
   },
   "dependencies": {
     "monaco-editor": "0.14.3"

@@ -1,5 +1,5 @@
 import { SyntaxError, IFileRange, parse } from "./Parser";
-import { assertNever } from "./Utils"
+import { assertNever } from "../Utils"
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) { }

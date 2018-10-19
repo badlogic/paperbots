@@ -1,7 +1,7 @@
 import { Widget } from "./Widget"
 import * as events from "./Events"
 import { setElementEnabled } from "../Utils";
-import * as compiler from "../Compiler";
+import * as compiler from "../language/Compiler";
 
 export enum DebuggerState {
 	Stopped,

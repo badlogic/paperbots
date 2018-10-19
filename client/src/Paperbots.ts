@@ -4,7 +4,7 @@ import { Toolbar } from "./widgets/Toolbar";
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
 import { RobotWorld } from "./widgets/RobotWorld";
-import * as compiler from "./Compiler"
+import * as compiler from "./language/Compiler"
 import { SplitPane } from "./widgets/SplitPane";
 import { Docs } from "./widgets/Docs";
 import { Description } from "./widgets/Description";

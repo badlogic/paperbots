@@ -1,7 +1,7 @@
 import * as events from "./Events"
 import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
-import * as compiler from "../Compiler"
+import * as compiler from "../language/Compiler"
 
 function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);

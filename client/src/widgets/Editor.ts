@@ -1,7 +1,7 @@
 import { TextMarker } from "codemirror";
 import { Widget } from "./Widget"
 import * as events from "./Events"
-import * as compiler from "../Compiler"
+import * as compiler from "../language/Compiler"
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
 

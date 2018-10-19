@@ -120,7 +120,257 @@ define("Api", ["require", "exports"], function (require, exports) {
     }());
     exports.Api = Api;
 });
-define("Parser", ["require", "exports"], function (require, exports) {
+define("Utils", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Input = (function () {
+        function Input(element) {
+            this.lastX = 0;
+            this.lastY = 0;
+            this.buttonDown = false;
+            this.currTouch = null;
+            this.listeners = new Array();
+            this.element = element;
+            this.setupCallbacks(element);
+        }
+        Input.prototype.setupCallbacks = function (element) {
+            var _this = this;
+            element.addEventListener("mousedown", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].down(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = true;
+                }
+            }, true);
+            element.addEventListener("mousemove", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        if (_this.buttonDown) {
+                            listeners[i].dragged(x, y);
+                        }
+                        else {
+                            listeners[i].moved(x, y);
+                        }
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                }
+            }, true);
+            element.addEventListener("mouseup", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
+            element.addEventListener("touchstart", function (ev) {
+                if (_this.currTouch != null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    var rect = element.getBoundingClientRect();
+                    var x = touch.clientX - rect.left;
+                    var y = touch.clientY - rect.top;
+                    _this.currTouch = new Touch(touch.identifier, x, y);
+                    break;
+                }
+                var listeners = _this.listeners;
+                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
+                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
+                }
+                _this.lastX = _this.currTouch.x;
+                _this.lastY = _this.currTouch.y;
+                _this.buttonDown = true;
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchend", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
+                            listeners[i_2].up(x, y);
+                        }
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchcancel", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
+                            listeners[i_3].up(x, y);
+                        }
+                        console.log("End " + x + ", " + y);
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchmove", function (ev) {
+                if (_this.currTouch == null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = touch.clientX - rect.left;
+                        var y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
+                            listeners[i_4].dragged(x, y);
+                        }
+                        console.log("Drag " + x + ", " + y);
+                        _this.lastX = _this.currTouch.x = x;
+                        _this.lastY = _this.currTouch.y = y;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+        };
+        Input.prototype.addListener = function (listener) {
+            if (this.hasListener(listener))
+                return;
+            this.listeners.push(listener);
+        };
+        Input.prototype.removeListener = function (listener) {
+            var idx = this.listeners.indexOf(listener);
+            if (idx > -1) {
+                this.listeners.splice(idx, 1);
+            }
+        };
+        Input.prototype.hasListener = function (listener) {
+            return this.listeners.indexOf(listener) >= 0;
+        };
+        return Input;
+    }());
+    exports.Input = Input;
+    var Touch = (function () {
+        function Touch(identifier, x, y) {
+            this.identifier = identifier;
+            this.x = x;
+            this.y = y;
+        }
+        return Touch;
+    }());
+    exports.Touch = Touch;
+    var TimeKeeper = (function () {
+        function TimeKeeper() {
+            this.maxDelta = 0.064;
+            this.framesPerSecond = 0;
+            this.delta = 0;
+            this.totalTime = 0;
+            this.lastTime = Date.now() / 1000;
+            this.frameCount = 0;
+            this.frameTime = 0;
+        }
+        TimeKeeper.prototype.update = function () {
+            var now = Date.now() / 1000;
+            this.delta = now - this.lastTime;
+            this.frameTime += this.delta;
+            this.totalTime += this.delta;
+            if (this.delta > this.maxDelta)
+                this.delta = this.maxDelta;
+            this.lastTime = now;
+            this.frameCount++;
+            if (this.frameTime > 1) {
+                this.framesPerSecond = this.frameCount / this.frameTime;
+                this.frameTime = 0;
+                this.frameCount = 0;
+            }
+        };
+        return TimeKeeper;
+    }());
+    exports.TimeKeeper = TimeKeeper;
+    var AssetManager = (function () {
+        function AssetManager() {
+            this.toLoad = new Array();
+            this.loaded = {};
+            this.error = {};
+        }
+        AssetManager.prototype.loadImage = function (url) {
+            var _this = this;
+            var img = new Image();
+            var asset = { image: img, url: url };
+            this.toLoad.push(asset);
+            img.onload = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Loaded image " + url);
+            };
+            img.onerror = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Couldn't load image " + url);
+            };
+            img.src = url;
+        };
+        AssetManager.prototype.getImage = function (url) {
+            return this.loaded[url].image;
+        };
+        AssetManager.prototype.hasMoreToLoad = function () {
+            return this.toLoad.length;
+        };
+        return AssetManager;
+    }());
+    exports.AssetManager = AssetManager;
+    function setElementEnabled(el, enabled) {
+        if (enabled)
+            el.removeAttr("disabled");
+        else
+            el.attr("disabled", "true");
+    }
+    exports.setElementEnabled = setElementEnabled;
+    function assertNever(x) {
+        throw new Error("This should never happen");
+    }
+    exports.assertNever = assertNever;
+});
+define("language/Parser", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
     var SyntaxError = (function (_super) {
@@ -4791,257 +5041,7 @@ define("Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("Utils", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Input = (function () {
-        function Input(element) {
-            this.lastX = 0;
-            this.lastY = 0;
-            this.buttonDown = false;
-            this.currTouch = null;
-            this.listeners = new Array();
-            this.element = element;
-            this.setupCallbacks(element);
-        }
-        Input.prototype.setupCallbacks = function (element) {
-            var _this = this;
-            element.addEventListener("mousedown", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].down(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = true;
-                }
-            }, true);
-            element.addEventListener("mousemove", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        if (_this.buttonDown) {
-                            listeners[i].dragged(x, y);
-                        }
-                        else {
-                            listeners[i].moved(x, y);
-                        }
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                }
-            }, true);
-            element.addEventListener("mouseup", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].up(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = false;
-                }
-            }, true);
-            element.addEventListener("touchstart", function (ev) {
-                if (_this.currTouch != null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    var rect = element.getBoundingClientRect();
-                    var x = touch.clientX - rect.left;
-                    var y = touch.clientY - rect.top;
-                    _this.currTouch = new Touch(touch.identifier, x, y);
-                    break;
-                }
-                var listeners = _this.listeners;
-                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
-                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
-                }
-                _this.lastX = _this.currTouch.x;
-                _this.lastY = _this.currTouch.y;
-                _this.buttonDown = true;
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchend", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
-                            listeners[i_2].up(x, y);
-                        }
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchcancel", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
-                            listeners[i_3].up(x, y);
-                        }
-                        console.log("End " + x + ", " + y);
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchmove", function (ev) {
-                if (_this.currTouch == null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = touch.clientX - rect.left;
-                        var y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
-                            listeners[i_4].dragged(x, y);
-                        }
-                        console.log("Drag " + x + ", " + y);
-                        _this.lastX = _this.currTouch.x = x;
-                        _this.lastY = _this.currTouch.y = y;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-        };
-        Input.prototype.addListener = function (listener) {
-            if (this.hasListener(listener))
-                return;
-            this.listeners.push(listener);
-        };
-        Input.prototype.removeListener = function (listener) {
-            var idx = this.listeners.indexOf(listener);
-            if (idx > -1) {
-                this.listeners.splice(idx, 1);
-            }
-        };
-        Input.prototype.hasListener = function (listener) {
-            return this.listeners.indexOf(listener) >= 0;
-        };
-        return Input;
-    }());
-    exports.Input = Input;
-    var Touch = (function () {
-        function Touch(identifier, x, y) {
-            this.identifier = identifier;
-            this.x = x;
-            this.y = y;
-        }
-        return Touch;
-    }());
-    exports.Touch = Touch;
-    var TimeKeeper = (function () {
-        function TimeKeeper() {
-            this.maxDelta = 0.064;
-            this.framesPerSecond = 0;
-            this.delta = 0;
-            this.totalTime = 0;
-            this.lastTime = Date.now() / 1000;
-            this.frameCount = 0;
-            this.frameTime = 0;
-        }
-        TimeKeeper.prototype.update = function () {
-            var now = Date.now() / 1000;
-            this.delta = now - this.lastTime;
-            this.frameTime += this.delta;
-            this.totalTime += this.delta;
-            if (this.delta > this.maxDelta)
-                this.delta = this.maxDelta;
-            this.lastTime = now;
-            this.frameCount++;
-            if (this.frameTime > 1) {
-                this.framesPerSecond = this.frameCount / this.frameTime;
-                this.frameTime = 0;
-                this.frameCount = 0;
-            }
-        };
-        return TimeKeeper;
-    }());
-    exports.TimeKeeper = TimeKeeper;
-    var AssetManager = (function () {
-        function AssetManager() {
-            this.toLoad = new Array();
-            this.loaded = {};
-            this.error = {};
-        }
-        AssetManager.prototype.loadImage = function (url) {
-            var _this = this;
-            var img = new Image();
-            var asset = { image: img, url: url };
-            this.toLoad.push(asset);
-            img.onload = function () {
-                _this.loaded[asset.url] = asset;
-                var idx = _this.toLoad.indexOf(asset);
-                if (idx >= 0)
-                    _this.toLoad.splice(idx, 1);
-                console.log("Loaded image " + url);
-            };
-            img.onerror = function () {
-                _this.loaded[asset.url] = asset;
-                var idx = _this.toLoad.indexOf(asset);
-                if (idx >= 0)
-                    _this.toLoad.splice(idx, 1);
-                console.log("Couldn't load image " + url);
-            };
-            img.src = url;
-        };
-        AssetManager.prototype.getImage = function (url) {
-            return this.loaded[url].image;
-        };
-        AssetManager.prototype.hasMoreToLoad = function () {
-            return this.toLoad.length;
-        };
-        return AssetManager;
-    }());
-    exports.AssetManager = AssetManager;
-    function setElementEnabled(el, enabled) {
-        if (enabled)
-            el.removeAttr("disabled");
-        else
-            el.attr("disabled", "true");
-    }
-    exports.setElementEnabled = setElementEnabled;
-    function assertNever(x) {
-        throw new Error("This should never happen");
-    }
-    exports.assertNever = assertNever;
-});
-define("Compiler", ["require", "exports", "Parser", "Utils"], function (require, exports, Parser_1, Utils_1) {
+define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_1) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
@@ -6631,7 +6631,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_1.Widget));
     exports.Toolbar = Toolbar;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "Compiler"], function (require, exports, Widget_2, events, Utils_3, compiler) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler"], function (require, exports, Widget_2, events, Utils_3, compiler) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -6909,7 +6909,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
     }(Widget_2.Widget));
     exports.Debugger = Debugger;
 });
-define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "Compiler"], function (require, exports, Widget_3, events, compiler) {
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler"], function (require, exports, Widget_3, events, compiler) {
     "use strict";
     exports.__esModule = true;
     var DEFAULT_SOURCE = "";
@@ -7037,7 +7037,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {

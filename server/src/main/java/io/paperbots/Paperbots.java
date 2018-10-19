@@ -254,7 +254,7 @@ public class Paperbots {
 						.bind("type", type)
 						.execute();
 					//@on
-					Log.info("Created project " + code + " of user " + user.getName());
+					Log.info("Created project " + projectCode + " of user " + user.getName());
 					return projectCode;
 				} else {
 					//@off

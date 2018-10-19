@@ -52,8 +52,8 @@ export class Dialog {
 		return dialog;
 	}
 
-	static confirm (title: string, message: string, confirmed: () => void) {
-		let dialog = new Dialog(title, $(`<span>${message}</span>`)[0], ["Cancel", "OK"]);
+	static confirm (title: string, message: JQuery, confirmed: () => void) {
+		let dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
 		dialog.buttons[0].click(() => {
 			dialog.dom.remove();
 		});

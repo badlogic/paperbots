@@ -9,7 +9,7 @@ Program
   }
 
 Comment
-  = "#" (!"\n" .)* "\n"
+  = "#" (!"\n" .)* ( "\n" / !.)
   {
     return { kind: "comment", value: text() }
   }

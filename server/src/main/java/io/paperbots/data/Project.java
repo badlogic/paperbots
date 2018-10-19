@@ -2,6 +2,10 @@
 package io.paperbots.data;
 
 public class Project {
+	public static enum Type {
+		robot, canvas
+	}
+
 	private String userName;
 	private String code;
 	private String title;
@@ -10,6 +14,7 @@ public class Project {
 	private String created;
 	private String lastModified;
 	private boolean isPublic;
+	private Type type;
 
 	public Project () {
 	}

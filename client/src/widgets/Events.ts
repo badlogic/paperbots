@@ -16,11 +16,14 @@ export class LoggedIn { };
 export class LoggedOut { };
 
 export class ProjectLoaded { constructor(public project: Project) { } }
+export class BeforeSaveProject { constructor(public project: Project) { } }
+export class ProjectSaved { }
+export class ProjectChanged { }
 
 export type Event =
 	SourceChanged | Run | Debug | Pause | Resume | Stop | Step | LineChange | Selection |
 	LoggedIn | LoggedOut |
-	ProjectLoaded;
+	ProjectLoaded | BeforeSaveProject | ProjectSaved | ProjectChanged;
 
 export interface EventListener {
 	onEvent(event: Event);

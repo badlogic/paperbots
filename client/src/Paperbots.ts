@@ -1,5 +1,5 @@
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
-import { EventBus, EventListener, Event, ProjectLoaded } from "./widgets/Events"
+import { EventBus, EventListener, Event, ProjectLoaded, SourceChanged, ProjectSaved, ProjectChanged } from "./widgets/Events"
 import { Toolbar } from "./widgets/Toolbar";
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
@@ -19,6 +19,7 @@ export class Paperbots implements EventListener {
 	private playground = new RobotWorld(this.eventBus);
 	private docs = new Docs(this.eventBus);
 	private desc = new Description(this.eventBus);
+	private unsaved = false;
 
 	constructor(parent: HTMLElement) {
 		// register all components with the bus
@@ -83,6 +84,16 @@ export class Paperbots implements EventListener {
 		if (projectId) {
 			this.loadProject(projectId);
 		}
+
+		// Setup a check to alert the user to not leave the site
+		// If there are unsaved changes
+		window.onbeforeunload = () => {
+			if (this.unsaved) {
+				return "You have unsaved changes. Are you sure you want to leave?";
+			} else {
+				return null;
+			}
+		}
 	}
 
 	loadProject (id: string) {
@@ -93,9 +104,6 @@ export class Paperbots implements EventListener {
 		</div>`
 		);
 		let spinner = content.find("#pb-spinner");
-		let error = content.find("#pb-error");
-		error.hide();
-
 		let dialog = new Dialog("Loading", content[0], []);
 		dialog.show();
 
@@ -113,5 +121,12 @@ export class Paperbots implements EventListener {
 	}
 
 	onEvent(event: Event) {
+		if (event instanceof ProjectChanged) {
+			this.unsaved = true;
+		} else if (event instanceof ProjectSaved) {
+			this.unsaved = false;
+		} else if (event instanceof ProjectLoaded) {
+			this.unsaved = false;
+		}
 	}
 }

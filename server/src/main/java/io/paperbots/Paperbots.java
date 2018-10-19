@@ -3,6 +3,7 @@ package io.paperbots;
 
 import java.io.File;
 import java.security.SecureRandom;
+import java.util.List;
 
 import org.apache.commons.validator.routines.EmailValidator;
 import org.jdbi.v3.core.Handle;
@@ -234,23 +235,67 @@ public class Paperbots {
 		// Fetch the user based on the token
 		User user = getUserForToken(token);
 
-		// TODO implement
-		return null;
+		return jdbi.withHandle(handle -> {
+			try {
+				if (code == null) {
+					String projectCode = generateId(6);
+					//@off
+					handle.createUpdate("insert into projects (userId, userName, code, title, description, content, public) value (:userId, :userName, :code, :title, :description, :content, :isPublic)")
+						.bind("userId", user.getId())
+						.bind("userName", user.getName())
+						.bind("code", projectCode)
+						.bind("title", title)
+						.bind("description", description)
+						.bind("content", content)
+						.bind("isPublic", isPublic)
+						.execute();
+					//@on
+					Log.info("Created project " + code + " of user " + user.getName());
+					return projectCode;
+				} else {
+					//@off
+					handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code")
+						.bind("title", title)
+						.bind("description", description)
+						.bind("content", content)
+						.bind("isPublic", isPublic)
+						.bind("code", code)
+						.execute();
+					//@on
+					return code;
+				}
+			} catch (IllegalStateException t) {
+				throw new PaperbotsException(PaperbotsError.ServerError, t);
+			}
+		});
 	}
 
 	public Project getProject (String token, String projectId) {
-		User user = getUserForToken(token);
+		User user = token != null && token.length() > 0 ? getUserForToken(token) : null;
 
 		return jdbi.withHandle(handle -> {
-			// TODO this should be done in a transaction
 			try {
 				Project project = handle.createQuery("SELECT * FROM projects WHERE code=:code").bind("code", projectId).mapToBean(Project.class).findOnly();
-				if (!project.isPublic() && !project.getUserName().equals(user.getName())) {
+				if (!project.isPublic() && (user == null || !project.getUserName().equals(user.getName()))) {
 					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 				}
 				return project;
 			} catch (IllegalStateException t) {
 				throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+			}
+		});
+	}
+
+	public Project[] getUserProjects (String token, String userName) {
+		User user = token != null && token.length() > 0 ? getUserForToken(token) : null;
+		return jdbi.withHandle(handle -> {
+			List<Project> projects = handle.createQuery("SELECT code, title, lastModified, created, public FROM projects WHERE userName=:userName")
+				.bind("userName", userName).mapToBean(Project.class).list();
+
+			if (!userName.equals(user.getName())) {
+				return (Project[])projects.stream().filter(p -> p.isPublic()).toArray();
+			} else {
+				return projects.toArray(new Project[projects.size()]);
 			}
 		});
 	}

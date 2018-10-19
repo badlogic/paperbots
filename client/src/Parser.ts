@@ -860,6 +860,24 @@ function peg$parse(input: string, options?: IParseOptions) {
           s3 = peg$FAILED;
           if (peg$silentFails === 0) { peg$fail(peg$c4); }
         }
+        if (s3 === peg$FAILED) {
+          s3 = peg$currPos;
+          peg$silentFails++;
+          if (input.length > peg$currPos) {
+            s4 = input.charAt(peg$currPos);
+            peg$currPos++;
+          } else {
+            s4 = peg$FAILED;
+            if (peg$silentFails === 0) { peg$fail(peg$c5); }
+          }
+          peg$silentFails--;
+          if (s4 === peg$FAILED) {
+            s3 = undefined;
+          } else {
+            peg$currPos = s3;
+            s3 = peg$FAILED;
+          }
+        }
         if (s3 !== peg$FAILED) {
           peg$savedPos = s0;
           s1 = peg$c6();

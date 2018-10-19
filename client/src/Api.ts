@@ -17,6 +17,7 @@ export interface Project {
 }
 
 export class Api {
+
 	private static request <Data, Response>(endpoint: string, data: Data, success: (r: Response) => void, error: (e: RequestError) => void) {
 		$.ajax({
 			url: endpoint,
@@ -73,7 +74,7 @@ export class Api {
 	}
 
 	public static loadProject(projectId: string, success: (project: Project) => void, error: (e: RequestError) => void) {
-		this.request("api/project", { projectId: projectId },
+		this.request("api/getproject", { projectId: projectId },
 		(project: Project) => {
 			try {
 				project.contentObject = JSON.parse(project.content);
@@ -82,6 +83,24 @@ export class Api {
 				error({error: "ServerError"});
 			}
 			success(project);
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
+	static saveProject(project: Project, success: (id: string) => void, error: (error: RequestError) => void): any {
+		this.request("api/saveproject", project,
+		(r: {projectId: string}) => {
+			success(r.projectId);
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
+	static getUserProjects (userName: string, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
+		this.request("api/getprojects", { userName: Api.getUserName() },
+		(projects: Array<Project>) => {
+			success(projects);
 		}, (e: RequestError) => {
 			error(e);
 		});
@@ -105,5 +124,13 @@ export class Api {
 	static getCookie (key) {
 		if (!key) { return null; }
 		return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+	}
+
+	static getUserUrl(name: string) {
+		return "/user.html?user=" + name;
+	}
+
+	static getProjectUrl(name: string) {
+		return "/?projectId=" + name;
 	}
 }

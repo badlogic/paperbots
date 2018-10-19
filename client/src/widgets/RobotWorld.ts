@@ -72,8 +72,10 @@ export class RobotWorld extends Widget {
 
 				if (this.selectedTool == "Wall") {
 					this.world.setTile(x, y, World.newWall());
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Floor") {
 					this.world.setTile(x, y, null);
+					this.bus.event(new events.ProjectChanged());
 				}
 				dragged = false;
 			},
@@ -81,11 +83,12 @@ export class RobotWorld extends Widget {
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
-
 				if (this.selectedTool == "Wall") {
 					this.world.setTile(x, y, World.newWall());
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Floor") {
 					this.world.setTile(x, y, null);
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Number") {
 					var number = null;
 					while (number == null) {
@@ -103,6 +106,7 @@ export class RobotWorld extends Widget {
 						}
 					}
 					this.world.setTile(x, y, World.newNumber(number));
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Letter") {
 					var letter = null;
 					while (letter == null) {
@@ -116,6 +120,7 @@ export class RobotWorld extends Widget {
 						}
 					}
 					this.world.setTile(x, y, World.newLetter(letter));
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Robot") {
 					if (this.world.robot.data.x != x || this.world.robot.data.y != y) {
 						this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
@@ -124,6 +129,7 @@ export class RobotWorld extends Widget {
 						if (dragged) return;
 						this.world.robot.turnLeft();
 					}
+					this.bus.event(new events.ProjectChanged());
 				}
 			},
 			moved: (x, y) => {
@@ -135,11 +141,14 @@ export class RobotWorld extends Widget {
 
 				if (this.selectedTool == "Wall") {
 					this.world.setTile(x, y, World.newWall());
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Floor") {
 					this.world.setTile(x, y, null);
+					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Robot") {
 					this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
 					this.world.robot.data.y = Math.max(0, Math.min(World.WORLD_SIZE - 1, y));
+					this.bus.event(new events.ProjectChanged());
 				}
 				dragged = true;
 			}
@@ -431,6 +440,11 @@ export class RobotWorld extends Widget {
 			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));
 			this.isRunning = true;
+		} else if (event instanceof events.ProjectLoaded) {
+			this.world = new World(event.project.contentObject.world);
+		} else if (event instanceof events.BeforeSaveProject) {
+			event.project.contentObject.type = "robot";
+			event.project.contentObject.world = this.world.data;
 		}
 	}
 

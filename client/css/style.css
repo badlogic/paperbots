@@ -76,6 +76,12 @@ body {
 	color: #ffffff;
 }
 
+.pb-toolbar-button[disabled] {
+	color: rgba(1, 1, 1, 0.2);
+	cursor: default;
+	opacity: 0.4;
+}
+
 .pb-input-field {
 	width: 100%;
 	height: 30px;

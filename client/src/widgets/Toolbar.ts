@@ -1,7 +1,9 @@
 import { Widget } from "./Widget"
-import { EventBus, Event, LoggedIn, LoggedOut } from "./Events";
+import { EventBus, Event, LoggedIn, LoggedOut, Debug, Run, Stop, ProjectLoaded, BeforeSaveProject, ProjectSaved, ProjectChanged } from "./Events";
 import { Dialog } from "./Dialog";
-import { Api } from "../Api";
+import { Api, Project } from "../Api";
+import { setElementEnabled } from "../Utils";
+import { Paperbots } from "../Paperbots";
 
 export class Toolbar extends Widget {
 	save: JQuery;
@@ -9,6 +11,8 @@ export class Toolbar extends Widget {
 	login: JQuery;
 	signup: JQuery;
 	user: JQuery;
+
+	loadedProject: Project;
 
 	constructor(bus: EventBus) {
 		super(bus);
@@ -19,6 +23,7 @@ export class Toolbar extends Widget {
 			<div id="pb-toolbar">
 				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
 				<input id="pb-toolbar-title" type="text" value="Untitled project">
+				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i>New</div>
 				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
 				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
 				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i>Sign up</div>
@@ -33,8 +38,20 @@ export class Toolbar extends Widget {
 			</div>
 		`);
 
+		let newBtn = dom.find("#pb-toolbar-new");
+		newBtn.click(() => {
+			(window.location as any) = "/";
+		});
+
 		this.save = dom.find("#pb-toolbar-save");
+		this.save.click(() => {
+			this.saveProject();
+		});
+
 		this.title = dom.find("#pb-toolbar-title");
+		this.title.change(() => {
+			this.bus.event(new ProjectChanged());
+		});
 
 		this.login = dom.find("#pb-toolbar-login");
 		this.login.click((e) => {
@@ -51,6 +68,14 @@ export class Toolbar extends Widget {
 		this.user.click(() => {
 			justClicked = true;
 			$(".dropdown-content").toggle();
+		});
+
+		dom.find("#pb-toolbar-projects").click(() => {
+			Api.getUserProjects(Api.getUserName(), (projects) => {
+				console.log(projects);
+			}, (e) => {
+				this.serverErrorDialog();
+			});
 		});
 
 		dom.find("#pb-toolbar-logout").click(() => {
@@ -265,9 +290,88 @@ export class Toolbar extends Widget {
 		Dialog.alert("Sorry!", $(/*html*/`<p>We couldn't reach the server. If the problem persists, let us know at <a href="mailto:contact@paperbots.com">contact@paperbots.io</a></p>`));
 	}
 
+	saveProject () {
+		if (!Api.getUserName()) {
+			Dialog.alert("Sorry", $(`<p>You need to be logged in to save a project.<p>`)).show();
+			return;
+		}
+
+		if ((this.title.val() as string).trim().length == 0) {
+			Dialog.alert("Sorry", $(`<p>Can not save project without a title<p>`)).show();
+			return;
+		}
+
+		let internalSave = () => {
+			let content = $(/*html*/`
+			<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+				<p>Saving project '${this.title.val()}', just a second!</p>
+				<div id="pb-spinner" class="fa-3x" style="text-align: center; margin: 0.5em"><i class="fas fa-spinner fa-pulse"></i></div>
+			</div>`
+			);
+			let spinner = content.find("#pb-spinner");
+			let dialog = new Dialog("Saving", content[0], []);
+			dialog.show();
+
+			let saveProject = new BeforeSaveProject({
+				// If the project doesn't belong to us, we save a copy
+				// to our account, so code = null.
+				code: this.loadedProject && this.loadedProject.userName == Api.getUserName() ? Api.getProjectId() : null,
+				contentObject: { },
+				content: null,
+				created: null,
+				description: "",
+				lastModified: null,
+				public: true,
+				title: this.title.val() as string,
+				userName: Api.getUserName()
+			});
+
+			// All other components can now write to contentObject
+			this.bus.event(saveProject);
+
+			try {
+				saveProject.project.content = JSON.stringify(saveProject.project.contentObject);
+				delete saveProject.project.contentObject;
+			} catch (e) {
+				dialog.hide();
+				Dialog.alert("Sorry", $(`<p>An error occured while saving the project.<p>`)).show();
+				return;
+			}
+
+			Api.saveProject(saveProject.project, (projectCode) => {
+				if (!this.loadedProject) this.loadedProject = saveProject.project;
+				this.loadedProject.code = projectCode;
+				this.loadedProject.userName = Api.getUserName();
+				dialog.hide();
+				history.pushState(null, document.title, Api.getProjectUrl(projectCode))
+				this.bus.event(new ProjectSaved());
+			}, (error) => {
+				this.serverErrorDialog();
+				dialog.hide();
+			});
+		}
+
+		if (this.loadedProject && this.loadedProject.userName != Api.getUserName()) {
+			Dialog.confirm("Copy?", $(`<div><p>The project you want to save belongs to <a target="_blank" href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>`), () => {
+				internalSave();
+			}).show();
+		} else {
+			internalSave();
+		}
+	}
+
 	onEvent(event: Event) {
 		if (event instanceof LoggedIn || event instanceof LoggedOut) {
 			this.setupLoginAndUser();
+		} else if(event instanceof Run || event instanceof Debug) {
+			setElementEnabled(this.save, false);
+			setElementEnabled(this.title, false);
+		} else if (event instanceof Stop) {
+			setElementEnabled(this.save, true);
+			setElementEnabled(this.title, true);
+		} else if (event instanceof ProjectLoaded) {
+			this.loadedProject = event.project;
+			this.title.val(event.project.title);
 		}
 	}
 }

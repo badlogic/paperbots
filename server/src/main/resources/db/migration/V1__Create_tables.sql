@@ -30,7 +30,7 @@ CREATE TABLE `userTokens` (
 
 CREATE TABLE `projects` (
   `id` tinyint(11) unsigned NOT NULL AUTO_INCREMENT,
-  `userId` tinyint(11) DEFAULT NULL,
+  `userId` tinyint(11) NOT NULL,
   `userName` varchar(25) NOT NULL DEFAULT ' ',
   `code` varchar(6) NOT NULL DEFAULT '',
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -39,10 +39,11 @@ CREATE TABLE `projects` (
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `lastModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `public` tinyint(1) NOT NULL DEFAULT '1',
+  `type` enum('robot','canvas') NOT NULL DEFAULT 'robot',
   PRIMARY KEY (`id`),
   UNIQUE KEY `code_2` (`code`),
   KEY `userId` (`userId`),
   KEY `code` (`code`),
   KEY `created` (`created`),
   KEY `lastModified` (`lastModified`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8;

@@ -15,6 +15,7 @@ import io.javalin.websocket.WsSession;
 import io.marioslab.basis.site.FileWatcher;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
+import io.paperbots.data.Project;
 import io.paperbots.data.UserType;
 
 public class Server {
@@ -112,9 +113,26 @@ public class Server {
 		});
 
 		// Project management
-		app.post("/api/project", ctx -> {
+		app.post("/api/getproject", ctx -> {
 			ProjectRequest request = ctx.bodyAsClass(ProjectRequest.class);
 			ctx.json(paperbots.getProject(ctx.cookie("token"), request.projectId));
+		});
+
+		app.post("/api/getprojects", ctx -> {
+			ProjectsRequest request = ctx.bodyAsClass(ProjectsRequest.class);
+			ctx.json(paperbots.getUserProjects(ctx.cookie("token"), request.userName));
+		});
+
+		app.post("/api/saveproject", ctx -> {
+			Project request = ctx.bodyAsClass(Project.class);
+			String projectId = paperbots.saveProject(ctx.cookie("token"), request.getCode(), request.getTitle(), request.getDescription(), request.getContent(),
+				request.isPublic());
+			ctx.json(new ProjectRequest(projectId));
+		});
+
+		// Error handling
+		app.error(404, ctx -> {
+			ctx.redirect("/404.html");
 		});
 
 		app.post("/api/exception", ctx -> {
@@ -197,6 +215,17 @@ public class Server {
 		public ProjectRequest (String projectId) {
 			super();
 			this.projectId = projectId;
+		}
+	}
+
+	public static class ProjectsRequest {
+		public String userName;
+
+		public ProjectsRequest () {
+		}
+
+		public ProjectsRequest (String userName) {
+			this.userName = userName;
 		}
 	}
 

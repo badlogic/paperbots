@@ -17,8 +17,10 @@ public class Database {
 		properties.setProperty("user", user);
 		properties.setProperty("password", pwd);
 		properties.setProperty("useSSL", "false");
-		jdbi = Jdbi.create(url, properties);
+		properties.setProperty("useUnicode", "true");
+		properties.setProperty("characterEncoding", "UTF-8");
 
+		jdbi = Jdbi.create(url, properties);
 		Flyway flyway = Flyway.configure().dataSource(url, user, pwd).load();
 		if (test) flyway.clean();
 		flyway.migrate();

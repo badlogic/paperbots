@@ -25,7 +25,7 @@ export class Api {
 		$.ajax({
 			url: endpoint,
 			method: "POST",
-			contentType: "application/json",
+			contentType: "application/json; charset=utf-8",
 			processData: false,
 			data: JSON.stringify(data)
 		})

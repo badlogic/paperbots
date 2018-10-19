@@ -21,7 +21,7 @@ define("Api", ["require", "exports"], function (require, exports) {
             $.ajax({
                 url: endpoint,
                 method: "POST",
-                contentType: "application/json",
+                contentType: "application/json; charset=utf-8",
                 processData: false,
                 data: JSON.stringify(data)
             })

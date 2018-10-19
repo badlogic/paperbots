@@ -116,7 +116,8 @@ public class Server {
 		// Project management
 		app.post("/api/getproject", ctx -> {
 			ProjectRequest request = ctx.bodyAsClass(ProjectRequest.class);
-			ctx.json(paperbots.getProject(ctx.cookie("token"), request.projectId));
+			Project project = paperbots.getProject(ctx.cookie("token"), request.projectId);
+			ctx.json(project);
 		});
 
 		app.post("/api/getprojects", ctx -> {

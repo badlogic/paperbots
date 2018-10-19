@@ -133,6 +133,7 @@ public class Paperbots {
 
 			// Insert user and send verification email
 			try {
+				handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
 				int id = handle.createUpdate("insert into users (name, email, type) value (:name, :email, :type)").bind("name", verifiedName)
 					.bind("email", verifiedEmail).bind("type", type).executeAndReturnGeneratedKeys("id").mapTo(Integer.class).findOnly();
 				Log.info("Created user " + verifiedName);
@@ -241,6 +242,7 @@ public class Paperbots {
 				if (code == null) {
 					String projectCode = generateId(6);
 					//@off
+					handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
 					handle.createUpdate("insert into projects (userId, userName, code, title, description, content, public, type) value (:userId, :userName, :code, :title, :description, :content, :isPublic, :type)")
 						.bind("userId", user.getId())
 						.bind("userName", user.getName())
@@ -256,6 +258,7 @@ public class Paperbots {
 					return projectCode;
 				} else {
 					//@off
+					handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
 					handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code")
 						.bind("title", title)
 						.bind("description", description)

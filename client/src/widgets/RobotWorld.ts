@@ -2,6 +2,7 @@ import * as events from "./Events"
 import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../language/Compiler"
+import * as vm from "../language/VirtualMachine"
 
 function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);
@@ -163,7 +164,7 @@ export class RobotWorld extends Widget {
 
 		ext.addFunction("forward", [], "nothing", true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Forward);
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -179,7 +180,7 @@ export class RobotWorld extends Widget {
 		});
 		ext.addFunction("backward", [], "nothing", true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Backward);
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -196,7 +197,7 @@ export class RobotWorld extends Widget {
 
 		ext.addFunction("turnLeft", [], "nothing", true, () => {
 			this.world.robot.setAction(this.world, RobotAction.TurnLeft);
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -213,7 +214,7 @@ export class RobotWorld extends Widget {
 
 		ext.addFunction("turnRight", [], "nothing", true, () => {
 			this.world.robot.setAction(this.world, RobotAction.TurnRight);
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -242,7 +243,7 @@ export class RobotWorld extends Widget {
 			if (!tile || tile.kind != "wall") {
 				this.world.setTile(x, y, World.newNumber(number | 0));
 			}
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -279,7 +280,7 @@ export class RobotWorld extends Widget {
 			if (!tile || tile.kind != "wall") {
 				this.world.setTile(x, y, World.newLetter(letter));
 			}
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -392,7 +393,7 @@ export class RobotWorld extends Widget {
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			this.world.setTile(x, y, World.newWall());
 
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}
@@ -413,7 +414,7 @@ export class RobotWorld extends Widget {
 			let tile = this.world.getTile(x, y);
 			if (tile && tile.kind == "wall") this.world.setTile(x, y, null);
 
-			let asyncResult: compiler.AsyncPromise<void> = {
+			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null
 			}

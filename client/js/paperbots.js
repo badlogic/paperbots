@@ -5041,7 +5041,299 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_1) {
+define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_1) {
+    "use strict";
+    exports.__esModule = true;
+    var Slot = (function () {
+        function Slot(symbol, value) {
+            this.symbol = symbol;
+            this.value = value;
+        }
+        return Slot;
+    }());
+    exports.Slot = Slot;
+    var Frame = (function () {
+        function Frame(code, slots, pc) {
+            if (slots === void 0) { slots = new Array(); }
+            if (pc === void 0) { pc = 0; }
+            this.code = code;
+            this.slots = slots;
+            this.pc = pc;
+            code.locals.forEach(function (v) { return slots.push(new Slot(v, null)); });
+        }
+        return Frame;
+    }());
+    exports.Frame = Frame;
+    var VMState;
+    (function (VMState) {
+        VMState[VMState["Running"] = 0] = "Running";
+        VMState[VMState["Completed"] = 1] = "Completed";
+    })(VMState = exports.VMState || (exports.VMState = {}));
+    var VirtualMachine = (function () {
+        function VirtualMachine(functions, externalFunctions) {
+            this.functions = functions;
+            this.externalFunctions = externalFunctions;
+            this.state = VMState.Running;
+            this.frames = Array();
+            this.stack = Array();
+            this.frames.push(new Frame(this.functions[0]));
+            this.state = VMState.Running;
+        }
+        VirtualMachine.prototype.run = function (numInstructions) {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != Compiler_1.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            while (!this.asyncPromise && numInstructions-- > 0) {
+                this.step();
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+        };
+        VirtualMachine.prototype.stepOver = function (lastSnapshot) {
+            if (lastSnapshot === void 0) { lastSnapshot = null; }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return null;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != Compiler_1.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            var frameIndex = lastSnapshot ? lastSnapshot.frameIndex : this.frames.length - 1;
+            var frame = lastSnapshot ? lastSnapshot.frame : this.frames[frameIndex];
+            var lineInfoIndex = lastSnapshot ? lastSnapshot.lineInfoIndex : frame.code.lineInfos[frame.pc].index;
+            var snapshot = {
+                frameIndex: frameIndex,
+                frame: frame,
+                lineInfoIndex: lineInfoIndex
+            };
+            var executed = 0;
+            while (true) {
+                if (this.asyncPromise)
+                    return snapshot;
+                if (this.frames.length == 0) {
+                    this.state = VMState.Completed;
+                    return null;
+                }
+                if (executed++ > 1000)
+                    return snapshot;
+                var currFrameIndex = this.frames.length - 1;
+                var currFrame = this.frames[currFrameIndex];
+                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                if (currFrameIndex == frameIndex)
+                    if (lineInfoIndex != currLineInfoIndex)
+                        return null;
+                if (currFrameIndex < frameIndex)
+                    return null;
+                this.step();
+            }
+        };
+        VirtualMachine.prototype.stepInto = function () {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != Compiler_1.NothingType) {
+                        this.stack.push(this.asyncPromise.value);
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            var frameIndex = this.frames.length - 1;
+            var frame = this.frames[frameIndex];
+            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+            while (true) {
+                if (this.asyncPromise)
+                    return;
+                if (this.frames.length == 0)
+                    return;
+                var currFrameIndex = this.frames.length - 1;
+                var currFrame = this.frames[currFrameIndex];
+                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                if (lineInfoIndex != currLineInfoIndex)
+                    return;
+                if (currFrameIndex != frameIndex)
+                    return;
+                this.step();
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return;
+        };
+        VirtualMachine.prototype.getLineNumber = function () {
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+            if (this.state == VMState.Completed)
+                return -1;
+            var frameIndex = this.frames.length - 1;
+            var frame = this.frames[frameIndex];
+            return frame.code.lineInfos[frame.pc].line;
+        };
+        VirtualMachine.prototype.step = function () {
+            var _a = this, frames = _a.frames, stack = _a.stack, functions = _a.functions, externalFunctions = _a.externalFunctions;
+            if (frames.length == 0) {
+                this.state = VMState.Completed;
+                return;
+            }
+            var frame = frames[frames.length - 1];
+            var ins = frame.code.instructions[frame.pc];
+            frame.pc++;
+            switch (ins.kind) {
+                case "pop":
+                    stack.pop();
+                    break;
+                case "push":
+                    stack.push(ins.value);
+                    break;
+                case "dup":
+                    var value = stack.pop();
+                    stack.push(value);
+                    stack.push(value);
+                    break;
+                case "store":
+                    frame.slots[ins.slotIndex].value = stack.pop();
+                    break;
+                case "load":
+                    stack.push(frame.slots[ins.slotIndex].value);
+                    break;
+                case "jump":
+                    frame.pc = ins.offset;
+                    break;
+                case "jumpIfTrue":
+                    if (stack.pop())
+                        frame.pc = ins.offset;
+                    break;
+                case "jumpIfFalse":
+                    if (!stack.pop())
+                        frame.pc = ins.offset;
+                    break;
+                case "call": {
+                    var fun = functions[ins.functionIndex];
+                    var newFrame = new Frame(fun);
+                    newFrame.slots.length = fun.locals.length;
+                    for (var i = fun.numParameters - 1; i >= 0; i--) {
+                        newFrame.slots[i].value = stack.pop();
+                    }
+                    frames.push(newFrame);
+                    break;
+                }
+                case "callExt": {
+                    var fun = externalFunctions.functions[ins.functionIndex];
+                    var extArgs = new Array(fun.args.length);
+                    for (var i = extArgs.length - 1; i >= 0; i--) {
+                        extArgs[i] = stack.pop();
+                    }
+                    var result = fun.fun.apply(fun.fun, extArgs);
+                    if (fun.async) {
+                        this.asyncFun = fun;
+                        this.asyncPromise = result;
+                    }
+                    else {
+                        if (fun.returnType != Compiler_1.NothingType) {
+                            stack.push(result);
+                        }
+                    }
+                    break;
+                }
+                case "return":
+                    frames.pop();
+                    break;
+                case "unaryOp": {
+                    var value_1 = stack.pop();
+                    switch (ins.operator) {
+                        case "not":
+                            stack.push(!value_1);
+                            break;
+                        case "-":
+                            stack.push(-value_1);
+                            break;
+                        default:
+                            throw new Error("Unknown unary operator " + ins.operator);
+                    }
+                    break;
+                }
+                case "stringConcat": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    stack.push(left + right);
+                    break;
+                }
+                case "binaryOp": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    switch (ins.operator) {
+                        case "+":
+                            stack.push(left + right);
+                            break;
+                        case "-":
+                            stack.push(left - right);
+                            break;
+                        case "*":
+                            stack.push(left * right);
+                            break;
+                        case "/":
+                            stack.push(left / right);
+                            break;
+                        case "<=":
+                            stack.push(left <= right);
+                            break;
+                        case ">=":
+                            stack.push(left >= right);
+                            break;
+                        case "<":
+                            stack.push(left < right);
+                            break;
+                        case ">":
+                            stack.push(left > right);
+                            break;
+                        case "==":
+                            stack.push(left === right);
+                            break;
+                        case "!=":
+                            stack.push(left !== right);
+                            break;
+                        case "and":
+                            stack.push(left && right);
+                            break;
+                        case "or":
+                            stack.push(left || right);
+                            break;
+                        case "xor":
+                            stack.push(!(left && right));
+                            break;
+                    }
+                    break;
+                }
+                default:
+                    Utils_1.assertNever(ins);
+            }
+        };
+        return VirtualMachine;
+    }());
+    exports.VirtualMachine = VirtualMachine;
+});
+define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_2) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
@@ -5540,7 +5832,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "arrayAccess":
                 throw new CompilerError("Field an array access not implemented yet.", node.location);
             default:
-                Utils_1.assertNever(node);
+                Utils_2.assertNever(node);
         }
     }
     var EmitterContext = (function () {
@@ -5640,7 +5932,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 case "comment":
                     break;
                 default:
-                    Utils_1.assertNever(stmt);
+                    Utils_2.assertNever(stmt);
             }
         });
     }
@@ -5796,7 +6088,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "arrayAccess":
                 throw new CompilerError("Field an array access not implemented yet.", node.location);
             default:
-                Utils_1.assertNever(node);
+                Utils_2.assertNever(node);
         }
         if (isStatement)
             context.lineInfoIndex++;
@@ -5807,294 +6099,6 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             lineInfos.push(lineInfo);
         }
     }
-    var Slot = (function () {
-        function Slot(symbol, value) {
-            this.symbol = symbol;
-            this.value = value;
-        }
-        return Slot;
-    }());
-    exports.Slot = Slot;
-    var Frame = (function () {
-        function Frame(code, slots, pc) {
-            if (slots === void 0) { slots = new Array(); }
-            if (pc === void 0) { pc = 0; }
-            this.code = code;
-            this.slots = slots;
-            this.pc = pc;
-            code.locals.forEach(function (v) { return slots.push(new Slot(v, null)); });
-        }
-        return Frame;
-    }());
-    exports.Frame = Frame;
-    var VMState;
-    (function (VMState) {
-        VMState[VMState["Running"] = 0] = "Running";
-        VMState[VMState["Completed"] = 1] = "Completed";
-    })(VMState = exports.VMState || (exports.VMState = {}));
-    var VirtualMachine = (function () {
-        function VirtualMachine(functions, externalFunctions) {
-            this.functions = functions;
-            this.externalFunctions = externalFunctions;
-            this.state = VMState.Running;
-            this.frames = Array();
-            this.stack = Array();
-            this.frames.push(new Frame(this.functions[0]));
-            this.state = VMState.Running;
-        }
-        VirtualMachine.prototype.run = function (numInstructions) {
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
-            if (this.asyncPromise) {
-                if (this.asyncPromise.completed) {
-                    if (this.asyncFun.returnType != exports.NothingType) {
-                        this.stack.push(this.asyncPromise.value);
-                    }
-                    this.asyncPromise = null;
-                    this.asyncFun = null;
-                }
-            }
-            while (!this.asyncPromise && numInstructions-- > 0) {
-                this.step();
-            }
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
-        };
-        VirtualMachine.prototype.stepOver = function (lastSnapshot) {
-            if (lastSnapshot === void 0) { lastSnapshot = null; }
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return null;
-            if (this.asyncPromise) {
-                if (this.asyncPromise.completed) {
-                    if (this.asyncFun.returnType != exports.NothingType) {
-                        this.stack.push(this.asyncPromise.value);
-                    }
-                    this.asyncPromise = null;
-                    this.asyncFun = null;
-                }
-            }
-            var frameIndex = lastSnapshot ? lastSnapshot.frameIndex : this.frames.length - 1;
-            var frame = lastSnapshot ? lastSnapshot.frame : this.frames[frameIndex];
-            var lineInfoIndex = lastSnapshot ? lastSnapshot.lineInfoIndex : frame.code.lineInfos[frame.pc].index;
-            var snapshot = {
-                frameIndex: frameIndex,
-                frame: frame,
-                lineInfoIndex: lineInfoIndex
-            };
-            var executed = 0;
-            while (true) {
-                if (this.asyncPromise)
-                    return snapshot;
-                if (this.frames.length == 0) {
-                    this.state = VMState.Completed;
-                    return null;
-                }
-                if (executed++ > 1000)
-                    return snapshot;
-                var currFrameIndex = this.frames.length - 1;
-                var currFrame = this.frames[currFrameIndex];
-                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
-                if (currFrameIndex == frameIndex)
-                    if (lineInfoIndex != currLineInfoIndex)
-                        return null;
-                if (currFrameIndex < frameIndex)
-                    return null;
-                this.step();
-            }
-        };
-        VirtualMachine.prototype.stepInto = function () {
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
-            if (this.asyncPromise) {
-                if (this.asyncPromise.completed) {
-                    if (this.asyncFun.returnType != exports.NothingType) {
-                        this.stack.push(this.asyncPromise.value);
-                    }
-                    this.asyncPromise = null;
-                    this.asyncFun = null;
-                }
-            }
-            var frameIndex = this.frames.length - 1;
-            var frame = this.frames[frameIndex];
-            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
-            while (true) {
-                if (this.asyncPromise)
-                    return;
-                if (this.frames.length == 0)
-                    return;
-                var currFrameIndex = this.frames.length - 1;
-                var currFrame = this.frames[currFrameIndex];
-                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
-                if (lineInfoIndex != currLineInfoIndex)
-                    return;
-                if (currFrameIndex != frameIndex)
-                    return;
-                this.step();
-            }
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
-        };
-        VirtualMachine.prototype.getLineNumber = function () {
-            if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return -1;
-            var frameIndex = this.frames.length - 1;
-            var frame = this.frames[frameIndex];
-            return frame.code.lineInfos[frame.pc].line;
-        };
-        VirtualMachine.prototype.step = function () {
-            var _a = this, frames = _a.frames, stack = _a.stack, functions = _a.functions, externalFunctions = _a.externalFunctions;
-            if (frames.length == 0) {
-                this.state = VMState.Completed;
-                return;
-            }
-            var frame = frames[frames.length - 1];
-            var ins = frame.code.instructions[frame.pc];
-            frame.pc++;
-            switch (ins.kind) {
-                case "pop":
-                    stack.pop();
-                    break;
-                case "push":
-                    stack.push(ins.value);
-                    break;
-                case "dup":
-                    var value = stack.pop();
-                    stack.push(value);
-                    stack.push(value);
-                    break;
-                case "store":
-                    frame.slots[ins.slotIndex].value = stack.pop();
-                    break;
-                case "load":
-                    stack.push(frame.slots[ins.slotIndex].value);
-                    break;
-                case "jump":
-                    frame.pc = ins.offset;
-                    break;
-                case "jumpIfTrue":
-                    if (stack.pop())
-                        frame.pc = ins.offset;
-                    break;
-                case "jumpIfFalse":
-                    if (!stack.pop())
-                        frame.pc = ins.offset;
-                    break;
-                case "call": {
-                    var fun = functions[ins.functionIndex];
-                    var newFrame = new Frame(fun);
-                    newFrame.slots.length = fun.locals.length;
-                    for (var i = fun.numParameters - 1; i >= 0; i--) {
-                        newFrame.slots[i].value = stack.pop();
-                    }
-                    frames.push(newFrame);
-                    break;
-                }
-                case "callExt": {
-                    var fun = externalFunctions.functions[ins.functionIndex];
-                    var extArgs = new Array(fun.args.length);
-                    for (var i = extArgs.length - 1; i >= 0; i--) {
-                        extArgs[i] = stack.pop();
-                    }
-                    var result = fun.fun.apply(fun.fun, extArgs);
-                    if (fun.async) {
-                        this.asyncFun = fun;
-                        this.asyncPromise = result;
-                    }
-                    else {
-                        if (fun.returnType != exports.NothingType) {
-                            stack.push(result);
-                        }
-                    }
-                    break;
-                }
-                case "return":
-                    frames.pop();
-                    break;
-                case "unaryOp": {
-                    var value_1 = stack.pop();
-                    switch (ins.operator) {
-                        case "not":
-                            stack.push(!value_1);
-                            break;
-                        case "-":
-                            stack.push(-value_1);
-                            break;
-                        default:
-                            throw new Error("Unknown unary operator " + ins.operator);
-                    }
-                    break;
-                }
-                case "stringConcat": {
-                    var right = stack.pop();
-                    var left = stack.pop();
-                    stack.push(left + right);
-                    break;
-                }
-                case "binaryOp": {
-                    var right = stack.pop();
-                    var left = stack.pop();
-                    switch (ins.operator) {
-                        case "+":
-                            stack.push(left + right);
-                            break;
-                        case "-":
-                            stack.push(left - right);
-                            break;
-                        case "*":
-                            stack.push(left * right);
-                            break;
-                        case "/":
-                            stack.push(left / right);
-                            break;
-                        case "<=":
-                            stack.push(left <= right);
-                            break;
-                        case ">=":
-                            stack.push(left >= right);
-                            break;
-                        case "<":
-                            stack.push(left < right);
-                            break;
-                        case ">":
-                            stack.push(left > right);
-                            break;
-                        case "==":
-                            stack.push(left === right);
-                            break;
-                        case "!=":
-                            stack.push(left !== right);
-                            break;
-                        case "and":
-                            stack.push(left && right);
-                            break;
-                        case "or":
-                            stack.push(left || right);
-                            break;
-                        case "xor":
-                            stack.push(!(left && right));
-                            break;
-                    }
-                    break;
-                }
-                default:
-                    Utils_1.assertNever(ins);
-            }
-        };
-        return VirtualMachine;
-    }());
-    exports.VirtualMachine = VirtualMachine;
 });
 define("widgets/Events", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -6324,7 +6328,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_1, Events_1, Dialog_1, Api_1, Utils_2) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_1, Events_1, Dialog_1, Api_1, Utils_3) {
     "use strict";
     exports.__esModule = true;
     var Toolbar = (function (_super) {
@@ -6607,14 +6611,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.setupLoginAndUser();
             }
             else if (event instanceof Events_1.Run || event instanceof Events_1.Debug) {
-                Utils_2.setElementEnabled(this.save, false);
-                Utils_2.setElementEnabled(this["new"], false);
-                Utils_2.setElementEnabled(this.title, false);
+                Utils_3.setElementEnabled(this.save, false);
+                Utils_3.setElementEnabled(this["new"], false);
+                Utils_3.setElementEnabled(this.title, false);
             }
             else if (event instanceof Events_1.Stop) {
-                Utils_2.setElementEnabled(this.save, true);
-                Utils_2.setElementEnabled(this["new"], true);
-                Utils_2.setElementEnabled(this.title, true);
+                Utils_3.setElementEnabled(this.save, true);
+                Utils_3.setElementEnabled(this["new"], true);
+                Utils_3.setElementEnabled(this.title, true);
             }
             else if (event instanceof Events_1.ProjectLoaded) {
                 this.loadedProject = event.project;
@@ -6631,7 +6635,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_1.Widget));
     exports.Toolbar = Toolbar;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler"], function (require, exports, Widget_2, events, Utils_3, compiler) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_2, events, Utils_4, compiler, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -6689,14 +6693,14 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.run.click(function () {
                 _this.state = DebuggerState.Running;
                 _this.snapshot = null;
-                _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
                 _this.bus.event(new events.Run());
                 requestAnimationFrame(_this.advanceVm);
             });
             this.debug.click(function () {
                 _this.state = DebuggerState.Paused;
                 _this.snapshot = null;
-                _this.vm = new compiler.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
                 _this.bus.event(new events.Debug());
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
             });
@@ -6725,7 +6729,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                         requestAnimationFrame(stepOverAsync);
                     }
                     else {
-                        if (_this.vm.state == compiler.VMState.Completed) {
+                        if (_this.vm.state == vm.VMState.Completed) {
                             alert("Program complete.");
                             _this.bus.event(new events.Stop());
                             return;
@@ -6744,7 +6748,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     return;
                 }
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == compiler.VMState.Completed) {
+                if (_this.vm.state == vm.VMState.Completed) {
                     alert("Program complete.");
                     _this.bus.event(new events.Stop());
                     return;
@@ -6753,7 +6757,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.stepInto.click(function () {
                 _this.vm.stepInto();
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == compiler.VMState.Completed) {
+                if (_this.vm.state == vm.VMState.Completed) {
                     alert("Program complete.");
                     _this.bus.event(new events.Stop());
                     return;
@@ -6763,7 +6767,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             return dom[0];
         };
         Debugger.prototype.checkVmStopped = function () {
-            if (this.vm.state == compiler.VMState.Completed) {
+            if (this.vm.state == vm.VMState.Completed) {
                 this.state = DebuggerState.Stopped;
                 alert("Program complete.");
                 this.bus.event(new events.Stop());
@@ -6775,13 +6779,13 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             if (event instanceof events.SourceChanged) {
                 if (event.module) {
                     this.lastModule = event.module;
-                    Utils_3.setElementEnabled(this.run, true);
-                    Utils_3.setElementEnabled(this.debug, true);
+                    Utils_4.setElementEnabled(this.run, true);
+                    Utils_4.setElementEnabled(this.debug, true);
                 }
                 else {
                     this.lastModule = null;
-                    Utils_3.setElementEnabled(this.run, false);
-                    Utils_3.setElementEnabled(this.debug, false);
+                    Utils_4.setElementEnabled(this.run, false);
+                    Utils_4.setElementEnabled(this.debug, false);
                 }
             }
             else if (event instanceof events.Run) {
@@ -6790,11 +6794,11 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.pause.show();
                 this.stop.show();
                 this.stepOver.show();
-                Utils_3.setElementEnabled(this.stepOver, false);
+                Utils_4.setElementEnabled(this.stepOver, false);
                 this.stepInto.show();
-                Utils_3.setElementEnabled(this.stepInto, false);
+                Utils_4.setElementEnabled(this.stepInto, false);
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_4.setElementEnabled(this.stepOut, false);
             }
             else if (event instanceof events.Debug) {
                 this.run.hide();
@@ -6804,23 +6808,23 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.show();
                 this.stepInto.show();
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_4.setElementEnabled(this.stepOver, true);
+                Utils_4.setElementEnabled(this.stepInto, true);
+                Utils_4.setElementEnabled(this.stepOut, true);
             }
             else if (event instanceof events.Pause) {
                 this.resume.show();
                 this.pause.hide();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_4.setElementEnabled(this.stepOver, true);
+                Utils_4.setElementEnabled(this.stepInto, true);
+                Utils_4.setElementEnabled(this.stepOut, true);
             }
             else if (event instanceof events.Resume) {
                 this.pause.show();
                 this.resume.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_4.setElementEnabled(this.stepOver, false);
+                Utils_4.setElementEnabled(this.stepInto, false);
+                Utils_4.setElementEnabled(this.stepOut, false);
             }
             else if (event instanceof events.Stop) {
                 this.run.show();
@@ -6831,9 +6835,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.hide();
                 this.stepInto.hide();
                 this.stepOut.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_4.setElementEnabled(this.stepOver, false);
+                Utils_4.setElementEnabled(this.stepInto, false);
+                Utils_4.setElementEnabled(this.stepOut, false);
                 this.locals.empty();
                 this.callstack.empty();
                 this.vmState.empty();
@@ -7037,7 +7041,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_4, Utils_5, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7047,12 +7051,12 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         __extends(RobotWorld, _super);
         function RobotWorld(bus) {
             var _this = _super.call(this, bus) || this;
-            _this.assets = new Utils_4.AssetManager();
+            _this.assets = new Utils_5.AssetManager();
             _this.selectedTool = "Robot";
             _this.lastWidth = 0;
             _this.cellSize = 0;
             _this.drawingSize = 0;
-            _this.time = new Utils_4.TimeKeeper();
+            _this.time = new Utils_5.TimeKeeper();
             _this.isRunning = false;
             _this.worldData = new WorldData();
             _this.world = new World(_this.worldData);
@@ -7076,7 +7080,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.selectedTool = value;
                 });
             }
-            this.input = new Utils_4.Input(this.canvas);
+            this.input = new Utils_5.Input(this.canvas);
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
@@ -7454,7 +7458,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
-                    Utils_4.setElementEnabled($(element), true);
+                    Utils_5.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
@@ -7462,7 +7466,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
-                    Utils_4.setElementEnabled($(element), false);
+                    Utils_5.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;

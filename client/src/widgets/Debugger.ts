@@ -2,6 +2,7 @@ import { Widget } from "./Widget"
 import * as events from "./Events"
 import { setElementEnabled } from "../Utils";
 import * as compiler from "../language/Compiler";
+import * as vm from "../language/VirtualMachine";
 
 export enum DebuggerState {
 	Stopped,
@@ -11,7 +12,7 @@ export enum DebuggerState {
 
 export class Debugger extends Widget {
 	private module: compiler.Module;
-	private vm: compiler.VirtualMachine;
+	private vm: vm.VirtualMachine;
 
 	private run: JQuery;
 	private debug: JQuery;
@@ -29,9 +30,9 @@ export class Debugger extends Widget {
 
 	private dom: JQuery;
 	private lastModule: compiler.Module = null;
-	private selectedFrame: compiler.Frame = null;
+	private selectedFrame: vm.Frame = null;
 	private state = DebuggerState.Stopped;
-	private snapshot: compiler.StepOverSnapshot = null;
+	private snapshot: vm.StepOverSnapshot = null;
 
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
@@ -100,7 +101,7 @@ export class Debugger extends Widget {
 		this.run.click(() => {
 			this.state = DebuggerState.Running;
 			this.snapshot = null;
-			this.vm = new compiler.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+			this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
 			this.bus.event(new events.Run())
 			requestAnimationFrame(this.advanceVm);
 		});
@@ -108,7 +109,7 @@ export class Debugger extends Widget {
 		this.debug.click(() => {
 			this.state = DebuggerState.Paused;
 			this.snapshot = null;
-			this.vm = new compiler.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+			this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
 			this.bus.event(new events.Debug());
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 		});
@@ -145,7 +146,7 @@ export class Debugger extends Widget {
 				if (this.snapshot) {
 					requestAnimationFrame(stepOverAsync);
 				} else {
-					if (this.vm.state == compiler.VMState.Completed) {
+					if (this.vm.state == vm.VMState.Completed) {
 						alert("Program complete.");
 						this.bus.event(new events.Stop())
 						return;
@@ -172,7 +173,7 @@ export class Debugger extends Widget {
 			// having to wait for an async call to
 			// complete.
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
-			if (this.vm.state == compiler.VMState.Completed) {
+			if (this.vm.state == vm.VMState.Completed) {
 				alert("Program complete.");
 				this.bus.event(new events.Stop())
 				return;
@@ -182,7 +183,7 @@ export class Debugger extends Widget {
 		this.stepInto.click(() => {
 			this.vm.stepInto();
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
-			if (this.vm.state == compiler.VMState.Completed) {
+			if (this.vm.state == vm.VMState.Completed) {
 				alert("Program complete.");
 				this.bus.event(new events.Stop())
 				return;
@@ -194,7 +195,7 @@ export class Debugger extends Widget {
 	}
 
 	checkVmStopped () {
-		if (this.vm.state == compiler.VMState.Completed) {
+		if (this.vm.state == vm.VMState.Completed) {
 			this.state = DebuggerState.Stopped;
 			alert("Program complete.");
 			this.bus.event(new events.Stop())
@@ -324,7 +325,7 @@ export class Debugger extends Widget {
 		}
 	}
 
-	renderVmState(vm: compiler.VirtualMachine) {
+	renderVmState(vm: vm.VirtualMachine) {
 		var output = "";
 		this.vm.frames.slice(0).reverse().forEach(frame => {
 			output += compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);

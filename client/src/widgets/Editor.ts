@@ -38,6 +38,7 @@ export class Editor extends Widget {
 	private error: JQuery;
 	private markers = Array<TextMarker>();
 	private ext = new compiler.ExternalFunctions();
+	private justLoaded = false;
 
 	render (): HTMLElement {
 		let dom = $(/* html */`
@@ -65,7 +66,11 @@ export class Editor extends Widget {
 			this.editor.on("change", (instance, change) => {
 				let module = this.compile();
 				this.bus.event(new events.SourceChanged(this.editor.getDoc().getValue(), module));
-				this.bus.event(new events.ProjectChanged());
+				if (this.justLoaded) {
+					this.justLoaded = false;
+				} else {
+					this.bus.event(new events.ProjectChanged());
+				}
 			});
 
 			this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
@@ -139,7 +144,10 @@ export class Editor extends Widget {
 		} else if (event instanceof events.AnnounceExternalFunctions) {
 			this.ext = event.functions;
 		} else if (event instanceof events.ProjectLoaded) {
-			this.editor.getDoc().setValue(event.project.contentObject.code);
+			this.justLoaded = true;
+			setTimeout(() => {
+				this.editor.getDoc().setValue(event.project.contentObject.code);
+			}, 100);
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.contentObject.code = this.editor.getDoc().getValue()
 		}

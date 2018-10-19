@@ -6363,7 +6363,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             dom.find("#pb-toolbar-projects").click(function () {
                 Api_1.Api.getUserProjects(Api_1.Api.getUserName(), function (projects) {
-                    console.log(projects);
+                    _this.projectsDialog(projects);
                 }, function (e) {
                     _this.serverErrorDialog();
                 });
@@ -6530,6 +6530,17 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         Toolbar.prototype.serverErrorDialog = function () {
             Dialog_1.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
+        Toolbar.prototype.projectsDialog = function (projects) {
+            var content = $("\n\t\t<div style=\"height: 200px; overflow: auto;\">\n\t\t\t<table style=\"height: 160px; width: 100%; overflow: auto;\">\n\t\t\t</table>\n\t\t</div>");
+            var table = content.find("table");
+            projects.forEach(function (project) {
+                var entry = $("\n\t\t\t\t<tr><td><a href=\"" + Api_1.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></td><td style=\"text-align: right;\">" + project.lastModified + "</td>\n\t\t\t");
+                table.append(entry);
+            });
+            var dialog = new Dialog_1.Dialog(Api_1.Api.getUserName() + "'s projects", content[0], ["Close"]);
+            dialog.buttons[0].click(function () { return dialog.hide(); });
+            dialog.show();
+        };
         Toolbar.prototype.saveProject = function () {
             var _this = this;
             if (!Api_1.Api.getUserName()) {
@@ -6554,7 +6565,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     lastModified: null,
                     public: true,
                     title: _this.title.val(),
-                    userName: Api_1.Api.getUserName()
+                    userName: Api_1.Api.getUserName(),
+                    type: "robot"
                 });
                 _this.bus.event(saveProject);
                 try {
@@ -6897,6 +6909,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.markers = Array();
             _this.ext = new compiler.ExternalFunctions();
+            _this.justLoaded = false;
             _this.lastLine = -1;
             return _this;
         }
@@ -6921,7 +6934,12 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                 _this.editor.on("change", function (instance, change) {
                     var module = _this.compile();
                     _this.bus.event(new events.SourceChanged(_this.editor.getDoc().getValue(), module));
-                    _this.bus.event(new events.ProjectChanged());
+                    if (_this.justLoaded) {
+                        _this.justLoaded = false;
+                    }
+                    else {
+                        _this.bus.event(new events.ProjectChanged());
+                    }
                 });
                 _this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
                 var module = _this.compile();
@@ -6967,6 +6985,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             this.lastLine = line;
         };
         Editor.prototype.onEvent = function (event) {
+            var _this = this;
             if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
                 this.editor.setOption("readOnly", true);
                 if (this.lastLine != -1)
@@ -6989,7 +7008,10 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                 this.ext = event.functions;
             }
             else if (event instanceof events.ProjectLoaded) {
-                this.editor.getDoc().setValue(event.project.contentObject.code);
+                this.justLoaded = true;
+                setTimeout(function () {
+                    _this.editor.getDoc().setValue(event.project.contentObject.code);
+                }, 100);
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.contentObject.code = this.editor.getDoc().getValue();

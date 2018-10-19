@@ -72,7 +72,7 @@ export class Toolbar extends Widget {
 
 		dom.find("#pb-toolbar-projects").click(() => {
 			Api.getUserProjects(Api.getUserName(), (projects) => {
-				console.log(projects);
+				this.projectsDialog(projects);
 			}, (e) => {
 				this.serverErrorDialog();
 			});
@@ -290,6 +290,26 @@ export class Toolbar extends Widget {
 		Dialog.alert("Sorry!", $(/*html*/`<p>We couldn't reach the server. If the problem persists, let us know at <a href="mailto:contact@paperbots.com">contact@paperbots.io</a></p>`));
 	}
 
+	projectsDialog (projects: Array<Project>) {
+		let content = $(/*html*/`
+		<div style="height: 200px; overflow: auto;">
+			<table style="height: 160px; width: 100%; overflow: auto;">
+			</table>
+		</div>`
+		);
+		let table = content.find("table");
+		projects.forEach(project => {
+			let entry = $(/*html*/`
+				<tr><td><a href="${Api.getProjectUrl(project.code)}">${project.title}</a></td><td style="text-align: right;">${project.lastModified}</td>
+			`)
+			table.append(entry);
+		});
+
+		let dialog = new Dialog(`${Api.getUserName()}'s projects`, content[0], ["Close"]);
+		dialog.buttons[0].click(() => dialog.hide());
+		dialog.show();
+	}
+
 	saveProject () {
 		if (!Api.getUserName()) {
 			Dialog.alert("Sorry", $(`<p>You need to be logged in to save a project.<p>`)).show();
@@ -323,7 +343,8 @@ export class Toolbar extends Widget {
 				lastModified: null,
 				public: true,
 				title: this.title.val() as string,
-				userName: Api.getUserName()
+				userName: Api.getUserName(),
+				type: "robot"
 			});
 
 			// All other components can now write to contentObject

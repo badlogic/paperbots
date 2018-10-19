@@ -17,6 +17,10 @@ body {
 	font-size: 16px;
 }
 
+table, th, td {
+	border: none;
+ }
+
 #pb-main {
 	width: 100%;
 	height: 100vh;

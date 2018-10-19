@@ -18,6 +18,7 @@ import io.marioslab.basis.arguments.Arguments.ParsedArguments;
 import io.marioslab.basis.template.TemplateContext;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.Project;
+import io.paperbots.data.ProjectType;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
 
@@ -231,7 +232,7 @@ public class Paperbots {
 		});
 	}
 
-	public String saveProject (String token, String code, String title, String description, String content, boolean isPublic) {
+	public String saveProject (String token, String code, String title, String description, String content, boolean isPublic, ProjectType type) {
 		// Fetch the user based on the token
 		User user = getUserForToken(token);
 
@@ -240,7 +241,7 @@ public class Paperbots {
 				if (code == null) {
 					String projectCode = generateId(6);
 					//@off
-					handle.createUpdate("insert into projects (userId, userName, code, title, description, content, public) value (:userId, :userName, :code, :title, :description, :content, :isPublic)")
+					handle.createUpdate("insert into projects (userId, userName, code, title, description, content, public, type) value (:userId, :userName, :code, :title, :description, :content, :isPublic, :type)")
 						.bind("userId", user.getId())
 						.bind("userName", user.getName())
 						.bind("code", projectCode)
@@ -248,6 +249,7 @@ public class Paperbots {
 						.bind("description", description)
 						.bind("content", content)
 						.bind("isPublic", isPublic)
+						.bind("type", type)
 						.execute();
 					//@on
 					Log.info("Created project " + code + " of user " + user.getName());
@@ -275,7 +277,9 @@ public class Paperbots {
 
 		return jdbi.withHandle(handle -> {
 			try {
-				Project project = handle.createQuery("SELECT * FROM projects WHERE code=:code").bind("code", projectId).mapToBean(Project.class).findOnly();
+				Project project = handle
+					.createQuery("SELECT code, userName, title, description, content, public, type, lastModified, created FROM projects WHERE code=:code")
+					.bind("code", projectId).mapToBean(Project.class).findOnly();
 				if (!project.isPublic() && (user == null || !project.getUserName().equals(user.getName()))) {
 					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 				}
@@ -289,7 +293,8 @@ public class Paperbots {
 	public Project[] getUserProjects (String token, String userName) {
 		User user = token != null && token.length() > 0 ? getUserForToken(token) : null;
 		return jdbi.withHandle(handle -> {
-			List<Project> projects = handle.createQuery("SELECT code, title, lastModified, created, public FROM projects WHERE userName=:userName")
+			List<Project> projects = handle
+				.createQuery("SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE userName=:userName ORDER BY lastModified DESC")
 				.bind("userName", userName).mapToBean(Project.class).list();
 
 			if (!userName.equals(user.getName())) {

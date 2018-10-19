@@ -16,6 +16,7 @@ import io.marioslab.basis.site.FileWatcher;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.Project;
+import io.paperbots.data.ProjectType;
 import io.paperbots.data.UserType;
 
 public class Server {
@@ -126,7 +127,7 @@ public class Server {
 		app.post("/api/saveproject", ctx -> {
 			Project request = ctx.bodyAsClass(Project.class);
 			String projectId = paperbots.saveProject(ctx.cookie("token"), request.getCode(), request.getTitle(), request.getDescription(), request.getContent(),
-				request.isPublic());
+				request.isPublic(), ProjectType.robot);
 			ctx.json(new ProjectRequest(projectId));
 		});
 

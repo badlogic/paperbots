@@ -4,16 +4,19 @@ export interface RequestError {
 	error: ErrorType
 }
 
+export type ProjectType = "robot" | "canvas";
+
 export interface Project {
-	code: string,
-	userName: string,
-	title: string,
-	description: string,
-	content: string,
-	contentObject: any;
-	created: string,
-	lastModified: string,
+	code: string
+	userName: string
+	title: string
+	description: string
+	content: string
+	contentObject: any
+	created: string
+	lastModified: string
 	public: boolean
+	type: ProjectType
 }
 
 export class Api {

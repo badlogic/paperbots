@@ -2,10 +2,6 @@
 package io.paperbots.data;
 
 public class Project {
-	public static enum Type {
-		robot, canvas
-	}
-
 	private String userName;
 	private String code;
 	private String title;
@@ -14,7 +10,7 @@ public class Project {
 	private String created;
 	private String lastModified;
 	private boolean isPublic;
-	private Type type;
+	private ProjectType type;
 
 	public Project () {
 	}
@@ -81,5 +77,13 @@ public class Project {
 
 	public void setPublic (boolean isPublic) {
 		this.isPublic = isPublic;
+	}
+
+	public ProjectType getType () {
+		return type;
+	}
+
+	public void setType (ProjectType type) {
+		this.type = type;
 	}
 }

@@ -5045,8 +5045,9 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
     "use strict";
     exports.__esModule = true;
     var Slot = (function () {
-        function Slot(symbol, value) {
+        function Slot(symbol, scope, value) {
             this.symbol = symbol;
+            this.scope = scope;
             this.value = value;
         }
         return Slot;
@@ -5059,7 +5060,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
             this.code = code;
             this.slots = slots;
             this.pc = pc;
-            code.locals.forEach(function (v) { return slots.push(new Slot(v, null)); });
+            code.locals.forEach(function (v) { return slots.push(new Slot(v, v.scope, null)); });
         }
         return Frame;
     }());
@@ -5882,6 +5883,17 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             else
                 emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
         }
+        funDecl.params.forEach(function (param) {
+            param.scope = { startPc: 0, endPc: fun.instructions.length - 1 };
+        });
+        assignScopeInfoEndPc(statements, fun.instructions.length - 1);
+    }
+    function assignScopeInfoEndPc(statements, endPc) {
+        statements.forEach(function (stmt) {
+            if (stmt.kind == "variable") {
+                stmt.scope.endPc = endPc;
+            }
+        });
     }
     function emitStatementList(statements, context) {
         statements.forEach(function (stmt) {
@@ -5976,6 +5988,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 scopes.addSymbol(node);
                 emitAstNode(node.value, context, false);
                 instructions.push({ kind: "store", slotIndex: node.slotIndex });
+                node.scope = { startPc: instructions.length, endPc: 0 };
                 emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "assignment":
@@ -6005,6 +6018,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 scopes.push();
                 emitStatementList(node.trueBlock, context);
                 scopes.pop();
+                assignScopeInfoEndPc(node.trueBlock, instructions.length - 1);
                 instructions.push(jumpPastFalse);
                 lineInfos.push(lineInfos[lineInfos.length - 1]);
                 context.lineInfoIndex++;
@@ -6012,6 +6026,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 scopes.push();
                 emitStatementList(node.falseBlock, context);
                 scopes.pop();
+                assignScopeInfoEndPc(node.falseBlock, instructions.length - 1);
                 jumpPastFalse.offset = instructions.length;
                 break;
             case "while":
@@ -6024,6 +6039,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 scopes.push();
                 emitStatementList(node.block, context);
                 scopes.pop();
+                assignScopeInfoEndPc(node.block, instructions.length - 1);
                 context.continues.forEach(function (cont) { return cont.offset = conditionIndex_1; });
                 context.continues.length = 0;
                 instructions.push({ kind: "jump", offset: conditionIndex_1 });
@@ -6046,6 +6062,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 scopes.push();
                 emitStatementList(node.block, context);
                 scopes.pop();
+                assignScopeInfoEndPc(node.block, instructions.length - 1);
                 context.continues.forEach(function (cont) { return cont.offset = instructions.length; });
                 context.continues.length = 0;
                 lineInfos.push(lineInfos[conditionIndex_2]);
@@ -6872,8 +6889,11 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     _this.callstack.append(dom);
                 });
                 if (this.selectedFrame) {
+                    var pc_1 = this.selectedFrame.pc;
                     this.selectedFrame.slots.forEach(function (slot) {
                         if (slot.value == null)
+                            return;
+                        if (pc_1 < slot.scope.startPc || pc_1 > slot.scope.endPc)
                             return;
                         var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
                         dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));

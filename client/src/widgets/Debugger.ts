@@ -302,8 +302,10 @@ export class Debugger extends Widget {
 			});
 
 			if (this.selectedFrame) {
+				let pc = this.selectedFrame.pc;
 				this.selectedFrame.slots.forEach(slot => {
 					if (slot.value == null) return;
+					if (pc < slot.scope.startPc || pc > slot.scope.endPc) return;
 					let dom = $(/*html*/`
 						<div class="pb-debugger-local">
 						</div>

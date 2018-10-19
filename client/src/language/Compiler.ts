@@ -1,6 +1,6 @@
 import { SyntaxError, IFileRange, parse } from "./Parser";
 import { assertNever } from "../Utils"
-import { Instruction, JumpIns, FunctionCode, AsyncPromise, LineInfo } from "./VirtualMachine";
+import { Instruction, JumpIns, FunctionCode, AsyncPromise, LineInfo, ScopeInfo } from "./VirtualMachine";
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) { }
@@ -102,7 +102,8 @@ export interface VariableDecl extends BaseNode {
 	typeName?: TypeName,
 	type: Type,
 	value: AstNode,
-	slotIndex: number;
+	slotIndex: number,
+	scope: ScopeInfo
 }
 
 export interface RecordField {
@@ -135,7 +136,8 @@ export interface Parameter {
 	name: Identifier,
 	typeName: TypeName,
 	type: Type,
-	slotIndex: number
+	slotIndex: number,
+	scope: ScopeInfo
 }
 
 export interface FunctionDecl extends BaseNode {
@@ -804,6 +806,25 @@ function emitFunction(context: EmitterContext) {
 		if (lineInfo) context.fun.lineInfos.push(lineInfo);
 		else emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
 	}
+
+	// All parameters have scope from the beginning of the function to the end.
+	funDecl.params.forEach(param => {
+		param.scope = { startPc: 0, endPc: fun.instructions.length - 1 };
+	})
+
+	// All variable statements in the function's statement list also have scope
+	// from after their initialization (set in emitAstNode) to the end of the function.
+	assignScopeInfoEndPc(statements, fun.instructions.length - 1);
+}
+
+// Assign the endPc to the ScopeInfo of each Variable AST node in the
+// list of statements.
+function assignScopeInfoEndPc(statements: Array<AstNode>, endPc: number) {
+	statements.forEach(stmt => {
+		if (stmt.kind == "variable") {
+			stmt.scope.endPc = endPc;
+		}
+	});
 }
 
 // Some "statements" like 12 * 23 may leave a value on the stack which
@@ -907,6 +928,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			scopes.addSymbol(node);
 			emitAstNode(node.value as AstNode, context, false);
 			instructions.push({kind: "store", slotIndex: node.slotIndex});
+			node.scope = { startPc: instructions.length, endPc: 0 };
 			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "assignment":
@@ -942,6 +964,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			scopes.push();
 			emitStatementList(node.trueBlock, context);
 			scopes.pop()
+			assignScopeInfoEndPc(node.trueBlock, instructions.length - 1);
 			instructions.push(jumpPastFalse);
 			lineInfos.push(lineInfos[lineInfos.length - 1]);
 			context.lineInfoIndex++;
@@ -953,6 +976,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			scopes.push();
 			emitStatementList(node.falseBlock, context);
 			scopes.pop()
+			assignScopeInfoEndPc(node.falseBlock, instructions.length - 1);
 
 			// Patch in the address of the first instruction after the false block
 			jumpPastFalse.offset = instructions.length;
@@ -972,6 +996,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			scopes.push();
 			emitStatementList(node.block, context);
 			scopes.pop();
+			assignScopeInfoEndPc(node.block, instructions.length - 1);
 
 			// Patch up all continues to jump to the loop header
 			context.continues.forEach(cont => cont.offset = conditionIndex);
@@ -1008,6 +1033,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			scopes.push();
 			emitStatementList(node.block, context);
 			scopes.pop();
+			assignScopeInfoEndPc(node.block, instructions.length - 1);
 
 			// Patch up all continues to go to the next jump instruction, and
 			// thus to the loop header.

@@ -87,7 +87,12 @@ export type Instruction =
 	;
 
 export class Slot {
-	constructor(public symbol: VariableDecl | Parameter, public value: Value) { }
+	constructor(public symbol: VariableDecl | Parameter, public scope: ScopeInfo, public value: Value) { }
+}
+
+export interface ScopeInfo {
+	startPc: number;
+	endPc: number;
 }
 
 export interface LineInfo {
@@ -110,7 +115,7 @@ export class Frame {
 		public slots = new Array<Slot>(),
 		public pc = 0) {
 
-		code.locals.forEach(v => slots.push(new Slot(v, null)));
+		code.locals.forEach(v => slots.push(new Slot(v, v.scope, null)));
 	}
 }
 

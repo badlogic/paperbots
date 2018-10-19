@@ -60,11 +60,12 @@ table, th, td {
 	color: #aaaaaa;
 	font-size: 16px;
 	text-align: center;
+	border-bottom: 2px solid #aaaaaa;
+	max-width: 250px;
 }
 #pb-toolbar-title:focus {
 	border-color: #ffffff;
 	color: #ffffff;
-	border-bottom: 2px solid #aaaaaa;
 }
 
 .pb-toolbar-button {

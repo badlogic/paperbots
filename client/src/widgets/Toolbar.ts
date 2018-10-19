@@ -6,6 +6,7 @@ import { setElementEnabled } from "../Utils";
 import { Paperbots } from "../Paperbots";
 
 export class Toolbar extends Widget {
+	by: JQuery;
 	new: JQuery;
 	save: JQuery;
 	title: JQuery;
@@ -24,6 +25,8 @@ export class Toolbar extends Widget {
 			<div id="pb-toolbar">
 				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
 				<input id="pb-toolbar-title" type="text" value="Untitled project">
+				<div id="pb-toolbar-by" class="pb-toolbar-button"></div>
+				<div style="flex: 1;"></div>
 				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i>New</div>
 				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
 				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
@@ -38,6 +41,8 @@ export class Toolbar extends Widget {
 				</div>
 			</div>
 		`);
+
+		this.by = dom.find("#pb-toolbar-by");
 
 		this.new = dom.find("#pb-toolbar-new");
 		this.new.click(() => {
@@ -396,6 +401,13 @@ export class Toolbar extends Widget {
 		} else if (event instanceof ProjectLoaded) {
 			this.loadedProject = event.project;
 			this.title.val(event.project.title);
+			if (this.loadedProject.userName != Api.getUserName()) {
+				this.by.html(/*html*/`
+					<span>by </span><a href="${Api.getUserUrl(this.loadedProject.code)}">${this.loadedProject.userName}</a>
+				`);
+			} else {
+				this.by.html("");
+			}
 		}
 	}
 }

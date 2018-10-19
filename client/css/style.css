@@ -218,6 +218,8 @@ table, th, td {
 	flex: 1;
 	background: #252526;
 	color: #ffffff;
+	white-space: pre;
+    overflow: auto;
 }
 
 .pb-label {

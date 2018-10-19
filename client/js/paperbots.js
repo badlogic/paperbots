@@ -6975,7 +6975,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                     var from = { line: loc.start.line - 1, ch: loc.start.column - 1 - (loc.start.line == loc.end.line && loc.start.column == loc.end.column ? 1 : 0) };
                     var to = { line: loc.end.line - 1, ch: loc.end.column - 1 };
                     this.markers.push(this.editor.getDoc().markText(from, to, { className: "compiler-error", title: err.message }));
-                    this.error.html("Error in line " + loc.start.line + ", column " + loc.start.column + ": " + err.message);
+                    this.error.html("Error in line " + loc.start.line + ": " + err.message);
                 }
                 else {
                     var err = e;

@@ -337,7 +337,9 @@ table, th, td {
 	overflow: auto;
 	background: #cc0000;
 	color: #eeeeee;
-	padding: 1em;
+	padding: 0.5em;
+	font-size: 14px;
+	white-space: pre;
 }
 
 /* CodeMirror styles */

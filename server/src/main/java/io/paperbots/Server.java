@@ -102,8 +102,8 @@ public class Server {
 		app.post("/api/verify", ctx -> {
 			VerifyRequest request = ctx.bodyAsClass(VerifyRequest.class);
 			TokenAndName tokenAndName = paperbots.verifyCode(request.code);
-			ctx.cookie("name", tokenAndName.name);
-			ctx.cookie("token", tokenAndName.token);
+			ctx.cookie("name", tokenAndName.name, Integer.MAX_VALUE);
+			ctx.cookie("token", tokenAndName.token, Integer.MAX_VALUE);
 		});
 
 		app.post("/api/logout", ctx -> {

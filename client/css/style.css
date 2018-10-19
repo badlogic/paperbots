@@ -320,10 +320,15 @@ table, th, td {
 	color: #ffffff;
 }
 
-#pb-code-editor-code-mirror {
-	width: 100%;
+#pb-code-editor-code-mirror-wrapper {
+	position: relative;
 	flex: 1;
-	overflow: auto;
+}
+
+#pb-code-editor-code-mirror {
+	position: absolute;
+	width: 100%;
+	height: 100%;
 }
 
 #pb-code-editor-error {

@@ -43,7 +43,10 @@ export class Editor extends Widget {
 	render (): HTMLElement {
 		let dom = $(/* html */`
 			<div id="pb-code-editor">
-				<div id="pb-code-editor-code-mirror"></div>
+				<div id="pb-code-editor-code-mirror-wrapper">
+					<div id="pb-code-editor-code-mirror">
+					</div>
+				</div>
 				<div id="pb-code-editor-error"></div>
 			</div>
 		`);

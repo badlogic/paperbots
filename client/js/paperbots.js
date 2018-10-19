@@ -6917,7 +6917,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         }
         Editor.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-code-editor\">\n\t\t\t\t<div id=\"pb-code-editor-code-mirror\"></div>\n\t\t\t\t<div id=\"pb-code-editor-error\"></div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-code-editor\">\n\t\t\t\t<div id=\"pb-code-editor-code-mirror-wrapper\">\n\t\t\t\t\t<div id=\"pb-code-editor-code-mirror\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-code-editor-error\"></div>\n\t\t\t</div>\n\t\t");
             requestAnimationFrame(function () {
                 _this.editor = CodeMirror(dom.find("#pb-code-editor-code-mirror")[0], {
                     tabSize: 3,

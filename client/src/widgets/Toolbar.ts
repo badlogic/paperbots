@@ -6,6 +6,7 @@ import { setElementEnabled } from "../Utils";
 import { Paperbots } from "../Paperbots";
 
 export class Toolbar extends Widget {
+	new: JQuery;
 	save: JQuery;
 	title: JQuery;
 	login: JQuery;
@@ -38,8 +39,8 @@ export class Toolbar extends Widget {
 			</div>
 		`);
 
-		let newBtn = dom.find("#pb-toolbar-new");
-		newBtn.click(() => {
+		this.new = dom.find("#pb-toolbar-new");
+		this.new.click(() => {
 			(window.location as any) = "/";
 		});
 
@@ -386,9 +387,11 @@ export class Toolbar extends Widget {
 			this.setupLoginAndUser();
 		} else if(event instanceof Run || event instanceof Debug) {
 			setElementEnabled(this.save, false);
+			setElementEnabled(this.new, false);
 			setElementEnabled(this.title, false);
 		} else if (event instanceof Stop) {
 			setElementEnabled(this.save, true);
+			setElementEnabled(this.new, true);
 			setElementEnabled(this.title, true);
 		} else if (event instanceof ProjectLoaded) {
 			this.loadedProject = event.project;

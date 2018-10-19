@@ -28,7 +28,7 @@
 		}
 	}
 
-	function ping () {
+	function ping () {
 		if (ws.readyState == 1) {
 			ws.send("ping");
 			setTimeout(ping, 5000);

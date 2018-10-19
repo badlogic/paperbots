@@ -6334,8 +6334,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         Toolbar.prototype.render = function () {
             var _this = this;
             var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i>New</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<!--<a id=\"pb-toolbar-profile\"><i class=\"fas fa-user-circle\"></i> Profile</a>-->\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            var newBtn = dom.find("#pb-toolbar-new");
-            newBtn.click(function () {
+            this["new"] = dom.find("#pb-toolbar-new");
+            this["new"].click(function () {
                 window.location = "/";
             });
             this.save = dom.find("#pb-toolbar-save");
@@ -6606,10 +6606,12 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
             else if (event instanceof Events_1.Run || event instanceof Events_1.Debug) {
                 Utils_2.setElementEnabled(this.save, false);
+                Utils_2.setElementEnabled(this["new"], false);
                 Utils_2.setElementEnabled(this.title, false);
             }
             else if (event instanceof Events_1.Stop) {
                 Utils_2.setElementEnabled(this.save, true);
+                Utils_2.setElementEnabled(this["new"], true);
                 Utils_2.setElementEnabled(this.title, true);
             }
             else if (event instanceof Events_1.ProjectLoaded) {

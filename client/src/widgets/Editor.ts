@@ -122,7 +122,6 @@ export class Editor extends Widget {
 
 	private lastLine = -1;
 	setLine(line: number) {
-		// this.editor.getDoc().setCursor(line, 1);
 		if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 		this.editor.addLineClass(line, "background", "pb-debugged-line");
 		this.lastLine = line;
@@ -134,7 +133,7 @@ export class Editor extends Widget {
 			if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 		} else if (event instanceof events.Stop) {
 			this.editor.setOption("readOnly", false);
-			if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+			this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 			this.lastLine = -1;
 			this.editor.focus();
 		} else if (event instanceof events.Step || event instanceof events.LineChange) {

@@ -7003,8 +7003,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             }
             else if (event instanceof events.Stop) {
                 this.editor.setOption("readOnly", false);
-                if (this.lastLine != -1)
-                    this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+                this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
                 this.lastLine = -1;
                 this.editor.focus();
             }

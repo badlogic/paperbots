@@ -90,19 +90,27 @@ export class Toolbar extends Widget {
 
 		this.setupLoginAndUser();
 
-		window.onclick = function(event) {
+		window.onclick = function (event) {
 			if (justClicked) {
 				justClicked = false;
 				return;
 			}
 			if (!(event.target as any).matches('#pb-toolbar-user')) {
-			  var dropdowns = document.getElementsByClassName("dropdown-content");
-			  var i;
-			  for (i = 0; i < dropdowns.length; i++) {
-				$(dropdowns[i]).hide();
-			  }
+				var dropdowns = document.getElementsByClassName("dropdown-content");
+				var i;
+				for (i = 0; i < dropdowns.length; i++) {
+					$(dropdowns[i]).hide();
+				}
 			}
-		  }
+		}
+
+		// CMD + s and CTRL + s for saving
+		document.addEventListener("keydown", (e) => {
+			if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				this.saveProject()
+			}
+		}, false);
 
 		return dom[0];
 	}

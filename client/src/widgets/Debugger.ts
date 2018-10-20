@@ -104,11 +104,7 @@ export class Debugger extends Widget {
 		};
 
 		this.run.click(() => {
-			this.state = DebuggerState.Running;
-			this.snapshot = null;
-			this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
-			this.bus.event(new events.Run())
-			requestAnimationFrame(this.advanceVm);
+			this.runProject()
 		});
 
 		this.debug.click(() => {
@@ -195,8 +191,23 @@ export class Debugger extends Widget {
 			}
 		});
 
+		document.addEventListener("keydown", (e) => {
+			if (e.keyCode == 69 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				this.runProject();
+			}
+		}, false);
+
 		dom.find("input").attr("disabled", "true");
 		return dom[0];
+	}
+
+	runProject () {
+		this.state = DebuggerState.Running;
+		this.snapshot = null;
+		this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+		this.bus.event(new events.Run())
+		requestAnimationFrame(this.advanceVm);
 	}
 
 	checkVmStopped () {

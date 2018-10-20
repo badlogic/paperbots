@@ -5107,11 +5107,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 requestAnimationFrame(_this.advanceVm);
             };
             this.run.click(function () {
-                _this.state = DebuggerState.Running;
-                _this.snapshot = null;
-                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
-                _this.bus.event(new events.Run());
-                requestAnimationFrame(_this.advanceVm);
+                _this.runProject();
             });
             this.debug.click(function () {
                 _this.state = DebuggerState.Paused;
@@ -5179,8 +5175,21 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     return;
                 }
             });
+            document.addEventListener("keydown", function (e) {
+                if (e.keyCode == 69 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+                    e.preventDefault();
+                    _this.runProject();
+                }
+            }, false);
             dom.find("input").attr("disabled", "true");
             return dom[0];
+        };
+        Debugger.prototype.runProject = function () {
+            this.state = DebuggerState.Running;
+            this.snapshot = null;
+            this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+            this.bus.event(new events.Run());
+            requestAnimationFrame(this.advanceVm);
         };
         Debugger.prototype.checkVmStopped = function () {
             if (this.vm.state == vm.VMState.Completed) {
@@ -6768,6 +6777,12 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     }
                 }
             };
+            document.addEventListener("keydown", function (e) {
+                if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+                    e.preventDefault();
+                    _this.saveProject();
+                }
+            }, false);
             return dom[0];
         };
         Toolbar.prototype.setupLoginAndUser = function () {

@@ -656,7 +656,6 @@ export class Robot {
 			this.startY = this.data.y;
 			this.targetX = this.data.x + this.data.dirX;
 			this.targetY = this.data.y + this.data.dirY;
-			console.log(this.targetX + ", " + this.targetY);
 			let tile = world.getTile(this.targetX, this.targetY);
 			if (tile && tile.kind == "wall") {
 				this.targetX = this.startX;
@@ -668,7 +667,6 @@ export class Robot {
 			this.startY = this.data.y;
 			this.targetX = this.data.x - this.data.dirX;
 			this.targetY = this.data.y - this.data.dirY;
-			console.log(this.targetX + ", " + this.targetY);
 			let tile = world.getTile(this.targetX, this.targetY);
 			if (tile && tile.kind == "wall") {
 				this.targetX = this.startX;
@@ -682,7 +680,6 @@ export class Robot {
 			let temp = this.data.dirX;
 			this.data.dirX = -this.data.dirY;
 			this.data.dirY = temp;
-			console.log(this.targetAngle);
 			break;
 		}
 		case RobotAction.TurnRight: {
@@ -691,7 +688,6 @@ export class Robot {
 			let temp = this.data.dirX;
 			this.data.dirX = this.data.dirY;
 			this.data.dirY = -temp;
-			console.log(this.targetAngle);
 			break;
 		}
 		}

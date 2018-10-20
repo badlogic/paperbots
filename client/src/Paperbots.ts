@@ -88,6 +88,7 @@ export class Paperbots implements EventListener {
 		// Setup a check to alert the user to not leave the site
 		// If there are unsaved changes
 		window.onbeforeunload = () => {
+			if (window.location.host == "localhost:8001") return;
 			if (this.unsaved) {
 				return "You have unsaved changes. Are you sure you want to leave?";
 			} else {

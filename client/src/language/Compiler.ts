@@ -1,6 +1,7 @@
 import { SyntaxError, IFileRange, parse } from "./Parser";
-import { assertNever } from "../Utils"
+import { Map, assertNever } from "../Utils"
 import { Instruction, JumpIns, FunctionCode, AsyncPromise, LineInfo, ScopeInfo } from "./VirtualMachine";
+import { Breakpoint } from "../widgets/Debugger";
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) { }
@@ -201,10 +202,6 @@ export const StringType: Type = {
 	declarationNode: null,
 	name: "string"
 };
-
-export interface Map<T> {
-	[name: string] : T;
-}
 
 export interface Types {
 	all: Map<Type>,
@@ -777,6 +774,7 @@ function emitProgram (functions: Array<FunctionDecl>, externalFunctions: Externa
 			ast: fun,
 			instructions: new Array<Instruction>(),
 			lineInfos: new Array<LineInfo>(),
+			breakpoints: new Array<Breakpoint>(),
 			locals: new Array<VariableDecl | Parameter>(),
 			numParameters: fun.params.length,
 			index: functionCodes.length
@@ -815,6 +813,9 @@ function emitFunction(context: EmitterContext) {
 	// All variable statements in the function's statement list also have scope
 	// from after their initialization (set in emitAstNode) to the end of the function.
 	assignScopeInfoEndPc(statements, fun.instructions.length - 1);
+
+	// size the breakpoints array, filled with nulls
+	fun.breakpoints.length = fun.instructions.length;
 }
 
 // Assign the endPc to the ScopeInfo of each Variable AST node in the

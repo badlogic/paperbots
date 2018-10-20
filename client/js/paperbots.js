@@ -235,7 +235,6 @@ define("Utils", ["require", "exports"], function (require, exports) {
                         for (var i_3 = 0; i_3 < listeners.length; i_3++) {
                             listeners[i_3].up(x, y);
                         }
-                        console.log("End " + x + ", " + y);
                         _this.lastX = x;
                         _this.lastY = y;
                         _this.buttonDown = false;
@@ -259,7 +258,6 @@ define("Utils", ["require", "exports"], function (require, exports) {
                         for (var i_4 = 0; i_4 < listeners.length; i_4++) {
                             listeners[i_4].dragged(x, y);
                         }
-                        console.log("Drag " + x + ", " + y);
                         _this.lastX = _this.currTouch.x = x;
                         _this.lastY = _this.currTouch.y = y;
                         break;
@@ -5041,7 +5039,353 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_1) {
+define("widgets/Widget", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Widget = (function () {
+        function Widget(bus) {
+            this.bus = bus;
+        }
+        return Widget;
+    }());
+    exports.Widget = Widget;
+});
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_1, compiler, vm) {
+    "use strict";
+    exports.__esModule = true;
+    var DebuggerState;
+    (function (DebuggerState) {
+        DebuggerState[DebuggerState["Stopped"] = 0] = "Stopped";
+        DebuggerState[DebuggerState["Running"] = 1] = "Running";
+        DebuggerState[DebuggerState["Paused"] = 2] = "Paused";
+    })(DebuggerState = exports.DebuggerState || (exports.DebuggerState = {}));
+    var Debugger = (function (_super) {
+        __extends(Debugger, _super);
+        function Debugger() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.lastModule = null;
+            _this.selectedFrame = null;
+            _this.state = DebuggerState.Stopped;
+            _this.snapshot = null;
+            _this.breakpoints = [];
+            return _this;
+        }
+        Debugger.prototype.render = function () {
+            var _this = this;
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div class=\"pb-label\">DEBUGGER</div>\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            this.run = dom.find("#pb-debugger-run");
+            this.debug = dom.find("#pb-debugger-debug");
+            this.pause = dom.find("#pb-debugger-pause");
+            this.resume = dom.find("#pb-debugger-continue");
+            this.stop = dom.find("#pb-debugger-stop");
+            this.stepOver = dom.find("#pb-debugger-step-over");
+            this.stepInto = dom.find("#pb-debugger-step-into");
+            this.stepOut = dom.find("#pb-debugger-step-out");
+            this.pause.hide();
+            this.resume.hide();
+            this.stop.hide();
+            this.stepOver.hide();
+            this.stepInto.hide();
+            this.stepOut.hide();
+            this.locals = dom.find("#pb-debugger-locals");
+            this.callstack = dom.find("#pb-debugger-callstack");
+            this.vmState = dom.find("#pb-debugger-vm");
+            dom.find("#pb-debugger-vm-label").click(function () {
+                _this.vmState.toggle();
+            });
+            dom.find("#pb-debugger-callstack-label").click(function () {
+                _this.callstack.toggle();
+            });
+            dom.find("#pb-debugger-locals-label").click(function () {
+                _this.locals.toggle();
+            });
+            this.advanceVm = function () {
+                if (_this.state != DebuggerState.Running)
+                    return;
+                _this.vm.run(1000);
+                _this.checkVmStopped();
+                requestAnimationFrame(_this.advanceVm);
+            };
+            this.run.click(function () {
+                _this.state = DebuggerState.Running;
+                _this.snapshot = null;
+                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.bus.event(new events.Run());
+                requestAnimationFrame(_this.advanceVm);
+            });
+            this.debug.click(function () {
+                _this.state = DebuggerState.Paused;
+                _this.snapshot = null;
+                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.bus.event(new events.Debug());
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+            });
+            this.pause.click(function () {
+                _this.snapshot = null;
+                _this.state = DebuggerState.Paused;
+                _this.bus.event(new events.Pause());
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+            });
+            this.resume.click(function () {
+                _this.state = DebuggerState.Running;
+                _this.bus.event(new events.Resume());
+                requestAnimationFrame(_this.advanceVm);
+            });
+            this.stop.click(function () {
+                _this.snapshot = null;
+                _this.state = DebuggerState.Stopped;
+                _this.bus.event(new events.Stop());
+            });
+            var stepOverAsync = function () {
+                if (_this.snapshot) {
+                    _this.state = DebuggerState.Running;
+                    _this.bus.event(new events.Resume());
+                    _this.snapshot = _this.vm.stepOver(_this.snapshot);
+                    if (_this.snapshot) {
+                        requestAnimationFrame(stepOverAsync);
+                    }
+                    else {
+                        if (_this.vm.state == vm.VMState.Completed) {
+                            alert("Program complete.");
+                            _this.bus.event(new events.Stop());
+                            return;
+                        }
+                        _this.state = DebuggerState.Paused;
+                        _this.bus.event(new events.Pause());
+                        _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+                    }
+                }
+            };
+            this.stepOver.click(function () {
+                _this.state = DebuggerState.Paused;
+                _this.snapshot = _this.vm.stepOver();
+                if (_this.snapshot) {
+                    stepOverAsync();
+                    return;
+                }
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+                if (_this.vm.state == vm.VMState.Completed) {
+                    alert("Program complete.");
+                    _this.bus.event(new events.Stop());
+                    return;
+                }
+            });
+            this.stepInto.click(function () {
+                _this.vm.stepInto();
+                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
+                if (_this.vm.state == vm.VMState.Completed) {
+                    alert("Program complete.");
+                    _this.bus.event(new events.Stop());
+                    return;
+                }
+            });
+            dom.find("input").attr("disabled", "true");
+            return dom[0];
+        };
+        Debugger.prototype.checkVmStopped = function () {
+            if (this.vm.state == vm.VMState.Completed) {
+                this.state = DebuggerState.Stopped;
+                alert("Program complete.");
+                this.bus.event(new events.Stop());
+                return;
+            }
+            else {
+                if (this.vm.hitBreakpoint()) {
+                    this.state = DebuggerState.Paused;
+                    this.bus.event(new events.Pause());
+                    this.bus.event(new events.Step(this.vm.getLineNumber()));
+                }
+            }
+        };
+        Debugger.prototype.setBreakpoints = function () {
+            var _this = this;
+            if (this.vm) {
+                var functions = this.vm.functions;
+                for (var i = 0; i < functions.length; i++) {
+                    var func = functions[i];
+                    func.breakpoints.length = 0;
+                    func.breakpoints.length = func.instructions.length;
+                }
+                this.breakpoints.forEach(function (bp) {
+                    var line = bp.getLine();
+                    var functions = _this.vm.functions;
+                    for (var i = 0; i < functions.length; i++) {
+                        var func = functions[i];
+                        if (func.ast.name.value == "$main" || (line >= func.ast.location.start.line && line <= func.ast.location.end.line)) {
+                            var lineInfos = func.lineInfos;
+                            for (var j = 0; j < lineInfos.length; j++) {
+                                if (lineInfos[j].line == bp.getLine()) {
+                                    func.breakpoints[j] = bp;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    console.log("Couldn't find instruction for breakpoint at line " + bp.getLine());
+                });
+            }
+        };
+        Debugger.prototype.onEvent = function (event) {
+            var _a = this, run = _a.run, debug = _a.debug, pause = _a.pause, resume = _a.resume, stop = _a.stop, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
+            if (event instanceof events.SourceChanged) {
+                if (event.module) {
+                    this.lastModule = event.module;
+                    Utils_1.setElementEnabled(this.run, true);
+                    Utils_1.setElementEnabled(this.debug, true);
+                }
+                else {
+                    this.lastModule = null;
+                    Utils_1.setElementEnabled(this.run, false);
+                    Utils_1.setElementEnabled(this.debug, false);
+                }
+            }
+            else if (event instanceof events.Run) {
+                this.run.hide();
+                this.debug.hide();
+                this.pause.show();
+                this.stop.show();
+                this.stepOver.show();
+                Utils_1.setElementEnabled(this.stepOver, false);
+                this.stepInto.show();
+                Utils_1.setElementEnabled(this.stepInto, false);
+                this.stepOut.show();
+                Utils_1.setElementEnabled(this.stepOut, false);
+                this.setBreakpoints();
+            }
+            else if (event instanceof events.Debug) {
+                this.run.hide();
+                this.debug.hide();
+                this.resume.show();
+                this.stop.show();
+                this.stepOver.show();
+                this.stepInto.show();
+                this.stepOut.show();
+                Utils_1.setElementEnabled(this.stepOver, true);
+                Utils_1.setElementEnabled(this.stepInto, true);
+                Utils_1.setElementEnabled(this.stepOut, true);
+                this.setBreakpoints();
+            }
+            else if (event instanceof events.Pause) {
+                this.resume.show();
+                this.pause.hide();
+                Utils_1.setElementEnabled(this.stepOver, true);
+                Utils_1.setElementEnabled(this.stepInto, true);
+                Utils_1.setElementEnabled(this.stepOut, true);
+            }
+            else if (event instanceof events.Resume) {
+                this.pause.show();
+                this.resume.hide();
+                Utils_1.setElementEnabled(this.stepOver, false);
+                Utils_1.setElementEnabled(this.stepInto, false);
+                Utils_1.setElementEnabled(this.stepOut, false);
+                this.setBreakpoints();
+            }
+            else if (event instanceof events.Stop) {
+                this.run.show();
+                this.debug.show();
+                this.pause.hide();
+                this.resume.hide();
+                this.stop.hide();
+                this.stepOver.hide();
+                this.stepInto.hide();
+                this.stepOut.hide();
+                Utils_1.setElementEnabled(this.stepOver, false);
+                Utils_1.setElementEnabled(this.stepInto, false);
+                Utils_1.setElementEnabled(this.stepOut, false);
+                this.locals.empty();
+                this.callstack.empty();
+                this.vmState.empty();
+            }
+            else if (event instanceof events.Step) {
+                if (this.vm && this.vm.frames.length > 0) {
+                    this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
+                }
+                this.setBreakpoints();
+            }
+            else if (event instanceof events.BreakpointAdded) {
+                this.breakpoints.push(event.breakpoint);
+                this.setBreakpoints();
+            }
+            else if (event instanceof events.BreakpointRemoved) {
+                var idx_1 = -1;
+                this.breakpoints.forEach(function (bp, index) {
+                    if (bp === event.breakpoint) {
+                        idx_1 = index;
+                    }
+                });
+                this.breakpoints.splice(idx_1, 1);
+                this.setBreakpoints();
+            }
+            this.renderState();
+        };
+        Debugger.prototype.renderState = function () {
+            var _this = this;
+            if (!this.locals)
+                return;
+            this.locals.empty();
+            this.callstack.empty();
+            this.vmState.empty();
+            if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
+                this.vm.frames.slice(0).reverse().forEach(function (frame, index) {
+                    var signature = compiler.functionSignature(frame.code.ast);
+                    var lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
+                    var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-callstack-frame\">\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    dom.text(signature + " line " + lineInfo.line);
+                    if (frame == _this.selectedFrame)
+                        dom.addClass("selected");
+                    dom.click(function () {
+                        _this.selectedFrame = frame;
+                        _this.bus.event(new events.LineChange(lineInfo.line));
+                        _this.renderState();
+                    });
+                    _this.callstack.append(dom);
+                });
+                if (this.selectedFrame) {
+                    var pc_1 = this.selectedFrame.pc;
+                    this.selectedFrame.slots.forEach(function (slot) {
+                        if (slot.value == null)
+                            return;
+                        if (pc_1 < slot.scope.startPc || pc_1 > slot.scope.endPc)
+                            return;
+                        var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
+                        dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+                        dom.click(function () {
+                            var location = slot.symbol.name.location;
+                            _this.bus.event(new events.Select(location.start.line, location.start.column, location.end.line, location.end.column));
+                        });
+                        _this.locals.append(dom);
+                    });
+                }
+                this.renderVmState(this.vm);
+            }
+        };
+        Debugger.prototype.renderVmState = function (vm) {
+            var output = "";
+            this.vm.frames.slice(0).reverse().forEach(function (frame) {
+                output += compiler.functionSignature(frame.code.ast);
+                output += "\nlocals:\n";
+                frame.slots.forEach(function (slot, index) {
+                    output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
+                });
+                output += "\ninstructions:\n";
+                var lastLineInfoIndex = -1;
+                frame.code.instructions.forEach(function (ins, index) {
+                    var line = frame.code.lineInfos[index];
+                    if (lastLineInfoIndex != line.index) {
+                        output += "\n";
+                        lastLineInfoIndex = line.index;
+                    }
+                    output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+                });
+                output += "\n";
+            });
+            this.vmState.html(output);
+        };
+        return Debugger;
+    }(Widget_1.Widget));
+    exports.Debugger = Debugger;
+});
+define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_2) {
     "use strict";
     exports.__esModule = true;
     var Slot = (function () {
@@ -5096,11 +5440,18 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
             }
             while (!this.asyncPromise && numInstructions-- > 0) {
                 this.step();
+                if (this.hitBreakpoint())
+                    break;
             }
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
-                return;
+        };
+        VirtualMachine.prototype.hitBreakpoint = function () {
+            if (this.frames.length == 0)
+                return false;
+            var frame = this.frames[this.frames.length - 1];
+            var pc = frame.pc;
+            return frame.code.breakpoints[pc] != null;
         };
         VirtualMachine.prototype.stepOver = function (lastSnapshot) {
             if (lastSnapshot === void 0) { lastSnapshot = null; }
@@ -5144,6 +5495,8 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 if (currFrameIndex < frameIndex)
                     return null;
                 this.step();
+                if (this.hitBreakpoint())
+                    break;
             }
         };
         VirtualMachine.prototype.stepInto = function () {
@@ -5176,6 +5529,8 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 if (currFrameIndex != frameIndex)
                     return;
                 this.step();
+                if (this.hitBreakpoint())
+                    break;
             }
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
@@ -5327,14 +5682,14 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
                 }
                 default:
-                    Utils_1.assertNever(ins);
+                    Utils_2.assertNever(ins);
             }
         };
         return VirtualMachine;
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_2) {
+define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_3) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
@@ -5833,7 +6188,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "arrayAccess":
                 throw new CompilerError("Field an array access not implemented yet.", node.location);
             default:
-                Utils_2.assertNever(node);
+                Utils_3.assertNever(node);
         }
     }
     var EmitterContext = (function () {
@@ -5856,6 +6211,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 ast: fun,
                 instructions: new Array(),
                 lineInfos: new Array(),
+                breakpoints: new Array(),
                 locals: new Array(),
                 numParameters: fun.params.length,
                 index: functionCodes.length
@@ -5887,6 +6243,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             param.scope = { startPc: 0, endPc: fun.instructions.length - 1 };
         });
         assignScopeInfoEndPc(statements, fun.instructions.length - 1);
+        fun.breakpoints.length = fun.instructions.length;
     }
     function assignScopeInfoEndPc(statements, endPc) {
         statements.forEach(function (stmt) {
@@ -5944,7 +6301,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 case "comment":
                     break;
                 default:
-                    Utils_2.assertNever(stmt);
+                    Utils_3.assertNever(stmt);
             }
         });
     }
@@ -6105,7 +6462,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "arrayAccess":
                 throw new CompilerError("Field an array access not implemented yet.", node.location);
             default:
-                Utils_2.assertNever(node);
+                Utils_3.assertNever(node);
         }
         if (isStatement)
             context.lineInfoIndex++;
@@ -6189,6 +6546,20 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var BreakpointAdded = (function () {
+        function BreakpointAdded(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointAdded;
+    }());
+    exports.BreakpointAdded = BreakpointAdded;
+    var BreakpointRemoved = (function () {
+        function BreakpointRemoved(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointRemoved;
+    }());
+    exports.BreakpointRemoved = BreakpointRemoved;
     var LoggedIn = (function () {
         function LoggedIn() {
         }
@@ -6242,17 +6613,6 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return EventBus;
     }());
     exports.EventBus = EventBus;
-});
-define("widgets/Widget", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Widget = (function () {
-        function Widget(bus) {
-            this.bus = bus;
-        }
-        return Widget;
-    }());
-    exports.Widget = Widget;
 });
 define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -6345,7 +6705,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_1, Events_1, Dialog_1, Api_1, Utils_3) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_2, Events_1, Dialog_1, Api_1, Utils_4) {
     "use strict";
     exports.__esModule = true;
     var Toolbar = (function (_super) {
@@ -6628,14 +6988,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.setupLoginAndUser();
             }
             else if (event instanceof Events_1.Run || event instanceof Events_1.Debug) {
-                Utils_3.setElementEnabled(this.save, false);
-                Utils_3.setElementEnabled(this["new"], false);
-                Utils_3.setElementEnabled(this.title, false);
+                Utils_4.setElementEnabled(this.save, false);
+                Utils_4.setElementEnabled(this["new"], false);
+                Utils_4.setElementEnabled(this.title, false);
             }
             else if (event instanceof Events_1.Stop) {
-                Utils_3.setElementEnabled(this.save, true);
-                Utils_3.setElementEnabled(this["new"], true);
-                Utils_3.setElementEnabled(this.title, true);
+                Utils_4.setElementEnabled(this.save, true);
+                Utils_4.setElementEnabled(this["new"], true);
+                Utils_4.setElementEnabled(this.title, true);
             }
             else if (event instanceof Events_1.ProjectLoaded) {
                 this.loadedProject = event.project;
@@ -6649,293 +7009,22 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         return Toolbar;
-    }(Widget_1.Widget));
-    exports.Toolbar = Toolbar;
-});
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_2, events, Utils_4, compiler, vm) {
-    "use strict";
-    exports.__esModule = true;
-    var DebuggerState;
-    (function (DebuggerState) {
-        DebuggerState[DebuggerState["Stopped"] = 0] = "Stopped";
-        DebuggerState[DebuggerState["Running"] = 1] = "Running";
-        DebuggerState[DebuggerState["Paused"] = 2] = "Paused";
-    })(DebuggerState = exports.DebuggerState || (exports.DebuggerState = {}));
-    var Debugger = (function (_super) {
-        __extends(Debugger, _super);
-        function Debugger() {
-            var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.lastModule = null;
-            _this.selectedFrame = null;
-            _this.state = DebuggerState.Stopped;
-            _this.snapshot = null;
-            return _this;
-        }
-        Debugger.prototype.render = function () {
-            var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div class=\"pb-label\">DEBUGGER</div>\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            this.run = dom.find("#pb-debugger-run");
-            this.debug = dom.find("#pb-debugger-debug");
-            this.pause = dom.find("#pb-debugger-pause");
-            this.resume = dom.find("#pb-debugger-continue");
-            this.stop = dom.find("#pb-debugger-stop");
-            this.stepOver = dom.find("#pb-debugger-step-over");
-            this.stepInto = dom.find("#pb-debugger-step-into");
-            this.stepOut = dom.find("#pb-debugger-step-out");
-            this.pause.hide();
-            this.resume.hide();
-            this.stop.hide();
-            this.stepOver.hide();
-            this.stepInto.hide();
-            this.stepOut.hide();
-            this.locals = dom.find("#pb-debugger-locals");
-            this.callstack = dom.find("#pb-debugger-callstack");
-            this.vmState = dom.find("#pb-debugger-vm");
-            dom.find("#pb-debugger-vm-label").click(function () {
-                _this.vmState.toggle();
-            });
-            dom.find("#pb-debugger-callstack-label").click(function () {
-                _this.callstack.toggle();
-            });
-            dom.find("#pb-debugger-locals-label").click(function () {
-                _this.locals.toggle();
-            });
-            this.advanceVm = function () {
-                if (_this.state != DebuggerState.Running)
-                    return;
-                _this.vm.run(1000);
-                _this.checkVmStopped();
-                requestAnimationFrame(_this.advanceVm);
-            };
-            this.run.click(function () {
-                _this.state = DebuggerState.Running;
-                _this.snapshot = null;
-                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
-                _this.bus.event(new events.Run());
-                requestAnimationFrame(_this.advanceVm);
-            });
-            this.debug.click(function () {
-                _this.state = DebuggerState.Paused;
-                _this.snapshot = null;
-                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
-                _this.bus.event(new events.Debug());
-                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-            });
-            this.pause.click(function () {
-                _this.snapshot = null;
-                _this.state = DebuggerState.Paused;
-                _this.bus.event(new events.Pause());
-                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-            });
-            this.resume.click(function () {
-                _this.state = DebuggerState.Running;
-                _this.bus.event(new events.Resume());
-                requestAnimationFrame(_this.advanceVm);
-            });
-            this.stop.click(function () {
-                _this.snapshot = null;
-                _this.state = DebuggerState.Stopped;
-                _this.bus.event(new events.Stop());
-            });
-            var stepOverAsync = function () {
-                if (_this.snapshot) {
-                    _this.state = DebuggerState.Running;
-                    _this.bus.event(new events.Resume());
-                    _this.snapshot = _this.vm.stepOver(_this.snapshot);
-                    if (_this.snapshot) {
-                        requestAnimationFrame(stepOverAsync);
-                    }
-                    else {
-                        if (_this.vm.state == vm.VMState.Completed) {
-                            alert("Program complete.");
-                            _this.bus.event(new events.Stop());
-                            return;
-                        }
-                        _this.state = DebuggerState.Paused;
-                        _this.bus.event(new events.Pause());
-                        _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                    }
-                }
-            };
-            this.stepOver.click(function () {
-                _this.state = DebuggerState.Paused;
-                _this.snapshot = _this.vm.stepOver();
-                if (_this.snapshot) {
-                    stepOverAsync();
-                    return;
-                }
-                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == vm.VMState.Completed) {
-                    alert("Program complete.");
-                    _this.bus.event(new events.Stop());
-                    return;
-                }
-            });
-            this.stepInto.click(function () {
-                _this.vm.stepInto();
-                _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == vm.VMState.Completed) {
-                    alert("Program complete.");
-                    _this.bus.event(new events.Stop());
-                    return;
-                }
-            });
-            dom.find("input").attr("disabled", "true");
-            return dom[0];
-        };
-        Debugger.prototype.checkVmStopped = function () {
-            if (this.vm.state == vm.VMState.Completed) {
-                this.state = DebuggerState.Stopped;
-                alert("Program complete.");
-                this.bus.event(new events.Stop());
-                return;
-            }
-        };
-        Debugger.prototype.onEvent = function (event) {
-            var _a = this, run = _a.run, debug = _a.debug, pause = _a.pause, resume = _a.resume, stop = _a.stop, stepOver = _a.stepOver, stepInto = _a.stepInto, dom = _a.dom;
-            if (event instanceof events.SourceChanged) {
-                if (event.module) {
-                    this.lastModule = event.module;
-                    Utils_4.setElementEnabled(this.run, true);
-                    Utils_4.setElementEnabled(this.debug, true);
-                }
-                else {
-                    this.lastModule = null;
-                    Utils_4.setElementEnabled(this.run, false);
-                    Utils_4.setElementEnabled(this.debug, false);
-                }
-            }
-            else if (event instanceof events.Run) {
-                this.run.hide();
-                this.debug.hide();
-                this.pause.show();
-                this.stop.show();
-                this.stepOver.show();
-                Utils_4.setElementEnabled(this.stepOver, false);
-                this.stepInto.show();
-                Utils_4.setElementEnabled(this.stepInto, false);
-                this.stepOut.show();
-                Utils_4.setElementEnabled(this.stepOut, false);
-            }
-            else if (event instanceof events.Debug) {
-                this.run.hide();
-                this.debug.hide();
-                this.resume.show();
-                this.stop.show();
-                this.stepOver.show();
-                this.stepInto.show();
-                this.stepOut.show();
-                Utils_4.setElementEnabled(this.stepOver, true);
-                Utils_4.setElementEnabled(this.stepInto, true);
-                Utils_4.setElementEnabled(this.stepOut, true);
-            }
-            else if (event instanceof events.Pause) {
-                this.resume.show();
-                this.pause.hide();
-                Utils_4.setElementEnabled(this.stepOver, true);
-                Utils_4.setElementEnabled(this.stepInto, true);
-                Utils_4.setElementEnabled(this.stepOut, true);
-            }
-            else if (event instanceof events.Resume) {
-                this.pause.show();
-                this.resume.hide();
-                Utils_4.setElementEnabled(this.stepOver, false);
-                Utils_4.setElementEnabled(this.stepInto, false);
-                Utils_4.setElementEnabled(this.stepOut, false);
-            }
-            else if (event instanceof events.Stop) {
-                this.run.show();
-                this.debug.show();
-                this.pause.hide();
-                this.resume.hide();
-                this.stop.hide();
-                this.stepOver.hide();
-                this.stepInto.hide();
-                this.stepOut.hide();
-                Utils_4.setElementEnabled(this.stepOver, false);
-                Utils_4.setElementEnabled(this.stepInto, false);
-                Utils_4.setElementEnabled(this.stepOut, false);
-                this.locals.empty();
-                this.callstack.empty();
-                this.vmState.empty();
-            }
-            else if (event instanceof events.Step) {
-                if (this.vm && this.vm.frames.length > 0) {
-                    this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
-                }
-            }
-            this.renderState();
-        };
-        Debugger.prototype.renderState = function () {
-            var _this = this;
-            if (!this.locals)
-                return;
-            this.locals.empty();
-            this.callstack.empty();
-            this.vmState.empty();
-            if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
-                this.vm.frames.slice(0).reverse().forEach(function (frame, index) {
-                    var signature = compiler.functionSignature(frame.code.ast);
-                    var lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
-                    var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-callstack-frame\">\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    dom.text(signature + " line " + lineInfo.line);
-                    if (frame == _this.selectedFrame)
-                        dom.addClass("selected");
-                    dom.click(function () {
-                        _this.selectedFrame = frame;
-                        _this.bus.event(new events.LineChange(lineInfo.line));
-                        _this.renderState();
-                    });
-                    _this.callstack.append(dom);
-                });
-                if (this.selectedFrame) {
-                    var pc_1 = this.selectedFrame.pc;
-                    this.selectedFrame.slots.forEach(function (slot) {
-                        if (slot.value == null)
-                            return;
-                        if (pc_1 < slot.scope.startPc || pc_1 > slot.scope.endPc)
-                            return;
-                        var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
-                        dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
-                        dom.click(function () {
-                            var location = slot.symbol.name.location;
-                            _this.bus.event(new events.Select(location.start.line, location.start.column, location.end.line, location.end.column));
-                        });
-                        _this.locals.append(dom);
-                    });
-                }
-                this.renderVmState(this.vm);
-            }
-        };
-        Debugger.prototype.renderVmState = function (vm) {
-            var output = "";
-            this.vm.frames.slice(0).reverse().forEach(function (frame) {
-                output += compiler.functionSignature(frame.code.ast);
-                output += "\nlocals:\n";
-                frame.slots.forEach(function (slot, index) {
-                    output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
-                });
-                output += "\ninstructions:\n";
-                var lastLineInfoIndex = -1;
-                frame.code.instructions.forEach(function (ins, index) {
-                    var line = frame.code.lineInfos[index];
-                    if (lastLineInfoIndex != line.index) {
-                        output += "\n";
-                        lastLineInfoIndex = line.index;
-                    }
-                    output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
-                });
-                output += "\n";
-            });
-            this.vmState.html(output);
-        };
-        return Debugger;
     }(Widget_2.Widget));
-    exports.Debugger = Debugger;
+    exports.Toolbar = Toolbar;
 });
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler"], function (require, exports, Widget_3, events, compiler) {
     "use strict";
     exports.__esModule = true;
+    var CodeMirrorBreakpoint = (function () {
+        function CodeMirrorBreakpoint(doc, lineHandle) {
+            this.doc = doc;
+            this.lineHandle = lineHandle;
+        }
+        CodeMirrorBreakpoint.prototype.getLine = function () {
+            return this.doc.getLineNumber(this.lineHandle) + 1;
+        };
+        return CodeMirrorBreakpoint;
+    }());
     var DEFAULT_SOURCE = "";
     var Editor = (function (_super) {
         __extends(Editor, _super);
@@ -6944,6 +7033,9 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             _this.markers = Array();
             _this.ext = new compiler.ExternalFunctions();
             _this.justLoaded = false;
+            _this.urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+            _this.lastTimeoutHandle = 0;
+            _this.urlWidgets = {};
             _this.lastLine = -1;
             return _this;
         }
@@ -6974,6 +7066,31 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                     else {
                         _this.bus.event(new events.ProjectChanged());
                     }
+                    clearTimeout(_this.lastTimeoutHandle);
+                    _this.lastTimeoutHandle = setTimeout(function () { return _this.expandUrls(); }, 500);
+                });
+                _this.editor.on("gutterClick", function (cm, n) {
+                    var info = cm.lineInfo(n);
+                    if (!info.gutterMarkers) {
+                        cm.setGutterMarker(n, "gutter-breakpoints", _this.newBreakpointMarker());
+                        info = cm.lineInfo(n);
+                        var lineHandle = cm.getDoc().getLineHandle(n);
+                        var bp_1 = new CodeMirrorBreakpoint(cm.getDoc(), lineHandle);
+                        _this.bus.event(new events.BreakpointAdded(bp_1));
+                        info.gutterMarkers.bp = bp_1;
+                        lineHandle.on("delete", function () {
+                            _this.bus.event(new events.BreakpointRemoved(bp_1));
+                        });
+                    }
+                    else {
+                        var bp = info.gutterMarkers.bp;
+                        delete info.gutterMarkers.bp;
+                        cm.setGutterMarker(n, "gutter-breakpoints", null);
+                        _this.bus.event(new events.BreakpointRemoved(bp));
+                    }
+                });
+                _this.editor.on("delete", function (line) {
+                    alert(line);
                 });
                 _this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
                 var module = _this.compile();
@@ -6982,6 +7099,54 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             this.error = dom.find("#pb-code-editor-error");
             this.error.hide();
             return dom[0];
+        };
+        Editor.prototype.extractUrls = function (text) {
+            return text.match(this.urlRegex);
+        };
+        Editor.prototype.expandUrls = function () {
+            var _this = this;
+            Object.keys(this.urlWidgets).forEach(function (line) {
+                var widget = _this.urlWidgets[line];
+                widget["delete"] = true;
+            });
+            var lines = this.editor.getDoc().getValue().split("\n");
+            lines.forEach(function (line, i) {
+                var previous = _this.urlWidgets[line];
+                if (previous) {
+                    previous["delete"] = false;
+                    return;
+                }
+                var urls = _this.extractUrls(line);
+                if (urls == null)
+                    return;
+                var doms = new Array();
+                urls.forEach(function (url) {
+                    if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
+                        var videoId = url.substr("https://www.youtube.com/watch?v=".length);
+                        if (videoId.length > 0) {
+                            videoId = videoId.trim();
+                            doms.push($("\n\t\t\t\t\t\t\t<iframe id=\"ytplayer\" type=\"text/html\" width=\"300\" height=\"168\"\n\t\t\t\t\t\t\tsrc=\"https://www.youtube.com/embed/" + videoId + "\"\n\t\t\t\t\t\t\tframeborder=\"0\"></iframe>\n\t\t\t\t\t\t"));
+                        }
+                    }
+                    else if (url.toLowerCase().indexOf(".png") >= 0 ||
+                        url.toLowerCase().indexOf(".jpg") >= 0 ||
+                        url.toLowerCase().indexOf(".gif") >= 0) {
+                        doms.push($("\n\t\t\t\t\t\t<img src=\"" + url + "\" style=\"height: 100px;\">\n\t\t\t\t\t"));
+                    }
+                });
+                if (doms.length > 0) {
+                    var lineDom_1 = $("\n\t\t\t\t\t<div style=\"display: flex; flex-direction: row;\">\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    doms.forEach(function (dom) { return lineDom_1.append(dom); });
+                    _this.urlWidgets[line] = { widget: _this.editor.addLineWidget(i, lineDom_1[0]), line: line, "delete": false };
+                }
+            });
+            Object.keys(this.urlWidgets).forEach(function (line) {
+                var widget = _this.urlWidgets[line];
+                if (widget["delete"]) {
+                    _this.urlWidgets[line].widget.clear();
+                    delete _this.urlWidgets[line];
+                }
+            });
         };
         Editor.prototype.compile = function () {
             this.markers.forEach(function (marker) { return marker.clear(); });
@@ -7009,7 +7174,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             }
         };
         Editor.prototype.newBreakpointMarker = function () {
-            var marker = $("\n\t\t<svg height=\"15\" width=\"15\">\n\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t  </svg>\n\t\t");
+            var marker = $("\n\t\t\t<div class=\"pb-gutter-breakpoint\">\n\t\t\t\t<svg height=\"15\" width=\"15\">\n\t\t\t\t\t<circle cx=\"7\" cy=\"7\" r=\"7\" stroke-width=\"1\" fill=\"#cc0000\" />\n\t\t\t\t</svg>\n\t\t\t</div>\n\t\t");
             return marker[0];
         };
         Editor.prototype.setLine = function (line) {
@@ -7680,7 +7845,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     this.startY = this.data.y;
                     this.targetX = this.data.x + this.data.dirX;
                     this.targetY = this.data.y + this.data.dirY;
-                    console.log(this.targetX + ", " + this.targetY);
                     var tile = world.getTile(this.targetX, this.targetY);
                     if (tile && tile.kind == "wall") {
                         this.targetX = this.startX;
@@ -7692,7 +7856,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     this.startY = this.data.y;
                     this.targetX = this.data.x - this.data.dirX;
                     this.targetY = this.data.y - this.data.dirY;
-                    console.log(this.targetX + ", " + this.targetY);
                     var tile_1 = world.getTile(this.targetX, this.targetY);
                     if (tile_1 && tile_1.kind == "wall") {
                         this.targetX = this.startX;
@@ -7706,7 +7869,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     var temp = this.data.dirX;
                     this.data.dirX = -this.data.dirY;
                     this.data.dirY = temp;
-                    console.log(this.targetAngle);
                     break;
                 }
                 case RobotAction.TurnRight: {
@@ -7715,7 +7877,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     var temp = this.data.dirX;
                     this.data.dirX = this.data.dirY;
                     this.data.dirY = -temp;
-                    console.log(this.targetAngle);
                     break;
                 }
             }
@@ -8281,6 +8442,8 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                 this.loadProject(projectId);
             }
             window.onbeforeunload = function () {
+                if (window.location.host == "localhost:8001")
+                    return;
                 if (_this.unsaved) {
                     return "You have unsaved changes. Are you sure you want to leave?";
                 }

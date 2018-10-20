@@ -1,5 +1,6 @@
 import { VariableDecl, Parameter, FunctionDecl, ExternalFunction, ExternalFunctions, NothingType } from "./Compiler";
 import { assertNever } from "../Utils";
+import { Breakpoint } from "../widgets/Debugger";
 
 type Value = boolean | string | number;
 
@@ -101,11 +102,12 @@ export interface LineInfo {
 }
 
 export interface FunctionCode {
-	ast: FunctionDecl
-	locals: Array<VariableDecl | Parameter>
+	ast: FunctionDecl,
+	locals: Array<VariableDecl | Parameter>,
 	numParameters: number,
-	instructions: Array<Instruction>
-	lineInfos: Array<LineInfo>
+	instructions: Array<Instruction>,
+	lineInfos: Array<LineInfo>,
+	breakpoints: Array<Breakpoint>;
 	index: number
 }
 
@@ -169,10 +171,17 @@ export class VirtualMachine {
 
 		while(!this.asyncPromise && numInstructions-- > 0) {
 			this.step();
+			if (this.hitBreakpoint()) break;
 		}
 
 		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
+	}
+
+	hitBreakpoint() {
+		if (this.frames.length == 0) return false;
+		let frame = this.frames[this.frames.length - 1];
+		let pc = frame.pc
+		return frame.code.breakpoints[pc] != null;
 	}
 
 
@@ -221,6 +230,7 @@ export class VirtualMachine {
 				return null;
 
 			this.step();
+			if (this.hitBreakpoint()) break;
 		}
 	}
 
@@ -252,8 +262,8 @@ export class VirtualMachine {
 			if (lineInfoIndex != currLineInfoIndex) return;
 			if (currFrameIndex != frameIndex) return;
 
-
 			this.step();
+			if (this.hitBreakpoint()) break;
 		}
 
 		if (this.frames.length == 0) this.state = VMState.Completed;

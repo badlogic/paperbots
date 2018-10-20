@@ -118,7 +118,6 @@ export class Input {
 					for (let i = 0; i < listeners.length; i++) {
 						listeners[i].up(x, y);
 					}
-					console.log("End " + x + ", " + y);
 					this.lastX = x;
 					this.lastY = y;
 					this.buttonDown = false;
@@ -143,7 +142,6 @@ export class Input {
 					for (let i = 0; i < listeners.length; i++) {
 						listeners[i].dragged(x, y);
 					}
-					console.log("Drag " + x + ", " + y);
 					this.lastX = this.currTouch.x = x;
 					this.lastY = this.currTouch.y = y;
 					break;
@@ -180,6 +178,10 @@ export interface InputListener {
 	up(x: number, y: number): void;
 	moved(x: number, y: number): void;
 	dragged(x: number, y: number): void;
+}
+
+export interface Map<T> {
+	[name: string] : T;
 }
 
 export class TimeKeeper {

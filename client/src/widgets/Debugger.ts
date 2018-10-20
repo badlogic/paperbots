@@ -10,6 +10,10 @@ export enum DebuggerState {
 	Paused,
 }
 
+export interface Breakpoint {
+	getLine(): number;
+}
+
 export class Debugger extends Widget {
 	private module: compiler.Module;
 	private vm: vm.VirtualMachine;
@@ -33,6 +37,7 @@ export class Debugger extends Widget {
 	private selectedFrame: vm.Frame = null;
 	private state = DebuggerState.Stopped;
 	private snapshot: vm.StepOverSnapshot = null;
+	private breakpoints: Breakpoint[] = [];
 
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
@@ -200,6 +205,41 @@ export class Debugger extends Widget {
 			alert("Program complete.");
 			this.bus.event(new events.Stop())
 			return;
+		} else {
+			if (this.vm.hitBreakpoint()) {
+				this.state = DebuggerState.Paused;
+				this.bus.event(new events.Pause());
+				this.bus.event(new events.Step(this.vm.getLineNumber()));
+			}
+		}
+	}
+
+	setBreakpoints () {
+		if (this.vm) {
+			let functions = this.vm.functions;
+			for (var i = 0; i < functions.length; i++) {
+				let func = functions[i];
+				func.breakpoints.length = 0;
+				func.breakpoints.length = func.instructions.length;
+			}
+			this.breakpoints.forEach(bp => {
+				let line = bp.getLine();
+
+				let functions = this.vm.functions;
+				for (var i = 0; i < functions.length; i++) {
+					let func = functions[i];
+					if (func.ast.name.value == "$main" || (line >= func.ast.location.start.line && line <= func.ast.location.end.line)) {
+						let lineInfos = func.lineInfos;
+						for (var j = 0; j < lineInfos.length; j++) {
+							if (lineInfos[j].line == bp.getLine()) {
+								func.breakpoints[j] = bp;
+								return;
+							}
+						}
+					}
+				}
+				console.log("Couldn't find instruction for breakpoint at line " + bp.getLine());
+			});
 		}
 	}
 
@@ -228,7 +268,7 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepInto, false);
 			this.stepOut.show();
 			setElementEnabled(this.stepOut, false);
-
+			this.setBreakpoints();
 		} else if (event instanceof events.Debug) {
 			this.run.hide();
 			this.debug.hide();
@@ -240,6 +280,7 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepOver, true);
 			setElementEnabled(this.stepInto, true);
 			setElementEnabled(this.stepOut, true);
+			this.setBreakpoints();
 		} else if (event instanceof events.Pause) {
 			this.resume.show();
 			this.pause.hide();
@@ -252,6 +293,7 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepOver, false);
 			setElementEnabled(this.stepInto, false);
 			setElementEnabled(this.stepOut, false);
+			this.setBreakpoints();
 		} else if (event instanceof events.Stop) {
 			this.run.show();
 			this.debug.show();
@@ -271,6 +313,19 @@ export class Debugger extends Widget {
 			if (this.vm && this.vm.frames.length > 0) {
 				this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];
 			}
+			this.setBreakpoints();
+		} else if (event instanceof events.BreakpointAdded) {
+			this.breakpoints.push(event.breakpoint);
+			this.setBreakpoints();
+		} else if (event instanceof events.BreakpointRemoved) {
+			let idx = -1;
+			this.breakpoints.forEach((bp, index) => {
+				if (bp === event.breakpoint) {
+					idx = index;
+				}
+			});
+			this.breakpoints.splice(idx, 1);
+			this.setBreakpoints();
 		}
 		this.renderState();
 	}

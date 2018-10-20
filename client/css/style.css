@@ -363,6 +363,10 @@ table, th, td {
 	width: 16px;
 }
 
+.pb-gutter-breakpoint {
+	padding-left: 5px;
+}
+
 .highlighted-line {
 	background:lightcoral;
 }

@@ -1,5 +1,6 @@
 import * as compiler from "../language/Compiler"
 import { Project } from "../Api";
+import { Breakpoint } from "./Debugger";
 
 export class SourceChanged { constructor(public source: string, public module: compiler.Module | null) {}}
 export class Run { }
@@ -11,6 +12,8 @@ export class Step { constructor(public line: number) {} }
 export class LineChange { constructor(public line: number) {} }
 export class Select { constructor(public startLine: number, public startColumn: number, public endLine: number, public endColumn: number) {} }
 export class AnnounceExternalFunctions { constructor(public functions: compiler.ExternalFunctions) {} }
+export class BreakpointAdded { constructor(public breakpoint: Breakpoint) {} }
+export class BreakpointRemoved { constructor(public breakpoint: Breakpoint) {} }
 
 export class LoggedIn { };
 export class LoggedOut { };

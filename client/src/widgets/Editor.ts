@@ -1,9 +1,19 @@
-import { TextMarker } from "codemirror";
+import { TextMarker, LineWidget, LineHandle } from "codemirror";
 import { Widget } from "./Widget"
 import * as events from "./Events"
 import * as compiler from "../language/Compiler"
+import { Map } from "../Utils"
+import { Breakpoint } from "./Debugger"
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
+
+class CodeMirrorBreakpoint implements Breakpoint {
+	constructor(public doc: CodeMirror.Doc, public lineHandle: LineHandle) {}
+
+	getLine(): number {
+		return this.doc.getLineNumber(this.lineHandle) + 1;
+	}
+}
 
 // const DEFAULT_SOURCE = `
 // fun forwardUntilNumber (n: number)
@@ -74,6 +84,32 @@ export class Editor extends Widget {
 				} else {
 					this.bus.event(new events.ProjectChanged());
 				}
+				clearTimeout(this.lastTimeoutHandle);
+				this.lastTimeoutHandle = setTimeout(() => this.expandUrls(), 500);
+			});
+
+			this.editor.on("gutterClick", (cm, n) => {
+				var info = cm.lineInfo(n);
+				if (!info.gutterMarkers) {
+					cm.setGutterMarker(n, "gutter-breakpoints", this.newBreakpointMarker());
+					info = cm.lineInfo(n);
+					let lineHandle = cm.getDoc().getLineHandle(n);
+					let bp = new CodeMirrorBreakpoint(cm.getDoc(), lineHandle);
+					this.bus.event(new events.BreakpointAdded(bp));
+					info.gutterMarkers.bp = bp;
+					(lineHandle as any).on("delete", () => {
+						this.bus.event(new events.BreakpointRemoved(bp));
+					});
+				} else {
+					let bp = info.gutterMarkers.bp;
+					delete info.gutterMarkers.bp;
+					cm.setGutterMarker(n, "gutter-breakpoints", null);
+					this.bus.event(new events.BreakpointRemoved(bp));
+				}
+			});
+
+			this.editor.on("delete", (line) => {
+				alert(line);
 			});
 
 			this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
@@ -84,6 +120,67 @@ export class Editor extends Widget {
 		this.error = dom.find("#pb-code-editor-error");
 		this.error.hide();
 		return dom[0];
+	}
+
+	urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+	extractUrls (text: string): string[] {
+		return text.match(this.urlRegex);
+	}
+	lastTimeoutHandle = 0;
+	urlWidgets: Map<{ widget: LineWidget, line: string, delete: boolean }> = { };
+	expandUrls() {
+		Object.keys(this.urlWidgets).forEach(line => {
+			let widget = this.urlWidgets[line];
+			widget.delete = true;
+		});
+		let lines = this.editor.getDoc().getValue().split("\n");
+		lines.forEach((line, i) => {
+			let previous = this.urlWidgets[line];
+			if (previous) {
+				previous.delete = false;
+				return;
+			}
+
+			let urls = this.extractUrls(line);
+			if (urls == null) return;
+			let doms = new Array<JQuery>();
+			urls.forEach(url => {
+				if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
+					let videoId = url.substr("https://www.youtube.com/watch?v=".length);
+					if (videoId.length > 0) {
+						videoId = videoId.trim();
+						doms.push($(/*html*/`
+							<iframe id="ytplayer" type="text/html" width="300" height="168"
+							src="https://www.youtube.com/embed/${videoId}"
+							frameborder="0"></iframe>
+						`));
+					}
+				} else if (url.toLowerCase().indexOf(".png") >= 0 ||
+						   url.toLowerCase().indexOf(".jpg") >= 0 ||
+						   url.toLowerCase().indexOf(".gif") >= 0) {
+					doms.push($(/*html*/`
+						<img src="${url}" style="height: 100px;">
+					`));
+				}
+			});
+
+			if (doms.length > 0) {
+				let lineDom = $(/*html*/`
+					<div style="display: flex; flex-direction: row;">
+					</div>
+				`);
+				doms.forEach(dom => lineDom.append(dom));
+				this.urlWidgets[line] = { widget: this.editor.addLineWidget(i, lineDom[0]), line: line, delete: false };
+			}
+		});
+
+		Object.keys(this.urlWidgets).forEach(line => {
+			let widget = this.urlWidgets[line];
+			if (widget.delete) {
+				this.urlWidgets[line].widget.clear()
+				delete this.urlWidgets[line];
+			}
+		});
 	}
 
 	compile () {
@@ -112,10 +209,12 @@ export class Editor extends Widget {
 	}
 
 	newBreakpointMarker () {
-		let marker = $(`
-		<svg height="15" width="15">
-			<circle cx="7" cy="7" r="7" stroke-width="1" fill="#cc0000" />
-		  </svg>
+		let marker = $(/*html*/`
+			<div class="pb-gutter-breakpoint">
+				<svg height="15" width="15">
+					<circle cx="7" cy="7" r="7" stroke-width="1" fill="#cc0000" />
+				</svg>
+			</div>
 		`);
 		return marker[0];
 	}

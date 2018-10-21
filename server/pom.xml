@@ -71,9 +71,9 @@
 		<java-mail.version>1.6.1</java-mail.version>
 		<jdbi.version>3.3.0</jdbi.version>
 		<junit.version>4.12</junit.version>
-		<flyway.version>5.2.0</flyway.version>
-		<testcontainers.version>1.9.1</testcontainers.version>
-		<testcontainers-mysql.version>1.9.1</testcontainers-mysql.version>
+		<flyway.version>5.2.0</flyway.version>	
+		<jackson.version>2.9.5</jackson.version>	
+		<commons-validator.version>1.6</commons-validator.version>
 	</properties>
 
 	<dependencies>
@@ -128,13 +128,13 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>2.9.4</version>			
+			<version>${jackson.version}</version>			
 		</dependency>
 		
 		<dependency>
 		    <groupId>commons-validator</groupId>
 		    <artifactId>commons-validator</artifactId>
-		    <version>1.6</version>
+		    <version>${commons-validator.version}</version>
 		</dependency>
 
 		<dependency>

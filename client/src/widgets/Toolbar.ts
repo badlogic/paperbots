@@ -33,11 +33,11 @@ export class Toolbar extends Widget {
 		let dom = $(/*html*/`
 			<div id="pb-toolbar">
 				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
+				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i>New</div>
+				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
 				<input id="pb-toolbar-title" type="text" value="Untitled project">
 				<div id="pb-toolbar-by" class="pb-toolbar-button"></div>
 				<div style="flex: 1;"></div>
-				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i>New</div>
-				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
 				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
 				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i>Sign up</div>
 				<div id="pb-toolbar-user" class="pb-toolbar-button dropdown">
@@ -119,15 +119,15 @@ export class Toolbar extends Widget {
 			this.by.hide();
 			this.save.hide();
 			this.title.hide();
-
-			// CMD + s and CTRL + s for saving
-			document.addEventListener("keydown", (e) => {
-				if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-					e.preventDefault();
-					this.saveProject()
-				}
-			}, false);
 		}
+
+		// CMD + s and CTRL + s for saving
+		document.addEventListener("keydown", (e) => {
+			if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				this.saveProject()
+			}
+		}, false);
 
 		return dom[0];
 	}

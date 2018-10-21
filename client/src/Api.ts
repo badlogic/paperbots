@@ -114,14 +114,14 @@ export class Api {
 	}
 
 	public static getProjectId() {
-		return this.getUrlParameter("projectId");
+		return this.getUrlParameter("id");
 	}
 
 	public static getUserId() {
-		return this.getUrlParameter("userId");
+		return this.getUrlParameter("id");
 	}
 
-	static getUrlParameter(name) {
+	public static getUrlParameter(name) {
 		name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
 		var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
 		var results = regex.exec(location.search);
@@ -134,10 +134,10 @@ export class Api {
 	}
 
 	static getUserUrl(name: string) {
-		return "/user.html?userId=" + name;
+		return "/user.html?id=" + name;
 	}
 
 	static getProjectUrl(name: string) {
-		return "/?projectId=" + name;
+		return "/project.html?id=" + name;
 	}
 }

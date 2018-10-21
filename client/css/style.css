@@ -21,6 +21,12 @@ table, th, td {
 	border: none;
 }
 
+#pb-index-page {
+	width: 100%;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
 
 #pb-project-page {
 	width: 100%;

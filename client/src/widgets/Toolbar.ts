@@ -7,7 +7,8 @@ import { ProjectPage } from "../ProjectPage";
 
 export enum ToolbarMode {
 	ProjectPage,
-	UserPage
+	UserPage,
+	IndexPage
 }
 
 export class Toolbar extends Widget {
@@ -55,7 +56,7 @@ export class Toolbar extends Widget {
 
 		this.new = dom.find("#pb-toolbar-new");
 		this.new.click(() => {
-			(window.location as any) = "/";
+			(window.location as any) = "/project.html";
 		});
 
 		this.save = dom.find("#pb-toolbar-save");
@@ -119,15 +120,19 @@ export class Toolbar extends Widget {
 			this.by.hide();
 			this.save.hide();
 			this.title.hide();
+		} else if (this.mode == ToolbarMode.IndexPage) {
+			this.by.hide();
+			this.save.hide();
+			this.title.hide();
+		} else {
+			// CMD + s and CTRL + s for saving
+			document.addEventListener("keydown", (e) => {
+				if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+					e.preventDefault();
+					this.saveProject()
+				}
+			}, false);
 		}
-
-		// CMD + s and CTRL + s for saving
-		document.addEventListener("keydown", (e) => {
-			if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-				e.preventDefault();
-				this.saveProject()
-			}
-		}, false);
 
 		return dom[0];
 	}

@@ -114,7 +114,9 @@ export class ProjectPage implements EventListener {
 		}, (error) => {
 			dialog.hide();
 			if (error.error == "ProjectDoesNotExist") {
-				Dialog.alert("Sorry", $(`<p>The project with id ${id} does not exist.</p>`));
+				Dialog.alert("Sorry", $(`<p>The project with id ${id} does not exist.</p>`)).buttons[0].click(() => {
+					(window.location as any) = "/";
+				});
 			} else {
 				Dialog.alert("Sorry", $(`<p>Couldn't load project ${id}.</p>`));
 			}

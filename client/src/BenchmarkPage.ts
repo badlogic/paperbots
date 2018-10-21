@@ -1,5 +1,5 @@
 import { compile, ExternalFunctions, CompilerError, Module, functionSignature, FunctionDecl } from "./language/Compiler";
-import { VirtualMachine, VMState } from "./language/VirtualMachine";
+import { VirtualMachine, VMState, OptimizedVirtualMachine } from "./language/VirtualMachine";
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
 
@@ -46,7 +46,7 @@ fib(30)
 				try {
 					module = compile(editor.getValue(), new ExternalFunctions());
 				} catch (e) {
-					alert("Error in " + title + ": " + (e as CompilerError).message);
+					// alert("Error in " + title + ": " + (e as CompilerError).message);
 					return;
 				}
 				dom.find(".pb-benchmark-vm-code").html(BenchmarkPage.renderModule(module));
@@ -65,12 +65,13 @@ fib(30)
 
 			let result = dom.find(".pb-benchmark-result");
 			result.text("Benchmark running...");
-			let vm = new VirtualMachine(module.code, module.externalFunctions);
+			let vm = new OptimizedVirtualMachine(module.code, module.externalFunctions);
 			let start = performance.now();
 			for (var runs = 0; runs < 5; runs++) {
 				while (vm.state != VMState.Completed) {
-					vm.run(10000);
+					vm.fastRun(10000);
 				}
+				vm.restart();
 			}
 			let total = (performance.now() - start) / 1000;
 			let perRun = total / 5;

@@ -5573,9 +5573,12 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
             this.state = VMState.Running;
             this.frames = Array();
             this.stack = Array();
+            this.restart();
+        }
+        VirtualMachine.prototype.restart = function () {
             this.frames.push(new Frame(this.functions[0]));
             this.state = VMState.Running;
-        }
+        };
         VirtualMachine.prototype.run = function (numInstructions) {
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
@@ -5592,8 +5595,6 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
             }
             while (!this.asyncPromise && numInstructions-- > 0) {
                 this.step();
-                if (this.hitBreakpoint())
-                    break;
             }
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
@@ -5787,6 +5788,18 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     stack.push(left + right);
                     break;
                 }
+                case "addOp": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    stack.push(left + right);
+                    break;
+                }
+                case "subOp": {
+                    var right = stack.pop();
+                    var left = stack.pop();
+                    stack.push(left - right);
+                    break;
+                }
                 case "binaryOp": {
                     var right = stack.pop();
                     var left = stack.pop();
@@ -5840,6 +5853,119 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         return VirtualMachine;
     }());
     exports.VirtualMachine = VirtualMachine;
+    var OptimizedVirtualMachine = (function () {
+        function OptimizedVirtualMachine(functions, externalFunctions) {
+            this.functions = functions;
+            this.externalFunctions = externalFunctions;
+            this.state = VMState.Running;
+            this.frames = Array();
+            this.stack = Array(1024 * 1024);
+            this.restart();
+        }
+        OptimizedVirtualMachine.prototype.restart = function () {
+            this.frames.push(new Frame(this.functions[0]));
+            this.state = VMState.Running;
+            this.sp = -1;
+        };
+        OptimizedVirtualMachine.prototype.fastRun = function (numInstructions) {
+            var _a = this, frames = _a.frames, stack = _a.stack, functions = _a.functions, state = _a.state, externalFunctions = _a.externalFunctions;
+            if (frames.length == 0)
+                state = VMState.Completed;
+            if (state == VMState.Completed)
+                return;
+            if (this.asyncPromise) {
+                if (this.asyncPromise.completed) {
+                    if (this.asyncFun.returnType != Compiler_1.NothingType) {
+                        stack[++this.sp] = this.asyncPromise.value;
+                    }
+                    this.asyncPromise = null;
+                    this.asyncFun = null;
+                }
+            }
+            while (!this.asyncPromise && numInstructions-- > 0) {
+                if (frames.length == 0) {
+                    this.state = VMState.Completed;
+                    return;
+                }
+                var frame = frames[frames.length - 1];
+                var ins = frame.code.instructions[frame.pc];
+                frame.pc++;
+                switch (ins.kind) {
+                    case "pop":
+                        this.sp--;
+                        break;
+                    case "push":
+                        stack[++this.sp] = ins.value;
+                        break;
+                    case "load":
+                        stack[++this.sp] = frame.slots[ins.slotIndex].value;
+                        break;
+                    case "jump":
+                        frame.pc = ins.offset;
+                        break;
+                    case "jumpIfFalse":
+                        if (!stack[this.sp--])
+                            frame.pc = ins.offset;
+                        break;
+                    case "call": {
+                        var fun = functions[ins.functionIndex];
+                        var newFrame = new Frame(fun);
+                        newFrame.slots.length = fun.locals.length;
+                        for (var i = fun.numParameters - 1; i >= 0; i--) {
+                            newFrame.slots[i].value = stack[this.sp--];
+                        }
+                        frames.push(newFrame);
+                        break;
+                    }
+                    case "callExt": {
+                        var fun = externalFunctions.functions[ins.functionIndex];
+                        var extArgs = new Array(fun.args.length);
+                        for (var i = extArgs.length - 1; i >= 0; i--) {
+                            extArgs[i] = stack[this.sp--];
+                        }
+                        var result = fun.fun.apply(fun.fun, extArgs);
+                        if (fun.async) {
+                            this.asyncFun = fun;
+                            this.asyncPromise = result;
+                        }
+                        else {
+                            if (fun.returnType != Compiler_1.NothingType) {
+                                stack[++this.sp] = result;
+                            }
+                        }
+                        break;
+                    }
+                    case "return":
+                        frames.pop();
+                        break;
+                    case "addOp": {
+                        var right = stack[this.sp--];
+                        var left = stack[this.sp--];
+                        stack.push(left + right);
+                        break;
+                    }
+                    case "subOp": {
+                        var right = stack[this.sp--];
+                        var left = stack[this.sp--];
+                        stack.push(left - right);
+                        break;
+                    }
+                    case "binaryOp": {
+                        var right = stack[this.sp--];
+                        var left = stack[this.sp--];
+                        stack.push(left < right);
+                        break;
+                    }
+                    default:
+                        Utils_2.assertNever(ins);
+                }
+            }
+            if (this.frames.length == 0)
+                this.state = VMState.Completed;
+        };
+        return OptimizedVirtualMachine;
+    }());
+    exports.OptimizedVirtualMachine = OptimizedVirtualMachine;
 });
 define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], function (require, exports, Parser_1, Utils_3) {
     "use strict";
@@ -6476,6 +6602,10 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 emitAstNode(node.right, context, false);
                 if (node.operator == "..")
                     instructions.push({ kind: "stringConcat" });
+                else if (node.operator == "+")
+                    instructions.push({ kind: "addOp" });
+                else if (node.operator == "-")
+                    instructions.push({ kind: "subOp" });
                 else
                     instructions.push({ kind: "binaryOp", operator: node.operator });
                 if (isStatement)
@@ -6656,7 +6786,6 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                         module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctions());
                     }
                     catch (e) {
-                        alert("Error in " + title + ": " + e.message);
                         return;
                     }
                     dom.find(".pb-benchmark-vm-code").html(BenchmarkPage.renderModule(module));
@@ -6674,12 +6803,13 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                 }
                 var result = dom.find(".pb-benchmark-result");
                 result.text("Benchmark running...");
-                var vm = new VirtualMachine_1.VirtualMachine(module.code, module.externalFunctions);
+                var vm = new VirtualMachine_1.OptimizedVirtualMachine(module.code, module.externalFunctions);
                 var start = performance.now();
                 for (var runs = 0; runs < 5; runs++) {
                     while (vm.state != VirtualMachine_1.VMState.Completed) {
-                        vm.run(10000);
+                        vm.fastRun(10000);
                     }
+                    vm.restart();
                 }
                 var total = (performance.now() - start) / 1000;
                 var perRun = total / 5;

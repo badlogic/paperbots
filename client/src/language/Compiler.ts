@@ -912,6 +912,8 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			emitAstNode(node.left as AstNode, context, false);
 			emitAstNode(node.right as AstNode, context, false);
 			if (node.operator == "..") instructions.push({kind: "stringConcat" });
+			else if (node.operator == "+") instructions.push({kind: "addOp"});
+			else if (node.operator == "-") instructions.push({kind: "subOp"});
 			else instructions.push({kind: "binaryOp", operator: node.operator});
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;

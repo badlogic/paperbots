@@ -17,6 +17,14 @@ export interface StringConcatOpIns {
 	kind: "stringConcat"
 }
 
+export interface AddOpIns {
+	kind: "addOp"
+}
+
+export interface SubOpIns {
+	kind: "subOp"
+}
+
 export interface BinaryOpIns {
 	kind: "binaryOp"
 	operator: string
@@ -73,6 +81,8 @@ export interface DupIns {
 export type Instruction =
 		PushIns
 	|	PopIns
+	|	AddOpIns
+	|	SubOpIns
 	|	BinaryOpIns
 	|	StringConcatOpIns
 	|	UnaryOpIns
@@ -151,6 +161,10 @@ export class VirtualMachine {
 	asyncPromise: AsyncPromise<any>;
 
 	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
+		this.restart();
+	}
+
+	restart () {
 		this.frames.push(new Frame(this.functions[0]));
 		this.state = VMState.Running;
 	}
@@ -171,7 +185,7 @@ export class VirtualMachine {
 
 		while(!this.asyncPromise && numInstructions-- > 0) {
 			this.step();
-			if (this.hitBreakpoint()) break;
+			// if (this.hitBreakpoint()) break;
 		}
 
 		if (this.frames.length == 0) this.state = VMState.Completed;
@@ -368,6 +382,18 @@ export class VirtualMachine {
 				stack.push((left as string) + (right as string));
 				break;
 			}
+			case "addOp": {
+				let right = stack.pop();
+				let left = stack.pop();
+				stack.push((left as number) + (right as number));
+				break;
+			}
+			case "subOp": {
+				let right = stack.pop();
+				let left = stack.pop();
+				stack.push((left as number) - (right as number));
+				break;
+			}
 			case "binaryOp": {
 				let right = stack.pop();
 				let left = stack.pop();
@@ -419,5 +445,122 @@ export class VirtualMachine {
 			default:
 				assertNever(ins);
 		}
+	}
+}
+
+export class OptimizedVirtualMachine {
+	state = VMState.Running;
+	frames = Array<Frame>();
+	stack = Array<Value>(1024 * 1024);
+	sp: number;
+	asyncFun: ExternalFunction;
+	asyncPromise: AsyncPromise<any>;
+
+	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
+		this.restart();
+	}
+
+	restart () {
+		this.frames.push(new Frame(this.functions[0]));
+		this.state = VMState.Running;
+		this.sp = -1;
+	}
+
+	fastRun(numInstructions: number) {
+		let {frames, stack, functions, state, externalFunctions} = this;
+
+		if (frames.length == 0) state = VMState.Completed;
+		if (state == VMState.Completed) return;
+
+		if (this.asyncPromise) {
+			if (this.asyncPromise.completed) {
+				if (this.asyncFun.returnType != NothingType) {
+					stack[++this.sp] = this.asyncPromise.value;
+				}
+				this.asyncPromise = null;
+				this.asyncFun = null;
+			}
+		}
+
+
+		while(!this.asyncPromise && numInstructions-- > 0) {
+			if (frames.length == 0) {
+				this.state = VMState.Completed;
+				return;
+			}
+
+			let frame = frames[frames.length - 1];
+			let ins = frame.code.instructions[frame.pc];
+			frame.pc++;
+			switch(ins.kind) {
+				case "pop":
+					this.sp--;
+					break;
+				case "push":
+					stack[++this.sp] = ins.value;
+					break;
+				case "load":
+					stack[++this.sp] = frame.slots[ins.slotIndex].value;
+					break;
+				case "jump":
+					frame.pc = ins.offset;
+					break;
+				case "jumpIfFalse":
+					if(!stack[this.sp--]) frame.pc = ins.offset;
+					break;
+				case "call": {
+					let fun = functions[ins.functionIndex];
+					let newFrame = new Frame(fun);
+					newFrame.slots.length = fun.locals.length;
+					for (var i = fun.numParameters - 1; i >= 0 ; i--) {
+						newFrame.slots[i].value = stack[this.sp--];
+					}
+					frames.push(newFrame);
+					break;
+				}
+				case "callExt": {
+					let fun = externalFunctions.functions[ins.functionIndex];
+					let extArgs = new Array(fun.args.length);
+					for (var i = extArgs.length - 1; i >= 0 ; i--) {
+						extArgs[i] = stack[this.sp--]
+					}
+					let result = fun.fun.apply(fun.fun, extArgs);
+					if (fun.async) {
+						this.asyncFun = fun;
+						this.asyncPromise = result as AsyncPromise<any>;
+					} else {
+						if (fun.returnType != NothingType) {
+							stack[++this.sp] = result;
+						}
+					}
+					break;
+				}
+				case "return":
+					frames.pop();
+					break
+				case "addOp": {
+					let right = stack[this.sp--];
+					let left = stack[this.sp--];
+					stack.push((left as number) + (right as number));
+					break;
+				}
+				case "subOp": {
+					let right = stack[this.sp--];
+					let left = stack[this.sp--];
+					stack.push((left as number) - (right as number));
+					break;
+				}
+				case "binaryOp": {
+					let right = stack[this.sp--];
+					let left = stack[this.sp--];
+					stack.push((left as number) < (right as number));
+					break;
+				}
+				default:
+					assertNever(ins);
+			}
+		}
+
+		if (this.frames.length == 0) this.state = VMState.Completed;
 	}
 }

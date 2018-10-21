@@ -379,14 +379,14 @@ export class RobotWorld extends Widget {
 			this.world.robot.moveDuration = 1 / speed;
 		});
 		ext.addFunction("getTurningSpeed", [], "number", false, () => {
-			return this.world.robot.turnDuration;
+			return 90 / this.world.robot.turnDuration;
 		});
-		ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("seconds", "number")], "nothing", false, (speed) => {
-			if (speed < 0) {
+		ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("degrees", "number")], "nothing", false, (degrees) => {
+			if (degrees < 0) {
 				alert("The robot's turning speed must be >= 0.");
 				return;
 			}
-			this.world.robot.turnDuration = speed;
+			this.world.robot.turnDuration = 1 / degrees * 90;
 		});
 		ext.addFunction("buildWall", [], "nothing", true, (speed) => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;

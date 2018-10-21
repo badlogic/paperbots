@@ -136,19 +136,19 @@ const DOCS: DocCategory[] = [
 					desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
 				},
 				{
-					name: "<code>setSpeed(speed: number)</code>",
+					name: "<code>setSpeed(cellsPerSecond: number)</code>",
 					anchor: "robot-set-speed",
 					desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
 				},
 				{
 					name: "<code>getTurningSpeed(): number</code>",
 					anchor: "robot-get-turning-speed",
-					desc: "Returns how long it takes the robot to turn by 90 degrees in second."
+					desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
 				},
 				{
-					name: "<code>setTurningSpeed(seconds: number)</code>",
+					name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
 					anchor: "robot-set-turning-speed",
-					desc: "Set how long it takes the robot to turn by 90 degrees in seconds. The number must be >= <code>0</code>. The <code>seconds</code> can be a decimal number. E.g. <code>0.5</code> means the robot turns by 90 degrees in half a second."
+					desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
 				}
 			],
 			subCategories: []

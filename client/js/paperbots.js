@@ -6821,7 +6821,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i>New</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i>New</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
@@ -6879,13 +6879,13 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.by.hide();
                 this.save.hide();
                 this.title.hide();
-                document.addEventListener("keydown", function (e) {
-                    if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-                        e.preventDefault();
-                        _this.saveProject();
-                    }
-                }, false);
             }
+            document.addEventListener("keydown", function (e) {
+                if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+                    e.preventDefault();
+                    _this.saveProject();
+                }
+            }, false);
             return dom[0];
         };
         Toolbar.prototype.setupLoginAndUser = function () {
@@ -7707,14 +7707,14 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.robot.moveDuration = 1 / speed;
             });
             ext.addFunction("getTurningSpeed", [], "number", false, function () {
-                return _this.world.robot.turnDuration;
+                return 90 / _this.world.robot.turnDuration;
             });
-            ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("seconds", "number")], "nothing", false, function (speed) {
-                if (speed < 0) {
+            ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("degrees", "number")], "nothing", false, function (degrees) {
+                if (degrees < 0) {
                     alert("The robot's turning speed must be >= 0.");
                     return;
                 }
-                _this.world.robot.turnDuration = speed;
+                _this.world.robot.turnDuration = 1 / degrees * 90;
             });
             ext.addFunction("buildWall", [], "nothing", true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
@@ -8339,19 +8339,19 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
                             desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
                         },
                         {
-                            name: "<code>setSpeed(speed: number)</code>",
+                            name: "<code>setSpeed(cellsPerSecond: number)</code>",
                             anchor: "robot-set-speed",
                             desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
                         },
                         {
                             name: "<code>getTurningSpeed(): number</code>",
                             anchor: "robot-get-turning-speed",
-                            desc: "Returns how long it takes the robot to turn by 90 degrees in second."
+                            desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
                         },
                         {
-                            name: "<code>setTurningSpeed(seconds: number)</code>",
+                            name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
                             anchor: "robot-set-turning-speed",
-                            desc: "Set how long it takes the robot to turn by 90 degrees in seconds. The number must be >= <code>0</code>. The <code>seconds</code> can be a decimal number. E.g. <code>0.5</code> means the robot turns by 90 degrees in half a second."
+                            desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
                         }
                     ],
                     subCategories: []

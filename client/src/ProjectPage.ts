@@ -1,6 +1,6 @@
 import {AssetManager, Input, TimeKeeper, InputListener} from "./Utils";
 import { EventBus, EventListener, Event, ProjectLoaded, SourceChanged, ProjectSaved, ProjectChanged } from "./widgets/Events"
-import { Toolbar } from "./widgets/Toolbar";
+import { Toolbar, ToolbarMode } from "./widgets/Toolbar";
 import { Debugger } from "./widgets/Debugger";
 import { Editor } from "./widgets/Editor"
 import { RobotWorld } from "./widgets/RobotWorld";
@@ -11,9 +11,9 @@ import { Description } from "./widgets/Description";
 import { Api } from "./Api";
 import { Dialog } from "./widgets/Dialog";
 
-export class Paperbots implements EventListener {
+export class ProjectPage implements EventListener {
 	private eventBus = new EventBus();
-	private toolbar = new Toolbar(this.eventBus);
+	private toolbar = new Toolbar(this.eventBus, ToolbarMode.ProjectPage);
 	private editor = new Editor(this.eventBus);
 	private debugger = new Debugger(this.eventBus);
 	private playground = new RobotWorld(this.eventBus);
@@ -33,7 +33,7 @@ export class Paperbots implements EventListener {
 
 		// Render the components
 		let dom = $(/*html*/ `
-			<div id="pb-main">
+			<div id="pb-project-page">
 			</div>
 		`);
 

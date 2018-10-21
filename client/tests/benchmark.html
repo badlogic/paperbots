@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Paperbots</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="/js/reload.js"></script>
+	<script src="/js/jquery.js"></script>
+	<script src="/js/codemirror.js"></script>
+	<script src="/js/paperbots-cm.js"></script>
+	<script src="/js/require.js"></script>
+	<script src="/js/paperbots.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="/css/codemirror.css" />
+	<link rel="stylesheet" type="text/css" href="/css/monokai.css" />
+	<link rel="stylesheet" type="text/css" href="/css/fontawesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="/css/style.css" />
+</head>
+<body>
+<h1>VM Benchmarks</h1>
+	<div id="pb-benchmarks"></div>
+	<script>
+	require(["BenchmarkPage"], function(module) {
+		var paperbots = module;
+		var editor = new paperbots.BenchmarkPage($("#pb-benchmarks"));
+	});
+	</script>
+</body>
+</html>

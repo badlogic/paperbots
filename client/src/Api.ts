@@ -117,6 +117,10 @@ export class Api {
 		return this.getUrlParameter("projectId");
 	}
 
+	public static getUserId() {
+		return this.getUrlParameter("userId");
+	}
+
 	static getUrlParameter(name) {
 		name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
 		var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -130,7 +134,7 @@ export class Api {
 	}
 
 	static getUserUrl(name: string) {
-		return "/user.html?user=" + name;
+		return "/user.html?userId=" + name;
 	}
 
 	static getProjectUrl(name: string) {

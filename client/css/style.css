@@ -19,9 +19,17 @@ body {
 
 table, th, td {
 	border: none;
- }
+}
 
-#pb-main {
+
+#pb-project-page {
+	width: 100%;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+#pb-user-page {
 	width: 100%;
 	height: 100vh;
 	display: flex;
@@ -521,4 +529,33 @@ table, th, td {
 /* Change color of dropdown links on hover */
 .dropdown-content a:hover {
 	color: #ffffff;
+}
+
+.pb-benchmarks {
+
+}
+
+.pb-benchmark {
+}
+
+.pb-benchmark-code {
+}
+
+.pb-benchmark-vm-code {
+	padding: 1em;
+	font-family: monospace;
+	background: #1e1e1e;
+	color: #ffffff;
+	white-space: pre;
+	max-height: 10em;
+	overflow: auto;
+}
+
+.pb-benchmark-result {
+	padding: 1em;
+	font-family: monospace;
+	background: #252526;
+	color: #ffffff;
+	white-space: pre;
+	max-height: 10em;
 }

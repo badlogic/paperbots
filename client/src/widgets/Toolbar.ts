@@ -3,9 +3,16 @@ import { EventBus, Event, LoggedIn, LoggedOut, Debug, Run, Stop, ProjectLoaded, 
 import { Dialog } from "./Dialog";
 import { Api, Project } from "../Api";
 import { setElementEnabled } from "../Utils";
-import { Paperbots } from "../Paperbots";
+import { ProjectPage } from "../ProjectPage";
+
+export enum ToolbarMode {
+	ProjectPage,
+	UserPage
+}
 
 export class Toolbar extends Widget {
+	mode: ToolbarMode;
+
 	by: JQuery;
 	new: JQuery;
 	save: JQuery;
@@ -13,11 +20,13 @@ export class Toolbar extends Widget {
 	login: JQuery;
 	signup: JQuery;
 	user: JQuery;
+	profile: JQuery;
 
 	loadedProject: Project;
 
-	constructor(bus: EventBus) {
+	constructor(bus: EventBus, mode: ToolbarMode) {
 		super(bus);
+		this.mode = mode;
 	}
 
 	render(): HTMLElement {
@@ -35,7 +44,7 @@ export class Toolbar extends Widget {
 					<i class="fas fa-user-circle"></i><span id="pb-user-name"></span>
 					<div class="dropdown-content">
 						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
-						<!--<a id="pb-toolbar-profile"><i class="fas fa-user-circle"></i> Profile</a>-->
+						<a id="pb-toolbar-profile"><i class="fas fa-info-circle"></i> Profile</a>
 						<a id="pb-toolbar-logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
 					</div>
 				</div>
@@ -75,6 +84,7 @@ export class Toolbar extends Widget {
 			justClicked = true;
 			$(".dropdown-content").toggle();
 		});
+		this.profile = dom.find("#pb-toolbar-profile");
 
 		dom.find("#pb-toolbar-projects").click(() => {
 			Api.getUserProjects(Api.getUserName(), (projects) => {
@@ -104,13 +114,20 @@ export class Toolbar extends Widget {
 			}
 		}
 
-		// CMD + s and CTRL + s for saving
-		document.addEventListener("keydown", (e) => {
-			if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-				e.preventDefault();
-				this.saveProject()
-			}
-		}, false);
+		if (this.mode == ToolbarMode.UserPage) {
+			// Disable everything not needed on the user page
+			this.by.hide();
+			this.save.hide();
+			this.title.hide();
+
+			// CMD + s and CTRL + s for saving
+			document.addEventListener("keydown", (e) => {
+				if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+					e.preventDefault();
+					this.saveProject()
+				}
+			}, false);
+		}
 
 		return dom[0];
 	}
@@ -122,6 +139,7 @@ export class Toolbar extends Widget {
 			this.signup.hide();
 			this.user.find("#pb-user-name").text(userName);
 			this.user.show();
+			this.profile.attr("href", Api.getUserUrl(Api.getUserName()));
 		} else {
 			this.login.show()
 			this.signup.show();
@@ -411,7 +429,7 @@ export class Toolbar extends Widget {
 			this.title.val(event.project.title);
 			if (this.loadedProject.userName != Api.getUserName()) {
 				this.by.html(/*html*/`
-					<span>by </span><a href="${Api.getUserUrl(this.loadedProject.code)}">${this.loadedProject.userName}</a>
+					<span>by </span><a href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>
 				`);
 			} else {
 				this.by.html("");

@@ -97,6 +97,9 @@ define("Api", ["require", "exports"], function (require, exports) {
         Api.getProjectId = function () {
             return this.getUrlParameter("projectId");
         };
+        Api.getUserId = function () {
+            return this.getUrlParameter("userId");
+        };
         Api.getUrlParameter = function (name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -111,7 +114,7 @@ define("Api", ["require", "exports"], function (require, exports) {
             return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
         };
         Api.getUserUrl = function (name) {
-            return "/user.html?user=" + name;
+            return "/user.html?userId=" + name;
         };
         Api.getProjectUrl = function (name) {
             return "/?projectId=" + name;
@@ -119,254 +122,6 @@ define("Api", ["require", "exports"], function (require, exports) {
         return Api;
     }());
     exports.Api = Api;
-});
-define("Utils", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Input = (function () {
-        function Input(element) {
-            this.lastX = 0;
-            this.lastY = 0;
-            this.buttonDown = false;
-            this.currTouch = null;
-            this.listeners = new Array();
-            this.element = element;
-            this.setupCallbacks(element);
-        }
-        Input.prototype.setupCallbacks = function (element) {
-            var _this = this;
-            element.addEventListener("mousedown", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].down(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = true;
-                }
-            }, true);
-            element.addEventListener("mousemove", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        if (_this.buttonDown) {
-                            listeners[i].dragged(x, y);
-                        }
-                        else {
-                            listeners[i].moved(x, y);
-                        }
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                }
-            }, true);
-            element.addEventListener("mouseup", function (ev) {
-                if (ev instanceof MouseEvent) {
-                    var rect = element.getBoundingClientRect();
-                    var x = ev.clientX - rect.left;
-                    var y = ev.clientY - rect.top;
-                    var listeners = _this.listeners;
-                    for (var i = 0; i < listeners.length; i++) {
-                        listeners[i].up(x, y);
-                    }
-                    _this.lastX = x;
-                    _this.lastY = y;
-                    _this.buttonDown = false;
-                }
-            }, true);
-            element.addEventListener("touchstart", function (ev) {
-                if (_this.currTouch != null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    var rect = element.getBoundingClientRect();
-                    var x = touch.clientX - rect.left;
-                    var y = touch.clientY - rect.top;
-                    _this.currTouch = new Touch(touch.identifier, x, y);
-                    break;
-                }
-                var listeners = _this.listeners;
-                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
-                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
-                }
-                _this.lastX = _this.currTouch.x;
-                _this.lastY = _this.currTouch.y;
-                _this.buttonDown = true;
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchend", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
-                            listeners[i_2].up(x, y);
-                        }
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchcancel", function (ev) {
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = _this.currTouch.x = touch.clientX - rect.left;
-                        var y = _this.currTouch.y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
-                            listeners[i_3].up(x, y);
-                        }
-                        _this.lastX = x;
-                        _this.lastY = y;
-                        _this.buttonDown = false;
-                        _this.currTouch = null;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-            element.addEventListener("touchmove", function (ev) {
-                if (_this.currTouch == null)
-                    return;
-                var touches = ev.changedTouches;
-                for (var i = 0; i < touches.length; i++) {
-                    var touch = touches[i];
-                    if (_this.currTouch.identifier === touch.identifier) {
-                        var rect = element.getBoundingClientRect();
-                        var x = touch.clientX - rect.left;
-                        var y = touch.clientY - rect.top;
-                        var listeners = _this.listeners;
-                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
-                            listeners[i_4].dragged(x, y);
-                        }
-                        _this.lastX = _this.currTouch.x = x;
-                        _this.lastY = _this.currTouch.y = y;
-                        break;
-                    }
-                }
-                ev.preventDefault();
-            }, false);
-        };
-        Input.prototype.addListener = function (listener) {
-            if (this.hasListener(listener))
-                return;
-            this.listeners.push(listener);
-        };
-        Input.prototype.removeListener = function (listener) {
-            var idx = this.listeners.indexOf(listener);
-            if (idx > -1) {
-                this.listeners.splice(idx, 1);
-            }
-        };
-        Input.prototype.hasListener = function (listener) {
-            return this.listeners.indexOf(listener) >= 0;
-        };
-        return Input;
-    }());
-    exports.Input = Input;
-    var Touch = (function () {
-        function Touch(identifier, x, y) {
-            this.identifier = identifier;
-            this.x = x;
-            this.y = y;
-        }
-        return Touch;
-    }());
-    exports.Touch = Touch;
-    var TimeKeeper = (function () {
-        function TimeKeeper() {
-            this.maxDelta = 0.064;
-            this.framesPerSecond = 0;
-            this.delta = 0;
-            this.totalTime = 0;
-            this.lastTime = Date.now() / 1000;
-            this.frameCount = 0;
-            this.frameTime = 0;
-        }
-        TimeKeeper.prototype.update = function () {
-            var now = Date.now() / 1000;
-            this.delta = now - this.lastTime;
-            this.frameTime += this.delta;
-            this.totalTime += this.delta;
-            if (this.delta > this.maxDelta)
-                this.delta = this.maxDelta;
-            this.lastTime = now;
-            this.frameCount++;
-            if (this.frameTime > 1) {
-                this.framesPerSecond = this.frameCount / this.frameTime;
-                this.frameTime = 0;
-                this.frameCount = 0;
-            }
-        };
-        return TimeKeeper;
-    }());
-    exports.TimeKeeper = TimeKeeper;
-    var AssetManager = (function () {
-        function AssetManager() {
-            this.toLoad = new Array();
-            this.loaded = {};
-            this.error = {};
-        }
-        AssetManager.prototype.loadImage = function (url) {
-            var _this = this;
-            var img = new Image();
-            var asset = { image: img, url: url };
-            this.toLoad.push(asset);
-            img.onload = function () {
-                _this.loaded[asset.url] = asset;
-                var idx = _this.toLoad.indexOf(asset);
-                if (idx >= 0)
-                    _this.toLoad.splice(idx, 1);
-                console.log("Loaded image " + url);
-            };
-            img.onerror = function () {
-                _this.loaded[asset.url] = asset;
-                var idx = _this.toLoad.indexOf(asset);
-                if (idx >= 0)
-                    _this.toLoad.splice(idx, 1);
-                console.log("Couldn't load image " + url);
-            };
-            img.src = url;
-        };
-        AssetManager.prototype.getImage = function (url) {
-            return this.loaded[url].image;
-        };
-        AssetManager.prototype.hasMoreToLoad = function () {
-            return this.toLoad.length;
-        };
-        return AssetManager;
-    }());
-    exports.AssetManager = AssetManager;
-    function setElementEnabled(el, enabled) {
-        if (enabled)
-            el.removeAttr("disabled");
-        else
-            el.attr("disabled", "true");
-    }
-    exports.setElementEnabled = setElementEnabled;
-    function assertNever(x) {
-        throw new Error("This should never happen");
-    }
-    exports.assertNever = assertNever;
 });
 define("language/Parser", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -5039,6 +4794,394 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
+define("Utils", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Input = (function () {
+        function Input(element) {
+            this.lastX = 0;
+            this.lastY = 0;
+            this.buttonDown = false;
+            this.currTouch = null;
+            this.listeners = new Array();
+            this.element = element;
+            this.setupCallbacks(element);
+        }
+        Input.prototype.setupCallbacks = function (element) {
+            var _this = this;
+            element.addEventListener("mousedown", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].down(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = true;
+                }
+            }, true);
+            element.addEventListener("mousemove", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        if (_this.buttonDown) {
+                            listeners[i].dragged(x, y);
+                        }
+                        else {
+                            listeners[i].moved(x, y);
+                        }
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                }
+            }, true);
+            element.addEventListener("mouseup", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
+            element.addEventListener("touchstart", function (ev) {
+                if (_this.currTouch != null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    var rect = element.getBoundingClientRect();
+                    var x = touch.clientX - rect.left;
+                    var y = touch.clientY - rect.top;
+                    _this.currTouch = new Touch(touch.identifier, x, y);
+                    break;
+                }
+                var listeners = _this.listeners;
+                for (var i_1 = 0; i_1 < listeners.length; i_1++) {
+                    listeners[i_1].down(_this.currTouch.x, _this.currTouch.y);
+                }
+                _this.lastX = _this.currTouch.x;
+                _this.lastY = _this.currTouch.y;
+                _this.buttonDown = true;
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchend", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_2 = 0; i_2 < listeners.length; i_2++) {
+                            listeners[i_2].up(x, y);
+                        }
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchcancel", function (ev) {
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = _this.currTouch.x = touch.clientX - rect.left;
+                        var y = _this.currTouch.y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_3 = 0; i_3 < listeners.length; i_3++) {
+                            listeners[i_3].up(x, y);
+                        }
+                        _this.lastX = x;
+                        _this.lastY = y;
+                        _this.buttonDown = false;
+                        _this.currTouch = null;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+            element.addEventListener("touchmove", function (ev) {
+                if (_this.currTouch == null)
+                    return;
+                var touches = ev.changedTouches;
+                for (var i = 0; i < touches.length; i++) {
+                    var touch = touches[i];
+                    if (_this.currTouch.identifier === touch.identifier) {
+                        var rect = element.getBoundingClientRect();
+                        var x = touch.clientX - rect.left;
+                        var y = touch.clientY - rect.top;
+                        var listeners = _this.listeners;
+                        for (var i_4 = 0; i_4 < listeners.length; i_4++) {
+                            listeners[i_4].dragged(x, y);
+                        }
+                        _this.lastX = _this.currTouch.x = x;
+                        _this.lastY = _this.currTouch.y = y;
+                        break;
+                    }
+                }
+                ev.preventDefault();
+            }, false);
+        };
+        Input.prototype.addListener = function (listener) {
+            if (this.hasListener(listener))
+                return;
+            this.listeners.push(listener);
+        };
+        Input.prototype.removeListener = function (listener) {
+            var idx = this.listeners.indexOf(listener);
+            if (idx > -1) {
+                this.listeners.splice(idx, 1);
+            }
+        };
+        Input.prototype.hasListener = function (listener) {
+            return this.listeners.indexOf(listener) >= 0;
+        };
+        return Input;
+    }());
+    exports.Input = Input;
+    var Touch = (function () {
+        function Touch(identifier, x, y) {
+            this.identifier = identifier;
+            this.x = x;
+            this.y = y;
+        }
+        return Touch;
+    }());
+    exports.Touch = Touch;
+    var TimeKeeper = (function () {
+        function TimeKeeper() {
+            this.maxDelta = 0.064;
+            this.framesPerSecond = 0;
+            this.delta = 0;
+            this.totalTime = 0;
+            this.lastTime = Date.now() / 1000;
+            this.frameCount = 0;
+            this.frameTime = 0;
+        }
+        TimeKeeper.prototype.update = function () {
+            var now = Date.now() / 1000;
+            this.delta = now - this.lastTime;
+            this.frameTime += this.delta;
+            this.totalTime += this.delta;
+            if (this.delta > this.maxDelta)
+                this.delta = this.maxDelta;
+            this.lastTime = now;
+            this.frameCount++;
+            if (this.frameTime > 1) {
+                this.framesPerSecond = this.frameCount / this.frameTime;
+                this.frameTime = 0;
+                this.frameCount = 0;
+            }
+        };
+        return TimeKeeper;
+    }());
+    exports.TimeKeeper = TimeKeeper;
+    var AssetManager = (function () {
+        function AssetManager() {
+            this.toLoad = new Array();
+            this.loaded = {};
+            this.error = {};
+        }
+        AssetManager.prototype.loadImage = function (url) {
+            var _this = this;
+            var img = new Image();
+            var asset = { image: img, url: url };
+            this.toLoad.push(asset);
+            img.onload = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Loaded image " + url);
+            };
+            img.onerror = function () {
+                _this.loaded[asset.url] = asset;
+                var idx = _this.toLoad.indexOf(asset);
+                if (idx >= 0)
+                    _this.toLoad.splice(idx, 1);
+                console.log("Couldn't load image " + url);
+            };
+            img.src = url;
+        };
+        AssetManager.prototype.getImage = function (url) {
+            return this.loaded[url].image;
+        };
+        AssetManager.prototype.hasMoreToLoad = function () {
+            return this.toLoad.length;
+        };
+        return AssetManager;
+    }());
+    exports.AssetManager = AssetManager;
+    function setElementEnabled(el, enabled) {
+        if (enabled)
+            el.removeAttr("disabled");
+        else
+            el.attr("disabled", "true");
+    }
+    exports.setElementEnabled = setElementEnabled;
+    function assertNever(x) {
+        throw new Error("This should never happen");
+    }
+    exports.assertNever = assertNever;
+});
+define("widgets/Events", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var SourceChanged = (function () {
+        function SourceChanged(source, module) {
+            this.source = source;
+            this.module = module;
+        }
+        return SourceChanged;
+    }());
+    exports.SourceChanged = SourceChanged;
+    var Run = (function () {
+        function Run() {
+        }
+        return Run;
+    }());
+    exports.Run = Run;
+    var Debug = (function () {
+        function Debug() {
+        }
+        return Debug;
+    }());
+    exports.Debug = Debug;
+    var Pause = (function () {
+        function Pause() {
+        }
+        return Pause;
+    }());
+    exports.Pause = Pause;
+    var Resume = (function () {
+        function Resume() {
+        }
+        return Resume;
+    }());
+    exports.Resume = Resume;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
+    var Step = (function () {
+        function Step(line) {
+            this.line = line;
+        }
+        return Step;
+    }());
+    exports.Step = Step;
+    var LineChange = (function () {
+        function LineChange(line) {
+            this.line = line;
+        }
+        return LineChange;
+    }());
+    exports.LineChange = LineChange;
+    var Select = (function () {
+        function Select(startLine, startColumn, endLine, endColumn) {
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
+        }
+        return Select;
+    }());
+    exports.Select = Select;
+    var AnnounceExternalFunctions = (function () {
+        function AnnounceExternalFunctions(functions) {
+            this.functions = functions;
+        }
+        return AnnounceExternalFunctions;
+    }());
+    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var BreakpointAdded = (function () {
+        function BreakpointAdded(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointAdded;
+    }());
+    exports.BreakpointAdded = BreakpointAdded;
+    var BreakpointRemoved = (function () {
+        function BreakpointRemoved(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointRemoved;
+    }());
+    exports.BreakpointRemoved = BreakpointRemoved;
+    var LoggedIn = (function () {
+        function LoggedIn() {
+        }
+        return LoggedIn;
+    }());
+    exports.LoggedIn = LoggedIn;
+    ;
+    var LoggedOut = (function () {
+        function LoggedOut() {
+        }
+        return LoggedOut;
+    }());
+    exports.LoggedOut = LoggedOut;
+    ;
+    var ProjectLoaded = (function () {
+        function ProjectLoaded(project) {
+            this.project = project;
+        }
+        return ProjectLoaded;
+    }());
+    exports.ProjectLoaded = ProjectLoaded;
+    var BeforeSaveProject = (function () {
+        function BeforeSaveProject(project) {
+            this.project = project;
+        }
+        return BeforeSaveProject;
+    }());
+    exports.BeforeSaveProject = BeforeSaveProject;
+    var ProjectSaved = (function () {
+        function ProjectSaved() {
+        }
+        return ProjectSaved;
+    }());
+    exports.ProjectSaved = ProjectSaved;
+    var ProjectChanged = (function () {
+        function ProjectChanged() {
+        }
+        return ProjectChanged;
+    }());
+    exports.ProjectChanged = ProjectChanged;
+    var EventBus = (function () {
+        function EventBus() {
+            this.listeners = new Array();
+        }
+        EventBus.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        EventBus.prototype.event = function (event) {
+            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        };
+        return EventBus;
+    }());
+    exports.EventBus = EventBus;
+});
 define("widgets/Widget", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -6483,145 +6626,92 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
         }
     }
 });
-define("widgets/Events", ["require", "exports"], function (require, exports) {
+define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/VirtualMachine"], function (require, exports, Compiler_2, VirtualMachine_1) {
     "use strict";
     exports.__esModule = true;
-    var SourceChanged = (function () {
-        function SourceChanged(source, module) {
-            this.source = source;
-            this.module = module;
+    var BenchmarkPage = (function () {
+        function BenchmarkPage(parent) {
+            this.addBenchmark(parent, "Fibonacci", "\nfun fib (n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\nfib(30)\n");
         }
-        return SourceChanged;
-    }());
-    exports.SourceChanged = SourceChanged;
-    var Run = (function () {
-        function Run() {
-        }
-        return Run;
-    }());
-    exports.Run = Run;
-    var Debug = (function () {
-        function Debug() {
-        }
-        return Debug;
-    }());
-    exports.Debug = Debug;
-    var Pause = (function () {
-        function Pause() {
-        }
-        return Pause;
-    }());
-    exports.Pause = Pause;
-    var Resume = (function () {
-        function Resume() {
-        }
-        return Resume;
-    }());
-    exports.Resume = Resume;
-    var Stop = (function () {
-        function Stop() {
-        }
-        return Stop;
-    }());
-    exports.Stop = Stop;
-    var Step = (function () {
-        function Step(line) {
-            this.line = line;
-        }
-        return Step;
-    }());
-    exports.Step = Step;
-    var LineChange = (function () {
-        function LineChange(line) {
-            this.line = line;
-        }
-        return LineChange;
-    }());
-    exports.LineChange = LineChange;
-    var Select = (function () {
-        function Select(startLine, startColumn, endLine, endColumn) {
-            this.startLine = startLine;
-            this.startColumn = startColumn;
-            this.endLine = endLine;
-            this.endColumn = endColumn;
-        }
-        return Select;
-    }());
-    exports.Select = Select;
-    var AnnounceExternalFunctions = (function () {
-        function AnnounceExternalFunctions(functions) {
-            this.functions = functions;
-        }
-        return AnnounceExternalFunctions;
-    }());
-    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var BreakpointAdded = (function () {
-        function BreakpointAdded(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointAdded;
-    }());
-    exports.BreakpointAdded = BreakpointAdded;
-    var BreakpointRemoved = (function () {
-        function BreakpointRemoved(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointRemoved;
-    }());
-    exports.BreakpointRemoved = BreakpointRemoved;
-    var LoggedIn = (function () {
-        function LoggedIn() {
-        }
-        return LoggedIn;
-    }());
-    exports.LoggedIn = LoggedIn;
-    ;
-    var LoggedOut = (function () {
-        function LoggedOut() {
-        }
-        return LoggedOut;
-    }());
-    exports.LoggedOut = LoggedOut;
-    ;
-    var ProjectLoaded = (function () {
-        function ProjectLoaded(project) {
-            this.project = project;
-        }
-        return ProjectLoaded;
-    }());
-    exports.ProjectLoaded = ProjectLoaded;
-    var BeforeSaveProject = (function () {
-        function BeforeSaveProject(project) {
-            this.project = project;
-        }
-        return BeforeSaveProject;
-    }());
-    exports.BeforeSaveProject = BeforeSaveProject;
-    var ProjectSaved = (function () {
-        function ProjectSaved() {
-        }
-        return ProjectSaved;
-    }());
-    exports.ProjectSaved = ProjectSaved;
-    var ProjectChanged = (function () {
-        function ProjectChanged() {
-        }
-        return ProjectChanged;
-    }());
-    exports.ProjectChanged = ProjectChanged;
-    var EventBus = (function () {
-        function EventBus() {
-            this.listeners = new Array();
-        }
-        EventBus.prototype.addListener = function (listener) {
-            this.listeners.push(listener);
+        BenchmarkPage.prototype.addBenchmark = function (parent, title, source) {
+            var _this = this;
+            source = source.trim();
+            var dom = $("\n\t\t\t<div class=\"pb-benchmark\">\n\t\t\t\t<h1>" + title + "</h1>\n\t\t\t\t<div class=\"pb-benchmark-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-vm-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-result\">No benchmark results yet.</div>\n\t\t\t\t<button id=\"pb-benchmark-run\">Run</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            setTimeout(function () {
+                var editor = _this.editor = CodeMirror(dom.find(".pb-benchmark-code")[0], {
+                    tabSize: 3,
+                    indentUnit: 3,
+                    indentWithTabs: true,
+                    lineNumbers: true,
+                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
+                    fixedGutter: true,
+                    extraKeys: {
+                        "Tab": "indentAuto"
+                    },
+                    theme: "monokai"
+                });
+                editor.on("change", function () {
+                    var module = null;
+                    try {
+                        module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctions());
+                    }
+                    catch (e) {
+                        alert("Error in " + title + ": " + e.message);
+                        return;
+                    }
+                    dom.find(".pb-benchmark-vm-code").html(BenchmarkPage.renderModule(module));
+                });
+                editor.setValue(source);
+            }, 400);
+            dom.find("#pb-benchmark-run").click(function () {
+                var module = null;
+                try {
+                    module = Compiler_2.compile(_this.editor.getValue(), new Compiler_2.ExternalFunctions());
+                }
+                catch (e) {
+                    alert("Error in " + title + ": " + e.message);
+                    return;
+                }
+                var result = dom.find(".pb-benchmark-result");
+                result.text("Benchmark running...");
+                var vm = new VirtualMachine_1.VirtualMachine(module.code, module.externalFunctions);
+                var start = performance.now();
+                for (var runs = 0; runs < 5; runs++) {
+                    while (vm.state != VirtualMachine_1.VMState.Completed) {
+                        vm.run(10000);
+                    }
+                }
+                var total = (performance.now() - start) / 1000;
+                var perRun = total / 5;
+                result.text("Total: " + total + " secs, " + perRun + " secs/run");
+            });
+            parent.append(dom);
         };
-        EventBus.prototype.event = function (event) {
-            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        BenchmarkPage.renderModule = function (module) {
+            var output = "";
+            module.code.forEach(function (func) {
+                output += Compiler_2.functionSignature(func.ast);
+                output += "\nlocals:\n";
+                func.locals.forEach(function (local, index) {
+                    output += "   [" + index + "] " + local.name.value + ": " + local.type.name + "\n";
+                });
+                output += "\ninstructions:\n";
+                var lastLineInfoIndex = -1;
+                func.instructions.forEach(function (ins, index) {
+                    var line = func.lineInfos[index];
+                    if (lastLineInfoIndex != line.index) {
+                        output += "\n";
+                        lastLineInfoIndex = line.index;
+                    }
+                    output += "    " + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+                });
+                output += "\n";
+            });
+            return output;
         };
-        return EventBus;
+        return BenchmarkPage;
     }());
-    exports.EventBus = EventBus;
+    exports.BenchmarkPage = BenchmarkPage;
 });
 define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -6717,14 +6807,21 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
 define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_2, Events_1, Dialog_1, Api_1, Utils_4) {
     "use strict";
     exports.__esModule = true;
+    var ToolbarMode;
+    (function (ToolbarMode) {
+        ToolbarMode[ToolbarMode["ProjectPage"] = 0] = "ProjectPage";
+        ToolbarMode[ToolbarMode["UserPage"] = 1] = "UserPage";
+    })(ToolbarMode = exports.ToolbarMode || (exports.ToolbarMode = {}));
     var Toolbar = (function (_super) {
         __extends(Toolbar, _super);
-        function Toolbar(bus) {
-            return _super.call(this, bus) || this;
+        function Toolbar(bus, mode) {
+            var _this = _super.call(this, bus) || this;
+            _this.mode = mode;
+            return _this;
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i>New</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<!--<a id=\"pb-toolbar-profile\"><i class=\"fas fa-user-circle\"></i> Profile</a>-->\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\">Paperbots</a>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i>New</div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i>Save</div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i>Log in</div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i>Sign up</div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
@@ -6753,6 +6850,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 justClicked = true;
                 $(".dropdown-content").toggle();
             });
+            this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-projects").click(function () {
                 Api_1.Api.getUserProjects(Api_1.Api.getUserName(), function (projects) {
                     _this.projectsDialog(projects);
@@ -6777,12 +6875,17 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     }
                 }
             };
-            document.addEventListener("keydown", function (e) {
-                if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-                    e.preventDefault();
-                    _this.saveProject();
-                }
-            }, false);
+            if (this.mode == ToolbarMode.UserPage) {
+                this.by.hide();
+                this.save.hide();
+                this.title.hide();
+                document.addEventListener("keydown", function (e) {
+                    if (e.keyCode == 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+                        e.preventDefault();
+                        _this.saveProject();
+                    }
+                }, false);
+            }
             return dom[0];
         };
         Toolbar.prototype.setupLoginAndUser = function () {
@@ -6792,6 +6895,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.signup.hide();
                 this.user.find("#pb-user-name").text(userName);
                 this.user.show();
+                this.profile.attr("href", Api_1.Api.getUserUrl(Api_1.Api.getUserName()));
             }
             else {
                 this.login.show();
@@ -7016,7 +7120,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.loadedProject = event.project;
                 this.title.val(event.project.title);
                 if (this.loadedProject.userName != Api_1.Api.getUserName()) {
-                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_1.Api.getUserUrl(this.loadedProject.code) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
+                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_1.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
                 }
                 else {
                     this.by.html("");
@@ -8405,14 +8509,14 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_2, Dialog_2) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_2, Dialog_2) {
     "use strict";
     exports.__esModule = true;
-    var Paperbots = (function () {
-        function Paperbots(parent) {
+    var ProjectPage = (function () {
+        function ProjectPage(parent) {
             var _this = this;
             this.eventBus = new Events_2.EventBus();
-            this.toolbar = new Toolbar_1.Toolbar(this.eventBus);
+            this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
@@ -8426,7 +8530,7 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             this.eventBus.addListener(this.playground);
             this.eventBus.addListener(this.docs);
             this.eventBus.addListener(this.desc);
-            var dom = $("\n\t\t\t<div id=\"pb-main\">\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-project-page\">\n\t\t\t</div>\n\t\t");
             dom.append(this.toolbar.render());
             var editorAndDebugger = $("\n\t\t\t<div id =\"pb-editor-and-debugger\">\n\t\t\t</div>\n\t\t");
             editorAndDebugger.append(this["debugger"].render());
@@ -8467,7 +8571,7 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                 }
             };
         }
-        Paperbots.prototype.loadProject = function (id) {
+        ProjectPage.prototype.loadProject = function (id) {
             var _this = this;
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
             var spinner = content.find("#pb-spinner");
@@ -8486,7 +8590,7 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                 }
             });
         };
-        Paperbots.prototype.onEvent = function (event) {
+        ProjectPage.prototype.onEvent = function (event) {
             if (event instanceof Events_2.ProjectChanged) {
                 this.unsaved = true;
             }
@@ -8497,8 +8601,41 @@ define("Paperbots", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                 this.unsaved = false;
             }
         };
-        return Paperbots;
+        return ProjectPage;
     }());
-    exports.Paperbots = Paperbots;
+    exports.ProjectPage = ProjectPage;
+});
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_3, Toolbar_2, Api_3, Dialog_3) {
+    "use strict";
+    exports.__esModule = true;
+    var UserPage = (function () {
+        function UserPage(parent) {
+            this.eventBus = new Events_3.EventBus();
+            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
+            dom.append(this.toolbar.render());
+            $(parent).append(dom);
+            var userId = Api_3.Api.getUserId();
+            if (!userId)
+                userId = Api_3.Api.getUserName();
+            if (!userId) {
+                var dialog = Dialog_3.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
+                dialog.buttons[0].click(function () {
+                    window.location = "/";
+                });
+                dialog.show();
+            }
+            Api_3.Api.getUserProjects(userId, function (projects) {
+                dom.append("<h1>" + userId + "<h1>");
+            }, function (error) {
+            });
+        }
+        UserPage.prototype.onEvent = function (event) {
+        };
+        return UserPage;
+    }());
+    exports.UserPage = UserPage;
 });
 //# sourceMappingURL=paperbots.js.map

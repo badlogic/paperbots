@@ -7531,7 +7531,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
-                        asyncResult.completed = true;
+                        requestAnimationFrame(function () { return asyncResult.completed = true; });
                         return;
                     }
                     requestAnimationFrame(check);
@@ -7547,7 +7547,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
-                        asyncResult.completed = true;
+                        requestAnimationFrame(function () { return asyncResult.completed = true; });
                         return;
                     }
                     requestAnimationFrame(check);
@@ -7609,7 +7609,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     completed: false,
                     value: null
                 };
-                var num = 3;
+                var num = 1;
                 var check = function () {
                     if (num-- > 0) {
                         requestAnimationFrame(check);

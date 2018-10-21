@@ -203,7 +203,7 @@ export class RobotWorld extends Widget {
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
-					asyncResult.completed = true;
+					requestAnimationFrame(() => asyncResult.completed = true);
 					return;
 				}
 				requestAnimationFrame(check);
@@ -220,7 +220,7 @@ export class RobotWorld extends Widget {
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
-					asyncResult.completed = true;
+					requestAnimationFrame(() => asyncResult.completed = true);
 					return;
 				}
 				requestAnimationFrame(check);
@@ -284,7 +284,7 @@ export class RobotWorld extends Widget {
 				completed: false,
 				value: null
 			}
-			var num = 3;
+			var num = 1;
 			let check = () => {
 				if (num-- > 0) {
 					requestAnimationFrame(check);

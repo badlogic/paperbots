@@ -6965,7 +6965,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 new compiler.ExternalFunctionParameter("color", "string")
             ], "nothing", true, function (x1, y1, x2, y2, color) {
                 var ctx = _this.context;
-                ctx.strokeStyle = "rgba(0, 255, 0, 255)";
+                ctx.strokeStyle = color;
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.lineTo(x2, y2);

@@ -45,7 +45,7 @@ export class CanvasWorld extends Widget {
 			new compiler.ExternalFunctionParameter("color", "string")
 		], "nothing", true, (x1, y1, x2, y2, color) => {
 			let ctx = this.context;
-			ctx.strokeStyle = "rgba(0, 255, 0, 255)";
+			ctx.strokeStyle = color;
 			ctx.beginPath();
 			ctx.moveTo(x1, y1);
 			ctx.lineTo(x2, y2);

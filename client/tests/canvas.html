@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Paperbots</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="/js/reload.js"></script>
+	<script src="/js/jquery.js"></script>
+	<script src="/js/codemirror.js"></script>
+	<script src="/js/paperbots-cm.js"></script>
+	<script src="/js/require.js"></script>
+	<script src="/js/paperbots.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="/css/codemirror.css" />
+	<link rel="stylesheet" type="text/css" href="/css/monokai.css" />
+	<link rel="stylesheet" type="text/css" href="/css/fontawesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="/css/style.css" />
+
+	<style>
+		body {
+			padding: 0;
+		}
+
+		#pb-canvas-page {
+			display: flex;
+			flex-direction: row;
+			width: 100%;
+			height: 100vh;
+		}
+
+		#pb-code-editor {
+			flex: 1;
+		}
+
+		#pb-canvas-world {
+			flex: 1;
+		}
+
+		#pb-canvas-world canvas {
+			background: red;
+			width: 100%;
+		}
+
+	</style>
+</head>
+<body>
+	<script>
+	require(["CanvasPage"], function(module) {
+		var paperbots = module;
+		var editor = new paperbots.CanvasPage($("body"));
+	});
+	</script>
+</body>
+</html>

@@ -6713,97 +6713,6 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
     }());
     exports.BenchmarkPage = BenchmarkPage;
 });
-define("widgets/Dialog", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Dialog = (function () {
-        function Dialog(title, content, buttons) {
-            this.buttons = Array();
-            this.dom = this.renderDialog(title, content, buttons);
-        }
-        Dialog.prototype.show = function () {
-            document.body.appendChild(this.dom[0]);
-        };
-        Dialog.prototype.hide = function () {
-            this.dom.remove();
-        };
-        Dialog.prototype.renderDialog = function (title, content, buttons) {
-            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
-            dom.find(".pb-dialog-body").append(content);
-            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
-            for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
-                this.buttons.push(button);
-                buttonsDiv.append(button);
-            }
-            dom.find(".pb-dialog-footer").append(buttonsDiv);
-            return dom;
-        };
-        Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.focus();
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed();
-            });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
-            return dialog;
-        };
-        Dialog.prompt = function (title, value, confirmed, cancled) {
-            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-                cancled();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed(textField.val());
-            });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
-            textField.keyup(function (event) {
-                if (event.keyCode == 13) {
-                    dialog.buttons[1].click();
-                }
-            });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        return Dialog;
-    }());
-    exports.Dialog = Dialog;
-});
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler"], function (require, exports, Widget_2, events, compiler) {
     "use strict";
     exports.__esModule = true;
@@ -7014,11 +6923,196 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                 event.project.contentObject.code = this.editor.getDoc().getValue();
             }
         };
+        Editor.prototype.setSource = function (source) {
+            this.editor.getDoc().setValue(source.trim());
+        };
         return Editor;
     }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_3, Utils_4, compiler) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "language/Compiler"], function (require, exports, events, Widget_3, compiler) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasWorld = (function (_super) {
+        __extends(CanvasWorld, _super);
+        function CanvasWorld(bus) {
+            return _super.call(this, bus) || this;
+        }
+        CanvasWorld.prototype.render = function () {
+            var _this = this;
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
+            var canvas = dom.find("canvas");
+            this.canvas = canvas[0];
+            this.context = this.canvas.getContext('2d');
+            var canvasResize = function () {
+                var canvas = dom.find("canvas");
+                var width = canvas.width();
+                var height = width / 16 * 9;
+                if (height == canvas.height()) {
+                    requestAnimationFrame(canvasResize);
+                    return;
+                }
+                canvas.height(height);
+                requestAnimationFrame(canvasResize);
+            };
+            requestAnimationFrame(canvasResize);
+            var functions = new compiler.ExternalFunctions();
+            functions.addFunction("line", [
+                new compiler.ExternalFunctionParameter("x1", "number"),
+                new compiler.ExternalFunctionParameter("y1", "number"),
+                new compiler.ExternalFunctionParameter("x2", "number"),
+                new compiler.ExternalFunctionParameter("y2", "number"),
+                new compiler.ExternalFunctionParameter("color", "string")
+            ], "nothing", true, function (x1, y1, x2, y2, color) {
+                var ctx = _this.context;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            });
+            functions.addFunction("clear", [], "nothing", false, function () {
+                var ctx = _this.context;
+                ctx.fillStyle = "rgba(0, 0, 0, 255)";
+                ctx.clearRect(0, 0, _this.canvas.width, _this.canvas.height);
+            });
+            functions.addFunction("show", [], "nothing", true, function () {
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                requestAnimationFrame(function () { asyncResult.completed = true; });
+                return asyncResult;
+            });
+            this.bus.event(new events.AnnounceExternalFunctions(functions));
+            return dom[0];
+        };
+        CanvasWorld.prototype.onEvent = function (event) {
+        };
+        return CanvasWorld;
+    }(Widget_3.Widget));
+    exports.CanvasWorld = CanvasWorld;
+});
+define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_1, Editor_1, Debugger_1, CanvasWorld_1) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasPage = (function () {
+        function CanvasPage(parent) {
+            var _this = this;
+            this.eventBus = new Events_1.EventBus();
+            this.editor = new Editor_1.Editor(this.eventBus);
+            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
+            this.canvas = new CanvasWorld_1.CanvasWorld(this.eventBus);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.editor);
+            this.eventBus.addListener(this["debugger"]);
+            this.eventBus.addListener(this.canvas);
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-page\">\n\t\t\t</div>\n\t\t");
+            dom.append(this["debugger"].render());
+            dom.append(this.editor.render());
+            dom.append(this.canvas.render());
+            setTimeout(function () {
+                _this.editor.setSource("\nvar x = 0\nwhile true do\n\tclear()\n\tline(x, 0, x, 100, \"green\")\n\tx = x + 1\n\tshow()\nend\n\t\t\t");
+            }, 500);
+            parent.append(dom);
+        }
+        CanvasPage.prototype.onEvent = function (event) {
+        };
+        return CanvasPage;
+    }());
+    exports.CanvasPage = CanvasPage;
+});
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.focus();
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
+});
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7580,7 +7674,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             ctx.restore();
         };
         return RobotWorld;
-    }(Widget_3.Widget));
+    }(Widget_4.Widget));
     exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
@@ -7887,7 +7981,7 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_4) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
     "use strict";
     exports.__esModule = true;
     var DOCS = [
@@ -8161,10 +8255,10 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
             }
         };
         return Docs;
-    }(Widget_4.Widget));
+    }(Widget_5.Widget));
     exports.Docs = Docs;
 });
-define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
     "use strict";
     exports.__esModule = true;
     var Description = (function (_super) {
@@ -8179,19 +8273,19 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
         Description.prototype.onEvent = function (event) {
         };
         return Description;
-    }(Widget_5.Widget));
+    }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_1, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
         function ProjectPage(parent) {
             var _this = this;
-            this.eventBus = new Events_1.EventBus();
+            this.eventBus = new Events_2.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
-            this.editor = new Editor_1.Editor(this.eventBus);
-            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
+            this.editor = new Editor_2.Editor(this.eventBus);
+            this["debugger"] = new Debugger_2.Debugger(this.eventBus);
             this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
@@ -8252,7 +8346,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             dialog.show();
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
-                _this.eventBus.event(new Events_1.ProjectLoaded(project));
+                _this.eventBus.event(new Events_2.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();
                 if (error.error == "ProjectDoesNotExist") {
@@ -8266,13 +8360,13 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             });
         };
         ProjectPage.prototype.onEvent = function (event) {
-            if (event instanceof Events_1.ProjectChanged) {
+            if (event instanceof Events_2.ProjectChanged) {
                 this.unsaved = true;
             }
-            else if (event instanceof Events_1.ProjectSaved) {
+            else if (event instanceof Events_2.ProjectSaved) {
                 this.unsaved = false;
             }
-            else if (event instanceof Events_1.ProjectLoaded) {
+            else if (event instanceof Events_2.ProjectLoaded) {
                 this.unsaved = false;
             }
         };
@@ -8280,7 +8374,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_6, Events_2, Dialog_2, Api_2, Utils_5) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_5) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -8310,7 +8404,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.title = dom.find("#pb-toolbar-title");
             this.title.change(function () {
-                _this.bus.event(new Events_2.ProjectChanged());
+                _this.bus.event(new Events_3.ProjectChanged());
             });
             this.login = dom.find("#pb-toolbar-login");
             this.login.click(function (e) {
@@ -8336,7 +8430,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 });
             });
             dom.find("#pb-toolbar-logout").click(function () {
-                Api_2.Api.logout(function () { _this.bus.event(new Events_2.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+                Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
             this.setupLoginAndUser();
             window.onclick = function (event) {
@@ -8440,7 +8534,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             dialog.buttons[1].click(function () {
                 Api_2.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
-                    _this.bus.event(new Events_2.LoggedIn());
+                    _this.bus.event(new Events_3.LoggedIn());
                 }, function (invalidCode) {
                     if (invalidCode) {
                         spinner.hide();
@@ -8542,7 +8636,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
-                var saveProject = new Events_2.BeforeSaveProject({
+                var saveProject = new Events_3.BeforeSaveProject({
                     code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
                     contentObject: {},
                     content: null,
@@ -8571,7 +8665,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     _this.loadedProject.userName = Api_2.Api.getUserName();
                     dialog.hide();
                     history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
-                    _this.bus.event(new Events_2.ProjectSaved());
+                    _this.bus.event(new Events_3.ProjectSaved());
                 }, function (error) {
                     _this.serverErrorDialog();
                     dialog.hide();
@@ -8587,20 +8681,20 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         Toolbar.prototype.onEvent = function (event) {
-            if (event instanceof Events_2.LoggedIn || event instanceof Events_2.LoggedOut) {
+            if (event instanceof Events_3.LoggedIn || event instanceof Events_3.LoggedOut) {
                 this.setupLoginAndUser();
             }
-            else if (event instanceof Events_2.Run || event instanceof Events_2.Debug) {
+            else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
                 Utils_5.setElementEnabled(this.save, false);
                 Utils_5.setElementEnabled(this["new"], false);
                 Utils_5.setElementEnabled(this.title, false);
             }
-            else if (event instanceof Events_2.Stop) {
+            else if (event instanceof Events_3.Stop) {
                 Utils_5.setElementEnabled(this.save, true);
                 Utils_5.setElementEnabled(this["new"], true);
                 Utils_5.setElementEnabled(this.title, true);
             }
-            else if (event instanceof Events_2.ProjectLoaded) {
+            else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
                 this.title.val(event.project.title);
                 if (this.loadedProject.userName != Api_2.Api.getUserName()) {
@@ -8612,15 +8706,15 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         return Toolbar;
-    }(Widget_6.Widget));
+    }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api"], function (require, exports, Events_3, Toolbar_2, Api_3) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api"], function (require, exports, Events_4, Toolbar_2, Api_3) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_3.EventBus();
+            this.eventBus = new Events_4.EventBus();
             this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -8639,12 +8733,12 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_3, Api_4, Dialog_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_5, Toolbar_3, Api_4, Dialog_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
-            this.eventBus = new Events_4.EventBus();
+            this.eventBus = new Events_5.EventBus();
             this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);

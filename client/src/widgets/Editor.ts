@@ -261,4 +261,8 @@ export class Editor extends Widget {
 			event.project.contentObject.code = this.editor.getDoc().getValue()
 		}
 	}
+
+	setSource(source: string) {
+		this.editor.getDoc().setValue(source.trim());
+	}
 }

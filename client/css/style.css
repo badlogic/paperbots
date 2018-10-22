@@ -158,6 +158,7 @@ table, th, td {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	min-width: 0px;
 }
 
 #pb-docs {
@@ -356,6 +357,7 @@ table, th, td {
 	padding: 0.5em;
 	font-size: 14px;
 	white-space: pre;
+	min-width: 0px;
 }
 
 /* CodeMirror styles */

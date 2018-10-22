@@ -6965,15 +6965,18 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 new compiler.ExternalFunctionParameter("color", "string")
             ], "nothing", true, function (x1, y1, x2, y2, color) {
                 var ctx = _this.context;
+                ctx.strokeStyle = "rgba(0, 255, 0, 255)";
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.lineTo(x2, y2);
                 ctx.stroke();
             });
-            functions.addFunction("clear", [], "nothing", false, function () {
+            functions.addFunction("clear", [
+                new compiler.ExternalFunctionParameter("color", "string")
+            ], "nothing", false, function (color) {
                 var ctx = _this.context;
-                ctx.fillStyle = "rgba(0, 0, 0, 255)";
-                ctx.clearRect(0, 0, _this.canvas.width, _this.canvas.height);
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
             });
             functions.addFunction("show", [], "nothing", true, function () {
                 var asyncResult = {
@@ -6997,11 +7000,11 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
     exports.__esModule = true;
     var CanvasPage = (function () {
         function CanvasPage(parent) {
-            var _this = this;
             this.eventBus = new Events_1.EventBus();
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.canvas = new CanvasWorld_1.CanvasWorld(this.eventBus);
+            this.sentSource = false;
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
@@ -7010,12 +7013,15 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             dom.append(this["debugger"].render());
             dom.append(this.editor.render());
             dom.append(this.canvas.render());
-            setTimeout(function () {
-                _this.editor.setSource("\nvar x = 0\nwhile true do\n\tclear()\n\tline(x, 0, x, 100, \"green\")\n\tx = x + 1\n\tshow()\nend\n\t\t\t");
-            }, 500);
             parent.append(dom);
         }
         CanvasPage.prototype.onEvent = function (event) {
+            var _this = this;
+            if (event instanceof Events_1.SourceChanged) {
+                if (!this.sentSource)
+                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar x = 0\nwhile true do\n\tclear(\"black\")\n\tline(x, 0, x, 100, \"red\")\n\tx = x + 1\n\tshow()\nend\n\t\t\t"); });
+                this.sentSource = true;
+            }
         };
         return CanvasPage;
     }());
@@ -8726,6 +8732,7 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             if (projectId) {
                 window.location = "/project.html?id=" + projectId;
             }
+            window.location = "/project.html";
         }
         IndexPage.prototype.onEvent = function (event) {
         };

@@ -29,6 +29,10 @@ export class IndexPage implements EventListener {
 		if (projectId) {
 			(window.location as any) = `/project.html?id=${projectId}`;
 		}
+
+		// TODO once this page is implemented
+		// stop redirecting.
+		(window.location as any) = "/project.html"
 	}
 
 	onEvent(event: Event) {

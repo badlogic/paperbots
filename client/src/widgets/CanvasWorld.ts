@@ -45,16 +45,19 @@ export class CanvasWorld extends Widget {
 			new compiler.ExternalFunctionParameter("color", "string")
 		], "nothing", true, (x1, y1, x2, y2, color) => {
 			let ctx = this.context;
+			ctx.strokeStyle = "rgba(0, 255, 0, 255)";
 			ctx.beginPath();
 			ctx.moveTo(x1, y1);
 			ctx.lineTo(x2, y2);
 			ctx.stroke();
 		});
 
-		functions.addFunction("clear", [ ], "nothing", false, () => {
+		functions.addFunction("clear", [
+			new compiler.ExternalFunctionParameter("color", "string")
+		], "nothing", false, (color) => {
 			let ctx = this.context;
-			ctx.fillStyle = "rgba(0, 0, 0, 255)";
-			ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+			ctx.fillStyle = color;
+			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 		});
 
 		functions.addFunction("show", [], "nothing", true, () => {

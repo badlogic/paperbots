@@ -42,6 +42,19 @@ table, th, td {
 	flex-direction: column;
 }
 
+.pb-label {
+	padding: 0.25em 0.5em;
+	font-size: 14px;
+	font-weight: 500;
+	background: #333333;
+	color: #828282;
+	cursor: pointer;
+}
+
+.pb-label:hover {
+	background: #444;
+}
+
 #pb-toolbar {
 	width: 100%;
 	padding: 0.25em 1em 0.25em 1em;
@@ -120,7 +133,7 @@ table, th, td {
 	color: #ffffff;
 }
 
-#pb-playground-and-description {
+#pb-world-and-comments {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
@@ -129,16 +142,15 @@ table, th, td {
 	background: #252526;
 }
 
-#pb-canvas-container {
+#pb-robot-world {
 	user-select: none !important;
 	padding: 0.5em;
 	max-width: 600px;
 	width: 100%;
 }
 
-#pb-canvas {
+#pb-robot-world canvas {
 	width: 100%;
-	max-width: 544px;
 }
 
 #pb-editor-and-debugger {
@@ -235,19 +247,6 @@ table, th, td {
 	color: #ffffff;
 	white-space: pre;
     overflow: auto;
-}
-
-.pb-label {
-	padding: 0.25em 0.5em;
-	font-size: 14px;
-	font-weight: 500;
-	background: #333333;
-	color: #828282;
-	cursor: pointer;
-}
-
-.pb-label:hover {
-	background: #444;
 }
 
 .pb-debugger-callstack-frame {

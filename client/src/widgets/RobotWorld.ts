@@ -33,27 +33,25 @@ export class RobotWorld extends Widget {
 
 	render (): HTMLElement {
 		this.container = $(/*html*/`
-			<div id="pb-canvas-container">
-				<div id="pb-canvas-tools">
-					<div id="pb-canvas-tools-editing">
-						<input type="button" value="Robot" class="selected">
-						<input type="button" value="Floor">
-						<input type="button" value="Wall">
-						<input type="button" value="Number">
-						<input type="button" value="Letter">
-					</div>
+			<div id="pb-robot-world">
+				<div id="pb-robot-world-tools">
+					<input type="button" value="Robot" class="selected">
+					<input type="button" value="Floor">
+					<input type="button" value="Wall">
+					<input type="button" value="Number">
+					<input type="button" value="Letter">
 				</div>
-				<canvas id="pb-canvas"></canvas>
+				<canvas id="pb-robot-world-canvas"></canvas>
 			</div>
 		`);
-		this.canvas = this.container.find("#pb-canvas")[0] as HTMLCanvasElement;
+		this.canvas = this.container.find("#pb-robot-world-canvas")[0] as HTMLCanvasElement;
 		this.ctx = this.canvas.getContext("2d");
 		this.assets.loadImage("img/wall.png");
 		this.assets.loadImage("img/floor.png");
 		this.assets.loadImage("img/robot.png");
 		requestAnimationFrame(() => { this.draw(); });
 
-		let tools = this.container.find("#pb-canvas-tools-editing input");
+		let tools = this.container.find("#pb-robot-world-tools input");
 		for (var i = 0; i < tools.length; i++) {
 			$(tools[i]).click((tool) => {
 				let value = (tool.target as HTMLInputElement).value;
@@ -436,14 +434,14 @@ export class RobotWorld extends Widget {
 	onEvent(event: Event) {
 		if (event instanceof events.Stop) {
 			this.input.addListener(this.toolsHandler);
-			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
+			this.container.find("#pb-robot-world-tools input").each((index, element) => {
 				setElementEnabled($(element), true);
 			});
 			this.world = new World(this.worldData);
 			this.isRunning = false;
 		} else if(event instanceof events.Run || event instanceof events.Debug) {
 			this.input.removeListener(this.toolsHandler);
-			this.container.find("#pb-canvas-tools-editing input").each((index, element) => {
+			this.container.find("#pb-robot-world-tools input").each((index, element) => {
 				setElementEnabled($(element), false);
 			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));

@@ -5215,7 +5215,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         }
         Debugger.prototype.render = function () {
             var _this = this;
-            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\">\n\t\t\t\t<div class=\"pb-label\">DEBUGGER</div>\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = this.dom = $("\n\t\t\t<div id=\"pb-debugger\" class=\"pb-debugger-collapsed\">\n\t\t\t\t<div class=\"pb-label\">DEBUGGER</div>\n\t\t\t\t<div id=\"pb-debugger-buttons\">\n\t\t\t\t\t<div id=\"pb-debugger-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-debug\" class=\"pb-debugger-debug-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-pause\" class=\"pb-debugger-pause-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-continue\" class=\"pb-debugger-continue-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-over\" class=\"pb-debugger-step-over-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-into\" class=\"pb-debugger-step-into-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-step-out\" class=\"pb-debugger-step-out-icon pb-debugger-button\"></div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-debugger-locals-callstack\">\n\t\t\t\t\t<div id=\"pb-debugger-locals-label\" class=\"pb-label\">VARIABLES</div>\n\t\t\t\t\t<div id=\"pb-debugger-locals\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack-label\" class=\"pb-label\">CALL STACK</div>\n\t\t\t\t\t<div id=\"pb-debugger-callstack\"></div>\n\t\t\t\t\t<div id=\"pb-debugger-vm-label\"  class=\"pb-label\">VM</div>\n\t\t\t\t\t<div id=\"pb-debugger-vm\"></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.run = dom.find("#pb-debugger-run");
             this.debug = dom.find("#pb-debugger-debug");
             this.pause = dom.find("#pb-debugger-pause");
@@ -7141,14 +7141,14 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         }
         RobotWorld.prototype.render = function () {
             var _this = this;
-            this.container = $("\n\t\t\t<div id=\"pb-canvas-container\">\n\t\t\t\t<div id=\"pb-canvas-tools\">\n\t\t\t\t\t<div id=\"pb-canvas-tools-editing\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
-            this.canvas = this.container.find("#pb-canvas")[0];
+            this.container = $("\n\t\t\t<div id=\"pb-robot-world\">\n\t\t\t\t<div id=\"pb-robot-world-tools\">\n\t\t\t\t\t<input type=\"button\" value=\"Robot\" class=\"selected\">\n\t\t\t\t\t<input type=\"button\" value=\"Floor\">\n\t\t\t\t\t<input type=\"button\" value=\"Wall\">\n\t\t\t\t\t<input type=\"button\" value=\"Number\">\n\t\t\t\t\t<input type=\"button\" value=\"Letter\">\n\t\t\t\t</div>\n\t\t\t\t<canvas id=\"pb-robot-world-canvas\"></canvas>\n\t\t\t</div>\n\t\t");
+            this.canvas = this.container.find("#pb-robot-world-canvas")[0];
             this.ctx = this.canvas.getContext("2d");
             this.assets.loadImage("img/wall.png");
             this.assets.loadImage("img/floor.png");
             this.assets.loadImage("img/robot.png");
             requestAnimationFrame(function () { _this.draw(); });
-            var tools = this.container.find("#pb-canvas-tools-editing input");
+            var tools = this.container.find("#pb-robot-world-tools input");
             for (var i = 0; i < tools.length; i++) {
                 $(tools[i]).click(function (tool) {
                     var value = tool.target.value;
@@ -7534,7 +7534,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         RobotWorld.prototype.onEvent = function (event) {
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
-                this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
+                this.container.find("#pb-robot-world-tools input").each(function (index, element) {
                     Utils_4.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
@@ -7542,7 +7542,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             }
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
-                this.container.find("#pb-canvas-tools-editing input").each(function (index, element) {
+                this.container.find("#pb-robot-world-tools input").each(function (index, element) {
                     Utils_4.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
@@ -8309,7 +8309,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             editorAndDebugger.append(this["debugger"].render());
             var editorAndDocs = $("\n\t\t\t<div id=\"pb-editor-and-docs\">\n\t\t\t</div>\n\t\t");
             var editor = this.editor.render();
-            var editorLabel = $("<div id=\"pb-docs-label\" class=\"pb-label\">PROGRAM</div>");
+            var editorLabel = $("<div id=\"pb-program-label\" class=\"pb-label\"><span>PROGRAM</div>");
             editorAndDocs.append(editorLabel);
             editorLabel.click(function () {
                 $(editor).toggle();
@@ -8323,7 +8323,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             editorAndDocs.append(helpLabel);
             editorAndDocs.append(help);
             editorAndDebugger.append(editorAndDocs);
-            var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-playground-and-description\">\n\t\t\t</div>\n\t\t");
+            var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-world-and-comments\">\n\t\t\t</div>\n\t\t");
             playgroundAndDescription.append(this.playground.render());
             playgroundAndDescription.append(this.desc.render());
             var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);

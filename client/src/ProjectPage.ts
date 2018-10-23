@@ -51,7 +51,7 @@ export class ProjectPage implements EventListener {
 		`)
 
 		let editor = this.editor.render();
-		let editorLabel = $(/*html*/`<div id="pb-docs-label" class="pb-label">PROGRAM</div>`);
+		let editorLabel = $(/*html*/`<div id="pb-program-label" class="pb-label"><span>PROGRAM</div>`);
 		editorAndDocs.append(editorLabel);
 		editorLabel.click(() => {
 			$(editor).toggle();
@@ -68,7 +68,7 @@ export class ProjectPage implements EventListener {
 		editorAndDebugger.append(editorAndDocs);
 
 		let playgroundAndDescription = $(/*html*/`
-			<div id="pb-playground-and-description">
+			<div id="pb-world-and-comments">
 			</div>
 		`);
 

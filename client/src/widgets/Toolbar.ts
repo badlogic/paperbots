@@ -33,16 +33,16 @@ export class Toolbar extends Widget {
 	render(): HTMLElement {
 		let dom = $(/*html*/`
 			<div id="pb-toolbar">
-				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button">Paperbots</a>
-				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i>New</div>
-				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i>Save</div>
+				<a href="/" id="pb-toolbar-logo" class="pb-toolbar-button"><span id="pb-toolbar-logo-long">Paperbots</span><span id="pb-toolbar-logo-short">PB</span></a>
+				<div id="pb-toolbar-new" class="pb-toolbar-button"><i class="far fa-file"></i><span>New</span></div>
+				<div id="pb-toolbar-save" class="pb-toolbar-button"><i class="far fa-save"></i><span>Save</span></div>
 				<input id="pb-toolbar-title" type="text" value="Untitled project">
 				<div id="pb-toolbar-by" class="pb-toolbar-button"></div>
 				<div style="flex: 1;"></div>
-				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i>Log in</div>
-				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i>Sign up</div>
+				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i><span>Log in</span></div>
+				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i><span>Sign up</span></div>
 				<div id="pb-toolbar-user" class="pb-toolbar-button dropdown">
-					<i class="fas fa-user-circle"></i><span id="pb-user-name"></span>
+					<div><i class="fas fa-user-circle"></i><span id="pb-user-name"></span></div>
 					<div class="dropdown-content">
 						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
 						<a id="pb-toolbar-profile"><i class="fas fa-info-circle"></i> Profile</a>

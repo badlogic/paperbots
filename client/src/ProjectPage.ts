@@ -40,7 +40,7 @@ export class ProjectPage implements EventListener {
 		dom.append(this.toolbar.render());
 
 		let editorAndDebugger = $(/*html */`
-			<div id ="pb-editor-and-debugger">
+			<div id ="pb-debugger-and-editor-and-docs">
 			</div>
 		`);
 		editorAndDebugger.append(this.debugger.render());

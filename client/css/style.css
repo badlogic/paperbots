@@ -1,11 +1,11 @@
+/** element styles **/
 * {
 	box-sizing: border-box;
 }
 
-a {
-	color: orange;
-    text-decoration: none;
-    background-color: transparent;
+html {
+	width: 100%;
+	height: 100%;
 }
 
 body {
@@ -15,12 +15,21 @@ body {
 	padding: 20px;
 	font-family: -apple-system,BlinkMacSystemFont,Segoe WPC,Segoe UI,HelveticaNeue-Light,Ubuntu,Droid Sans,sans-serif;
 	font-size: 16px;
+	width: 100%;
+	height: 100%;
 }
 
 table, th, td {
 	border: none;
 }
 
+a {
+	color: orange;
+    text-decoration: none;
+    background-color: transparent;
+}
+
+/** page styles **/
 #pb-index-page {
 	width: 100%;
 	height: 100vh;
@@ -42,6 +51,7 @@ table, th, td {
 	flex-direction: column;
 }
 
+/** Widget label styles */
 .pb-label {
 	padding: 0.25em 0.5em;
 	font-size: 14px;
@@ -55,6 +65,12 @@ table, th, td {
 	background: #444;
 }
 
+.pb-input-field:focus {
+	border-color: #ffffff;
+	color: #ffffff;
+}
+
+/** toolbar styles **/
 #pb-toolbar {
 	width: 100%;
 	padding: 0.25em 1em 0.25em 1em;
@@ -77,6 +93,13 @@ table, th, td {
 	color: hsla(39, 80%, 50%, 1);
 }
 
+#pb-toolbar-logo-long {
+}
+
+#pb-toolbar-logo-short {
+	display: none;
+}
+
 #pb-toolbar-title {
 	flex: 1;
 	vertical-align: middle;
@@ -85,7 +108,7 @@ table, th, td {
 	border: 0;
 	outline: 0;
 	color: #aaaaaa;
-	font-size: 16px;
+	font-size: 1em;
 	text-align: center;
 	border-bottom: 2px solid #aaaaaa;
 	max-width: 250px;
@@ -96,8 +119,6 @@ table, th, td {
 }
 
 .pb-toolbar-button {
-	vertical-align: middle;
-	height: 100%;
 	align-self: center;
 	padding: 0 0.5em;
 	color: #aaaaaa;
@@ -128,11 +149,6 @@ table, th, td {
 	margin-bottom: 0.5em;
 }
 
-.pb-input-field:focus {
-	border-color: #ffffff;
-	color: #ffffff;
-}
-
 #pb-world-and-comments {
 	display: flex;
 	flex-direction: column;
@@ -149,11 +165,29 @@ table, th, td {
 	width: 100%;
 }
 
+#pb-robot-world-tools input {
+	font-size: 0.8rem;
+	color: #aaaaaa;
+	background:#1e1e1e;
+	border: 0;
+	padding: 0.25em 0.5em;
+}
+
+#pb-robot-world-tools input.selected {
+	color: white;
+	background: orange;
+	font-weight: 700;
+}
+
+#pb-robot-world-tools input:focus {
+	outline:0;
+}
+
 #pb-robot-world canvas {
 	width: 100%;
 }
 
-#pb-editor-and-debugger {
+#pb-debugger-and-editor-and-docs {
 	display: flex;
 	height: 100%;
 	width: 100%;
@@ -173,6 +207,7 @@ table, th, td {
 	min-width: 0px;
 }
 
+/** Docs styles */
 #pb-docs {
 	flex: 1;
 	padding: 0 1em 0 1em;
@@ -221,6 +256,7 @@ table, th, td {
 	border-style: solid;
 }
 
+/** Debugger styles */
 #pb-debugger {
 	width: 200px;
 	height: 100%;
@@ -350,6 +386,7 @@ table, th, td {
 	color: #ffffff;
 }
 
+/* Code editor styles **/
 #pb-code-editor-code-mirror-wrapper {
 	position: relative;
 	flex: 1;
@@ -535,7 +572,7 @@ table, th, td {
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
 	z-index: 20000;
 	top: 33px;
-	left: -15px;
+	right: 0;
 }
 
 /* Links inside the dropdown */
@@ -551,16 +588,7 @@ table, th, td {
 	color: #ffffff;
 }
 
-.pb-benchmarks {
-
-}
-
-.pb-benchmark {
-}
-
-.pb-benchmark-code {
-}
-
+/* Benchmark page */
 .pb-benchmark-vm-code {
 	padding: 1em;
 	font-family: monospace;
@@ -578,4 +606,153 @@ table, th, td {
 	color: #ffffff;
 	white-space: pre;
 	max-height: 10em;
+}
+
+@media only screen and (min-width: 600px) and (max-width: 850px) {
+	#pb-toolbar {
+		padding: 0.2em;
+	}
+
+	.pb-toolbar-button {
+
+	}
+
+	.pb-toolbar-button span {
+		display: none;
+	}
+
+	#pb-toolbar-by span {
+		display: inline;
+	}
+
+	#pb-toolbar, #pb-toolbar-logo, #pb-toolbar-title, #pb-toolbar-by, .pb-input-field {
+		font-size: 1rem;
+	}
+
+	#pb-toolbar-logo-long {
+		display: none;
+	}
+
+	#pb-toolbar-logo-short {
+		display: inline-block;
+	}
+
+	.pb-debugger-button {
+		width: 24px;
+		height: 24px;
+		margin: 5px;
+	}
+
+	.pb-label {
+		font-size: 0.8em;
+	}
+
+	#pb-code-editor-error {
+		font-size: 0.8em;
+	}
+
+	.CodeMirror, .CodeMirror pre {
+		font-size: 12px;
+		line-height: 16px;
+		letter-spacing: 0px
+	}
+
+	.gutter-breakpoints {
+		width: 0.8em;
+	}
+
+	.pb-gutter-breakpoint {
+		padding-left: 4px;
+	}
+
+	#pb-docs {
+		font-size: 0.8rem;
+	}
+
+	#pb-robot-world {
+		font-size: 0.8rem;
+	}
+
+	#pb-debugger {
+		width: 120px;
+	}
+
+	#pb-debugger-callstack, #pb-debugger-locals {
+		font-size: 0.8em;
+	}
+}
+
+/** media queries to make things at last readable on tiny devices */
+@media only screen and (min-width: 320px) and (max-width: 599px) {
+	#pb-toolbar {
+		padding: 0.2em;
+	}
+
+	.pb-toolbar-button {
+		padding: 0 0.25em;
+	}
+
+	.pb-toolbar-button span {
+		display: none;
+	}
+
+	#pb-toolbar, #pb-toolbar-logo, #pb-toolbar-title, #pb-toolbar-by, .pb-input-field {
+		font-size: 0.7rem;
+	}
+
+	#pb-toolbar-logo-long {
+		display: none;
+	}
+
+	#pb-toolbar-logo-short {
+		display: inline-block;
+	}
+
+	.pb-debugger-button {
+		width: 16px;
+		height: 16px;
+		margin: 5px;
+	}
+
+	.pb-label {
+		font-size: 0.5em;
+	}
+
+	#pb-code-editor-error {
+		font-size: 0.5em;
+	}
+
+	.CodeMirror, .CodeMirror pre {
+		font-size: 8px;
+		line-height: 10px;
+		letter-spacing: 0px
+	}
+
+	.CodeMirror-gutter {
+		margin-right: 0.2em;
+	}
+
+	.gutter-breakpoints {
+		width: 0.1em;
+	}
+
+	#pb-docs {
+		font-size: 0.5rem;
+	}
+
+	#pb-robot-world {
+		font-size: 0.5rem;
+	}
+
+	#pb-robot-world-tools input {
+		font-size: 0.7rem;
+	}
+
+	#pb-debugger {
+		width: 80px;
+	}
+
+	#pb-debugger-callstack, #pb-debugger-locals {
+		font-size: 0.5em;
+	}
 }

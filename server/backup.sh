@@ -20,9 +20,12 @@ if [ -z $PAPERBOTS_DB_PORT ] ; then echo "Specify \$PAPERBOTS_DB_PORT"; exit -1;
 if [ -z $GDRIVE_FOLDER ] ; then echo "Specify \$GDRIVE_FOLDER"; exit -1; fi
 
 DUMP_FILE="paperbots-`date +%F`.sql"
+ZIP_DUMP_FILE="$DUMP_FILE.tar.gz"
 echo "Dumping paperbots database to $DUMP_FILE"
 ssh -l $SERVER_USER $SERVER_HOST "echo $SERVER_PWD | sudo -S docker exec $PAPERBOTS_DB_CONTAINER mysqldump --default-character-set=utf8mb4 -uroot -p$PAPERBOTS_DB_PWD --port $PAPERBOTS_DB_PORT paperbots" > $DUMP_FILE
 echo "Uploading $DUMP_FILE to GDrive"
-gdrive upload -p $GDRIVE_FOLDER $DUMP_FILE
+tar -czvf $ZIP_DUMP_FILE $DUMP_FILE
+gdrive upload -p $GDRIVE_FOLDER $ZIP_DUMP_FILE
 rm $DUMP_FILE
+rm $ZIP_DUMP_FILE
 

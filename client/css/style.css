@@ -222,10 +222,21 @@ table, th, td {
 }
 
 #pb-debugger {
-	width: 250px;
-	min-width: 250px;
+	width: 200px;
 	height: 100%;
 	display: flex;
+	flex-direction: column;
+}
+
+#pb-debugger.pb-collapsed {
+	width: auto;
+}
+
+.pb-collapsed .pb-label, .pb-collapsed #pb-debugger-locals-callstack {
+	display: none;
+}
+
+.pb-collapsed #pb-debugger-buttons {
 	flex-direction: column;
 }
 
@@ -239,6 +250,8 @@ table, th, td {
 	flex: 1;
 	background: #252526;
 	color: #ffffff;
+	white-space: pre;
+    overflow: auto;
 }
 
 #pb-debugger-callstack {

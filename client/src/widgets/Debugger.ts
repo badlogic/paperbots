@@ -41,7 +41,7 @@ export class Debugger extends Widget {
 
 	render (): HTMLElement {
 		let dom = this.dom = $(/*html*/`
-			<div id="pb-debugger" class="pb-debugger-collapsed">
+			<div id="pb-debugger" class="pb-collapsed">
 				<div class="pb-label">DEBUGGER</div>
 				<div id="pb-debugger-buttons">
 					<div id="pb-debugger-run" class="pb-debugger-run-icon pb-debugger-button"></div>
@@ -292,12 +292,14 @@ export class Debugger extends Widget {
 			setElementEnabled(this.stepInto, true);
 			setElementEnabled(this.stepOut, true);
 			this.setBreakpoints();
+			this.dom.removeClass("pb-collapsed");
 		} else if (event instanceof events.Pause) {
 			this.resume.show();
 			this.pause.hide();
 			setElementEnabled(this.stepOver, true);
 			setElementEnabled(this.stepInto, true);
 			setElementEnabled(this.stepOut, true);
+			this.dom.removeClass("pb-collapsed");
 		} else if (event instanceof events.Resume) {
 			this.pause.show();
 			this.resume.hide();
@@ -320,6 +322,7 @@ export class Debugger extends Widget {
 			this.locals.empty();
 			this.callstack.empty();
 			this.vmState.empty();
+			this.dom.addClass("pb-collapsed");
 		} else if (event instanceof events.Step) {
 			if (this.vm && this.vm.frames.length > 0) {
 				this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];

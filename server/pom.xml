@@ -90,12 +90,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>io.javalin</groupId>
-			<artifactId>javalin</artifactId>
-			<version>${javalin.version}</version>
-		</dependency>
-
-		<dependency>
 			<groupId>org.jdbi</groupId>
 			<artifactId>jdbi3-core</artifactId>
 			<version>${jdbi.version}</version>

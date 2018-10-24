@@ -7426,19 +7426,19 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
-                return tile && tile.kind == "wall";
+                return tile != null && tile.kind == "wall";
             });
             ext.addFunction("isNumberAhead", [], "boolean", false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
-                return tile && tile.kind == "number";
+                return tile != null && tile.kind == "number";
             });
             ext.addFunction("isLetterAhead", [], "boolean", false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
-                return tile && tile.kind == "letter";
+                return tile != null && tile.kind == "letter";
             });
             ext.addFunction("distanceToWall", [], "number", false, function () {
                 var dirX = _this.world.robot.data.dirX;

@@ -320,20 +320,20 @@ export class RobotWorld extends Widget {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
-			return tile && tile.kind == "wall";
+			return tile != null && tile.kind == "wall";
 		});
 
 		ext.addFunction("isNumberAhead", [], "boolean", false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
-			return tile && tile.kind == "number";
+			return tile != null && tile.kind == "number";
 		});
 		ext.addFunction("isLetterAhead", [], "boolean", false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
-			return tile && tile.kind == "letter";
+			return tile != null && tile.kind == "letter";
 		});
 		ext.addFunction("distanceToWall", [], "number", false, () => {
 			let dirX = this.world.robot.data.dirX;

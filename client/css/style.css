@@ -410,7 +410,7 @@ a {
 }
 
 .pb-code-editor-embeded-image {
-	max-height: 100%;
+	max-height: 4em;
 	margin: 1em;
 }
 

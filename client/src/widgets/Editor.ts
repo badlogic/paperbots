@@ -49,6 +49,7 @@ export class Editor extends Widget {
 	private markers = Array<TextMarker>();
 	private ext = new compiler.ExternalFunctions();
 	private justLoaded = false;
+	private isEmbedUrls = true;
 
 	render (): HTMLElement {
 		let dom = $(/* html */`
@@ -85,7 +86,7 @@ export class Editor extends Widget {
 					this.bus.event(new events.ProjectChanged());
 				}
 				clearTimeout(this.lastTimeoutHandle);
-				this.lastTimeoutHandle = setTimeout(() => this.expandUrls(), 500);
+				this.lastTimeoutHandle = setTimeout(() => this.embedUrls(), 500);
 			});
 
 			this.editor.on("gutterClick", (cm, n) => {
@@ -128,51 +129,54 @@ export class Editor extends Widget {
 	}
 	lastTimeoutHandle = 0;
 	urlWidgets: Map<{ widget: LineWidget, line: string, delete: boolean }> = { };
-	expandUrls() {
+	embedUrls() {
 		Object.keys(this.urlWidgets).forEach(line => {
 			let widget = this.urlWidgets[line];
 			widget.delete = true;
 		});
-		let lines = this.editor.getDoc().getValue().split("\n");
-		lines.forEach((line, i) => {
-			let previous = this.urlWidgets[line];
-			if (previous) {
-				previous.delete = false;
-				return;
-			}
+		if (this.isEmbedUrls) {
+			let lines = this.editor.getDoc().getValue().split("\n");
+			lines.forEach((line, i) => {
+				let previous = this.urlWidgets[line];
+				if (previous) {
+					previous.delete = false;
+					return;
+				}
 
-			let urls = this.extractUrls(line);
-			if (urls == null) return;
-			let doms = new Array<JQuery>();
-			urls.forEach(url => {
-				if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
-					let videoId = url.substr("https://www.youtube.com/watch?v=".length);
-					if (videoId.length > 0) {
-						videoId = videoId.trim();
+				let urls = this.extractUrls(line);
+				if (urls == null) return;
+				let doms = new Array<JQuery>();
+				urls.forEach(url => {
+					if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
+						let videoId = url.substr("https://www.youtube.com/watch?v=".length);
+						if (videoId.length > 0) {
+							videoId = videoId.trim();
+							doms.push($(/*html*/`
+								<iframe id="ytplayer" type="text/html" width="300" height="168"
+								src="https://www.youtube.com/embed/${videoId}"
+								frameborder="0"></iframe>
+							`));
+						}
+					} else if (url.toLowerCase().indexOf(".png") >= 0 ||
+							url.toLowerCase().indexOf(".jpg") >= 0 ||
+							url.toLowerCase().indexOf(".gif") >= 0) {
 						doms.push($(/*html*/`
-							<iframe id="ytplayer" type="text/html" width="300" height="168"
-							src="https://www.youtube.com/embed/${videoId}"
-							frameborder="0"></iframe>
+							<img src="${url}" style="height: 100px;">
 						`));
 					}
-				} else if (url.toLowerCase().indexOf(".png") >= 0 ||
-						   url.toLowerCase().indexOf(".jpg") >= 0 ||
-						   url.toLowerCase().indexOf(".gif") >= 0) {
-					doms.push($(/*html*/`
-						<img src="${url}" style="height: 100px;">
-					`));
+				});
+
+				if (doms.length > 0) {
+					let lineDom = $(/*html*/`
+						<div style="display: flex; flex-direction: row;">
+						</div>
+					`);
+					doms.forEach(dom => lineDom.append(dom));
+					this.urlWidgets[line] = { widget: this.editor.addLineWidget(i, lineDom[0]), line: line, delete: false };
 				}
 			});
+		}
 
-			if (doms.length > 0) {
-				let lineDom = $(/*html*/`
-					<div style="display: flex; flex-direction: row;">
-					</div>
-				`);
-				doms.forEach(dom => lineDom.append(dom));
-				this.urlWidgets[line] = { widget: this.editor.addLineWidget(i, lineDom[0]), line: line, delete: false };
-			}
-		});
 
 		Object.keys(this.urlWidgets).forEach(line => {
 			let widget = this.urlWidgets[line];
@@ -264,5 +268,10 @@ export class Editor extends Widget {
 
 	setSource(source: string) {
 		this.editor.getDoc().setValue(source.trim());
+	}
+
+	setEmbedURls(embedUrls: boolean) {
+		this.isEmbedUrls = embedUrls;
+		this.embedUrls();
 	}
 }

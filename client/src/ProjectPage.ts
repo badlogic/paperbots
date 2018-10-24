@@ -51,10 +51,30 @@ export class ProjectPage implements EventListener {
 		`)
 
 		let editor = this.editor.render();
-		let editorLabel = $(/*html*/`<div id="pb-program-label" class="pb-label"><span>PROGRAM</div>`);
+		let editorLabel = $(/*html*/`
+			<div id="pb-program-label" class="pb-label">
+				<span>PROGRAM</span>
+				<div style="float: right; align-self: center;"><i style="margin-right: 0;"class="fas fa-eye"></i></div>
+				</div>
+			</div>
+		`);
+
 		editorAndDocs.append(editorLabel);
-		editorLabel.click(() => {
-			$(editor).toggle();
+		editorLabel.click((ev) => {
+			let target = $(ev.target);
+			if (target.is("i")) {
+				if (target.hasClass("fa-eye")) {
+					target.removeClass("fa-eye");
+					target.addClass("fa-eye-slash");
+					this.editor.setEmbedURls(false);
+				} else {
+					target.removeClass("fa-eye-slash");
+					target.addClass("fa-eye");
+					this.editor.setEmbedURls(true);
+				}
+			} else {
+				$(editor).toggle();
+			}
 		});
 		editorAndDocs.append(editor);
 

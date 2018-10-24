@@ -6737,6 +6737,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             _this.markers = Array();
             _this.ext = new compiler.ExternalFunctions();
             _this.justLoaded = false;
+            _this.isEmbedUrls = true;
             _this.urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
             _this.lastTimeoutHandle = 0;
             _this.urlWidgets = {};
@@ -6771,7 +6772,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                         _this.bus.event(new events.ProjectChanged());
                     }
                     clearTimeout(_this.lastTimeoutHandle);
-                    _this.lastTimeoutHandle = setTimeout(function () { return _this.expandUrls(); }, 500);
+                    _this.lastTimeoutHandle = setTimeout(function () { return _this.embedUrls(); }, 500);
                 });
                 _this.editor.on("gutterClick", function (cm, n) {
                     var info = cm.lineInfo(n);
@@ -6807,43 +6808,45 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         Editor.prototype.extractUrls = function (text) {
             return text.match(this.urlRegex);
         };
-        Editor.prototype.expandUrls = function () {
+        Editor.prototype.embedUrls = function () {
             var _this = this;
             Object.keys(this.urlWidgets).forEach(function (line) {
                 var widget = _this.urlWidgets[line];
                 widget["delete"] = true;
             });
-            var lines = this.editor.getDoc().getValue().split("\n");
-            lines.forEach(function (line, i) {
-                var previous = _this.urlWidgets[line];
-                if (previous) {
-                    previous["delete"] = false;
-                    return;
-                }
-                var urls = _this.extractUrls(line);
-                if (urls == null)
-                    return;
-                var doms = new Array();
-                urls.forEach(function (url) {
-                    if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
-                        var videoId = url.substr("https://www.youtube.com/watch?v=".length);
-                        if (videoId.length > 0) {
-                            videoId = videoId.trim();
-                            doms.push($("\n\t\t\t\t\t\t\t<iframe id=\"ytplayer\" type=\"text/html\" width=\"300\" height=\"168\"\n\t\t\t\t\t\t\tsrc=\"https://www.youtube.com/embed/" + videoId + "\"\n\t\t\t\t\t\t\tframeborder=\"0\"></iframe>\n\t\t\t\t\t\t"));
-                        }
+            if (this.isEmbedUrls) {
+                var lines = this.editor.getDoc().getValue().split("\n");
+                lines.forEach(function (line, i) {
+                    var previous = _this.urlWidgets[line];
+                    if (previous) {
+                        previous["delete"] = false;
+                        return;
                     }
-                    else if (url.toLowerCase().indexOf(".png") >= 0 ||
-                        url.toLowerCase().indexOf(".jpg") >= 0 ||
-                        url.toLowerCase().indexOf(".gif") >= 0) {
-                        doms.push($("\n\t\t\t\t\t\t<img src=\"" + url + "\" style=\"height: 100px;\">\n\t\t\t\t\t"));
+                    var urls = _this.extractUrls(line);
+                    if (urls == null)
+                        return;
+                    var doms = new Array();
+                    urls.forEach(function (url) {
+                        if (url.indexOf("https://www.youtube.com/watch?v=") == 0) {
+                            var videoId = url.substr("https://www.youtube.com/watch?v=".length);
+                            if (videoId.length > 0) {
+                                videoId = videoId.trim();
+                                doms.push($("\n\t\t\t\t\t\t\t\t<iframe id=\"ytplayer\" type=\"text/html\" width=\"300\" height=\"168\"\n\t\t\t\t\t\t\t\tsrc=\"https://www.youtube.com/embed/" + videoId + "\"\n\t\t\t\t\t\t\t\tframeborder=\"0\"></iframe>\n\t\t\t\t\t\t\t"));
+                            }
+                        }
+                        else if (url.toLowerCase().indexOf(".png") >= 0 ||
+                            url.toLowerCase().indexOf(".jpg") >= 0 ||
+                            url.toLowerCase().indexOf(".gif") >= 0) {
+                            doms.push($("\n\t\t\t\t\t\t\t<img src=\"" + url + "\" style=\"height: 100px;\">\n\t\t\t\t\t\t"));
+                        }
+                    });
+                    if (doms.length > 0) {
+                        var lineDom_1 = $("\n\t\t\t\t\t\t<div style=\"display: flex; flex-direction: row;\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
+                        doms.forEach(function (dom) { return lineDom_1.append(dom); });
+                        _this.urlWidgets[line] = { widget: _this.editor.addLineWidget(i, lineDom_1[0]), line: line, "delete": false };
                     }
                 });
-                if (doms.length > 0) {
-                    var lineDom_1 = $("\n\t\t\t\t\t<div style=\"display: flex; flex-direction: row;\">\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    doms.forEach(function (dom) { return lineDom_1.append(dom); });
-                    _this.urlWidgets[line] = { widget: _this.editor.addLineWidget(i, lineDom_1[0]), line: line, "delete": false };
-                }
-            });
+            }
             Object.keys(this.urlWidgets).forEach(function (line) {
                 var widget = _this.urlWidgets[line];
                 if (widget["delete"]) {
@@ -6928,6 +6931,10 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         };
         Editor.prototype.setSource = function (source) {
             this.editor.getDoc().setValue(source.trim());
+        };
+        Editor.prototype.setEmbedURls = function (embedUrls) {
+            this.isEmbedUrls = embedUrls;
+            this.embedUrls();
         };
         return Editor;
     }(Widget_2.Widget));
@@ -8312,10 +8319,25 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             editorAndDebugger.append(this["debugger"].render());
             var editorAndDocs = $("\n\t\t\t<div id=\"pb-editor-and-docs\">\n\t\t\t</div>\n\t\t");
             var editor = this.editor.render();
-            var editorLabel = $("<div id=\"pb-program-label\" class=\"pb-label\"><span>PROGRAM</div>");
+            var editorLabel = $("\n\t\t\t<div id=\"pb-program-label\" class=\"pb-label\">\n\t\t\t\t<span>PROGRAM</span>\n\t\t\t\t<div style=\"float: right; align-self: center;\"><i style=\"margin-right: 0;\"class=\"fas fa-eye\"></i></div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             editorAndDocs.append(editorLabel);
-            editorLabel.click(function () {
-                $(editor).toggle();
+            editorLabel.click(function (ev) {
+                var target = $(ev.target);
+                if (target.is("i")) {
+                    if (target.hasClass("fa-eye")) {
+                        target.removeClass("fa-eye");
+                        target.addClass("fa-eye-slash");
+                        _this.editor.setEmbedURls(false);
+                    }
+                    else {
+                        target.removeClass("fa-eye-slash");
+                        target.addClass("fa-eye");
+                        _this.editor.setEmbedURls(true);
+                    }
+                }
+                else {
+                    $(editor).toggle();
+                }
             });
             editorAndDocs.append(editor);
             var help = this.docs.render();

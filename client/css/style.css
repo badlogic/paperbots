@@ -409,6 +409,11 @@ a {
 	min-width: 0px;
 }
 
+.pb-code-editor-embeded-image {
+	max-height: 100%;
+	margin: 1em;
+}
+
 /* CodeMirror styles */
 .CodeMirror {
 	width: 100%;

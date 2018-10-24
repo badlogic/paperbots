@@ -6834,7 +6834,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                         else if (url.toLowerCase().indexOf(".png") >= 0 ||
                             url.toLowerCase().indexOf(".jpg") >= 0 ||
                             url.toLowerCase().indexOf(".gif") >= 0) {
-                            doms.push($("\n\t\t\t\t\t\t\t<img src=\"" + url + "\" style=\"height: 100px;\">\n\t\t\t\t\t\t"));
+                            doms.push($("\n\t\t\t\t\t\t\t<img src=\"" + url + "\" class=\"pb-code-editor-embedded-image\"\">\n\t\t\t\t\t\t"));
                         }
                     });
                     if (doms.length > 0) {

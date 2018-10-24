@@ -159,7 +159,7 @@ export class Editor extends Widget {
 							url.toLowerCase().indexOf(".jpg") >= 0 ||
 							url.toLowerCase().indexOf(".gif") >= 0) {
 						doms.push($(/*html*/`
-							<img src="${url}" class="pb-code-editor-embedded-image"">
+							<img src="${url}" class="pb-code-editor-embeded-image">
 						`));
 					}
 				});

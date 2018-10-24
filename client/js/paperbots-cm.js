@@ -31,9 +31,14 @@ CodeMirror.defineMode("paperbots", function(config, parserConfig) {
   ]);
   var keywords = wordRE(["var", "fun", "elseif", "else", "if", "repeat", "while", "do", "then", "times", "true", "false", "xor", "and", "or", "end", "not", "record", "return", "continue", "break"]);
 
-  var indentTokens = wordRE(["fun", "if", "repeat", "while", "record"]);
+  /*var indentTokens = wordRE(["fun", "if", "repeat", "while", "record"]);
   var dedentTokens = wordRE(["end"]);
-  var dedentPartial = prefixRE(["end", "else", "elseif"]);
+  var dedentPartial = prefixRE(["end", "else", "elseif"]);*/
+
+  var indentTokens = wordRE([]);
+  var dedentTokens = wordRE([]);
+  var dedentPartial = prefixRE([]);
+
 
   function readBracket(stream) {
     var level = 0;

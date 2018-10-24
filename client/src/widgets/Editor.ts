@@ -71,9 +71,7 @@ export class Editor extends Widget {
 				lineNumbers: true,
 				gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
 				fixedGutter: true,
-				extraKeys: {
-					"Tab": "indentAuto"
-				},
+
 				theme: "monokai"
 			});
 

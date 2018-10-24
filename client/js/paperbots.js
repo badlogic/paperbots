@@ -6757,9 +6757,6 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                     lineNumbers: true,
                     gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
                     fixedGutter: true,
-                    extraKeys: {
-                        "Tab": "indentAuto"
-                    },
                     theme: "monokai"
                 });
                 _this.editor.on("change", function (instance, change) {

@@ -3,6 +3,7 @@ import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
+import { countColumn } from "codemirror";
 
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
@@ -68,6 +69,61 @@ export class CanvasWorld extends Widget {
 			requestAnimationFrame(() => { asyncResult.completed = true });
 			return asyncResult;
 		});
+
+		functions.addFunction("drawCircle",[
+		new compiler.ExternalFunctionParameter("radius","number"),
+		new compiler.ExternalFunctionParameter("x","number"),
+		new compiler.ExternalFunctionParameter("y","number"),
+		new compiler.ExternalFunctionParameter("color","string")],
+		"nothing", false, (radius,x,y,color) =>{
+
+			let ctx = this.context;
+			ctx.beginPath();
+			ctx.arc(x, y, radius, 0, 2*Math.PI, false);
+     	 	ctx.fillStyle = color;
+      		ctx.fill();
+     		
+		});
+		functions.addFunction("drawRectangle",[
+			new compiler.ExternalFunctionParameter("width","number"),
+			new compiler.ExternalFunctionParameter("height","number"),
+			new compiler.ExternalFunctionParameter("x","number"),
+			new compiler.ExternalFunctionParameter("y","number"),
+			new compiler.ExternalFunctionParameter("color","string")
+		],"nothing",false,(width,hegiht,x,y,color) =>{
+			let ctx = this.context;
+			ctx.fillStyle = color;
+			ctx.fillRect(x, y, width, hegiht);
+		});
+
+		functions.addFunction("drawEllipse",[
+			new compiler.ExternalFunctionParameter("radiusX","number"),
+			new compiler.ExternalFunctionParameter("radiusY","number"),
+			new compiler.ExternalFunctionParameter("x","number"),
+			new compiler.ExternalFunctionParameter("y","number"),
+			new compiler.ExternalFunctionParameter("color","string")
+		],"nothing",false,(radiusX,radiusY,x,y,color) =>{
+			let ctx = this.context;
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.ellipse(x,y,radiusX,radiusY,0 * Math.PI/180, 0, 2 * Math.PI);
+			ctx.fill();
+
+		});
+
+		functions.addFunction("drawText",[
+			new compiler.ExternalFunctionParameter("text","string"),
+			new compiler.ExternalFunctionParameter("x","number"),
+			new compiler.ExternalFunctionParameter("y","number"),
+			new compiler.ExternalFunctionParameter("fontSize","number"),
+			new compiler.ExternalFunctionParameter("fontFamily","string"),
+			new compiler.ExternalFunctionParameter("color","string")
+		],"nothing",false,(text,x,y,fontSize,fontFamily,color) =>{
+			let ctx = this.context;
+			ctx.font = fontSize.toString()+"px"+fontFamily;
+			ctx.fillStyle = color;
+			ctx.fillText(text,x,y);
+		})
 		this.bus.event(new events.AnnounceExternalFunctions(functions));
 
 		return dom[0];

@@ -3,6 +3,7 @@ import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
+import { BooleanType, StringType, NumberType, NothingType } from "../language/Compiler";
 
 function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);
@@ -160,7 +161,7 @@ export class RobotWorld extends Widget {
 	announceExternals() {
 		let ext = new compiler.ExternalFunctions();
 
-		ext.addFunction("forward", [], "nothing", true, () => {
+		ext.addFunction("forward", [], NothingType, true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Forward);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
@@ -176,7 +177,7 @@ export class RobotWorld extends Widget {
 			requestAnimationFrame(check);
 			return asyncResult;
 		});
-		ext.addFunction("backward", [], "nothing", true, () => {
+		ext.addFunction("backward", [], NothingType, true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Backward);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
@@ -193,7 +194,7 @@ export class RobotWorld extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("turnLeft", [], "nothing", true, () => {
+		ext.addFunction("turnLeft", [], NothingType, true, () => {
 			this.world.robot.setAction(this.world, RobotAction.TurnLeft);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
@@ -210,7 +211,7 @@ export class RobotWorld extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("turnRight", [], "nothing", true, () => {
+		ext.addFunction("turnRight", [], NothingType, true, () => {
 			this.world.robot.setAction(this.world, RobotAction.TurnRight);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
@@ -227,7 +228,7 @@ export class RobotWorld extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, (number) => {
+		ext.addFunction("print", [{name: "value", type: NumberType}], NothingType, true, (number) => {
 			if (number < 0 || number > 99 || isNaN(number)) {
 				alert("The number must be between 0-99.");
 				return {
@@ -257,7 +258,7 @@ export class RobotWorld extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, (letter) => {
+		ext.addFunction("print", [{name: "letter", type: StringType}], NothingType, true, (letter) => {
 			if (letter.trim().length == 0) {
 				return {
 					completed: true,
@@ -294,7 +295,7 @@ export class RobotWorld extends Widget {
 			return asyncResult;
 		});
 
-		ext.addFunction("scanNumber", [], "number", false, () => {
+		ext.addFunction("scanNumber", [], NumberType, false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
@@ -305,7 +306,7 @@ export class RobotWorld extends Widget {
 			}
 		});
 
-		ext.addFunction("scanLetter", [], "string", false, () => {
+		ext.addFunction("scanLetter", [], StringType, false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
@@ -316,26 +317,26 @@ export class RobotWorld extends Widget {
 			}
 		});
 
-		ext.addFunction("isWallAhead", [], "boolean", false, () => {
+		ext.addFunction("isWallAhead", [], BooleanType, false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			return tile != null && tile.kind == "wall";
 		});
 
-		ext.addFunction("isNumberAhead", [], "boolean", false, () => {
+		ext.addFunction("isNumberAhead", [], BooleanType, false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			return tile != null && tile.kind == "number";
 		});
-		ext.addFunction("isLetterAhead", [], "boolean", false, () => {
+		ext.addFunction("isLetterAhead", [], BooleanType, false, () => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);
 			return tile != null && tile.kind == "letter";
 		});
-		ext.addFunction("distanceToWall", [], "number", false, () => {
+		ext.addFunction("distanceToWall", [], NumberType, false, () => {
 			let dirX = this.world.robot.data.dirX;
 			let dirY = this.world.robot.data.dirY;
 			let x = this.world.robot.data.x + dirX;
@@ -351,7 +352,7 @@ export class RobotWorld extends Widget {
 			}
 			return distance;
 		});
-		ext.addFunction("getDirection", [], "number", false, () => {
+		ext.addFunction("getDirection", [], NumberType, false, () => {
 			let dirX = this.world.robot.data.dirX;
 			let dirY = this.world.robot.data.dirY;
 			if (dirX == 1 && dirY == 0) return 0;
@@ -360,33 +361,33 @@ export class RobotWorld extends Widget {
 			if (dirX == 0 && dirY == -1) return 3;
 			return 0;
 		});
-		ext.addFunction("getX", [], "number", false, () => {
+		ext.addFunction("getX", [], NumberType, false, () => {
 			return this.world.robot.data.x;
 		});
-		ext.addFunction("getY", [], "number", false, () => {
+		ext.addFunction("getY", [], NumberType, false, () => {
 			return this.world.robot.data.y;
 		});
-		ext.addFunction("getSpeed", [], "number", false, () => {
+		ext.addFunction("getSpeed", [], NumberType, false, () => {
 			return 1 / this.world.robot.moveDuration;
 		});
-		ext.addFunction("setSpeed", [new compiler.ExternalFunctionParameter("speed", "number")], "nothing", false, (speed) => {
+		ext.addFunction("setSpeed", [{name: "speed", type: NumberType}], NothingType, false, (speed) => {
 			if (speed < 0) {
 				alert("The robot's speed must be >= 0.");
 				return;
 			}
 			this.world.robot.moveDuration = 1 / speed;
 		});
-		ext.addFunction("getTurningSpeed", [], "number", false, () => {
+		ext.addFunction("getTurningSpeed", [], NumberType, false, () => {
 			return 90 / this.world.robot.turnDuration;
 		});
-		ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("degrees", "number")], "nothing", false, (degrees) => {
+		ext.addFunction("setTurningSpeed", [{name: "degrees", type: NumberType}], NothingType, false, (degrees) => {
 			if (degrees < 0) {
 				alert("The robot's turning speed must be >= 0.");
 				return;
 			}
 			this.world.robot.turnDuration = 1 / degrees * 90;
 		});
-		ext.addFunction("buildWall", [], "nothing", true, (speed) => {
+		ext.addFunction("buildWall", [], NothingType, true, (speed) => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			this.world.setTile(x, y, World.newWall());
@@ -406,7 +407,7 @@ export class RobotWorld extends Widget {
 			requestAnimationFrame(check);
 			return asyncResult;
 		});
-		ext.addFunction("destroyWall", [], "nothing", true, (speed) => {
+		ext.addFunction("destroyWall", [], NothingType, true, (speed) => {
 			let x = this.world.robot.data.x + this.world.robot.data.dirX;
 			let y = this.world.robot.data.y + this.world.robot.data.dirY;
 			let tile = this.world.getTile(x, y);

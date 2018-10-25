@@ -86,7 +86,7 @@ fib(30)
 			output += functionSignature(func.ast as FunctionDecl);
 			output += "\nlocals:\n"
 			func.locals.forEach((local, index) => {
-				output += `   [${index}] ` + local.name.value + ": " + local.type.name + "\n";
+				output += `   [${index}] ` + local.name.value + ": " + local.type.signature + "\n";
 			});
 
 			output += "\ninstructions:\n"

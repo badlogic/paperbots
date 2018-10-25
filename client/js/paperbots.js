@@ -5856,20 +5856,20 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
     }());
     exports.CompilerError = CompilerError;
     exports.NothingType = {
-        declarationNode: null,
-        name: "nothing"
+        kind: "primitive",
+        signature: "nothing"
     };
     exports.BooleanType = {
-        declarationNode: null,
-        name: "boolean"
+        kind: "primitive",
+        signature: "boolean"
     };
     exports.NumberType = {
-        declarationNode: null,
-        name: "number"
+        kind: "primitive",
+        signature: "number"
     };
     exports.StringType = {
-        declarationNode: null,
-        name: "string"
+        kind: "primitive",
+        signature: "string"
     };
     var Scopes = (function () {
         function Scopes() {
@@ -5925,17 +5925,17 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             this.functions = new Array();
             this.lookup = {};
             var externals = this;
-            externals.addFunction("alert", [new ExternalFunctionParameter("message", "string")], "nothing", false, function (message) { alert(message); });
-            externals.addFunction("alert", [new ExternalFunctionParameter("value", "number")], "nothing", false, function (value) { alert(value); });
-            externals.addFunction("alert", [new ExternalFunctionParameter("value", "boolean")], "nothing", false, function (value) { alert(value); });
-            externals.addFunction("toString", [new ExternalFunctionParameter("value", "number")], "string", false, function (value) { return "" + value; });
-            externals.addFunction("toString", [new ExternalFunctionParameter("value", "boolean")], "string", false, function (value) { return "" + value; });
-            externals.addFunction("length", [new ExternalFunctionParameter("value", "string")], "number", false, function (value) { return value.length; });
+            externals.addFunction("alert", [{ name: "message", type: exports.StringType }], exports.NothingType, false, function (message) { alert(message); });
+            externals.addFunction("alert", [{ name: "value", type: exports.NumberType }], exports.NothingType, false, function (value) { alert(value); });
+            externals.addFunction("alert", [{ name: "value", type: exports.BooleanType }], exports.NothingType, false, function (value) { alert(value); });
+            externals.addFunction("toString", [{ name: "value", type: exports.NumberType }], exports.StringType, false, function (value) { return "" + value; });
+            externals.addFunction("toString", [{ name: "value", type: exports.BooleanType }], exports.StringType, false, function (value) { return "" + value; });
+            externals.addFunction("length", [{ name: "value", type: exports.StringType }], exports.NumberType, false, function (value) { return value.length; });
             externals.addFunction("charAt", [
-                new ExternalFunctionParameter("value", "string"),
-                new ExternalFunctionParameter("index", "number")
-            ], "string", false, function (value, index) { return value.charAt(index); });
-            externals.addFunction("pause", [new ExternalFunctionParameter("milliSeconds", "number")], "number", true, function (milliSeconds) {
+                { name: "value", type: exports.StringType },
+                { name: "index", type: exports.NumberType }
+            ], exports.StringType, false, function (value, index) { return value.charAt(index); });
+            externals.addFunction("pause", [{ name: "milliSeconds", type: exports.NumberType }], exports.NumberType, true, function (milliSeconds) {
                 var promise = {
                     completed: false,
                     value: 0
@@ -5947,34 +5947,24 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 return promise;
             });
         }
-        ExternalFunctions.prototype.addFunction = function (name, args, returnTypeName, async, fun) {
+        ExternalFunctions.prototype.addFunction = function (name, args, returnType, async, fun) {
             var index = this.functions.length;
-            var extFun = new ExternalFunction(name, args, returnTypeName, async, fun, index);
+            var extFun = new ExternalFunction(name, args, returnType, async, fun, index);
             this.functions.push(extFun);
             this.lookup[extFun.signature] = extFun;
         };
         return ExternalFunctions;
     }());
     exports.ExternalFunctions = ExternalFunctions;
-    var ExternalFunctionParameter = (function () {
-        function ExternalFunctionParameter(name, typeName) {
-            this.name = name;
-            this.typeName = typeName;
-        }
-        return ExternalFunctionParameter;
-    }());
-    exports.ExternalFunctionParameter = ExternalFunctionParameter;
     var ExternalFunction = (function () {
-        function ExternalFunction(name, args, returnTypeName, async, fun, index) {
+        function ExternalFunction(name, args, returnType, async, fun, index) {
             this.name = name;
             this.args = args;
-            this.returnTypeName = returnTypeName;
+            this.returnType = returnType;
             this.async = async;
             this.fun = fun;
             this.index = index;
-            this.argTypes = new Array();
-            this.returnType = null;
-            this.signature = name + "(" + args.map(function (arg) { return arg.typeName; }).join(",") + ")";
+            this.signature = name + "(" + args.map(function (arg) { return arg.type.signature; }).join(",") + ")";
         }
         return ExternalFunction;
     }());
@@ -6021,7 +6011,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
     }
     exports.compile = compile;
     function debug(msg) {
-        throw new CompilerError(msg, null);
+        throw new CompilerError(msg, nullLocation());
     }
     function nullLocation() {
         return {
@@ -6042,7 +6032,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "function":
                 return fun.name.value + "(" + fun.params.map(function (param) { return param.typeName.id.value; }).join(",") + ")";
             case "functionCall":
-                return fun.name.value + "(" + fun.args.map(function (arg) { return arg.type.name; }).join(",") + ")";
+                return fun.name.value + "(" + fun.args.map(function (arg) { return arg.type.signature; }).join(",") + ")";
         }
     }
     exports.functionSignature = functionSignature;
@@ -6053,98 +6043,100 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             externalFunctions: {},
             records: {}
         };
-        types.all[exports.NothingType.name] = exports.NothingType;
-        types.all[exports.BooleanType.name] = exports.BooleanType;
-        types.all[exports.NumberType.name] = exports.NumberType;
-        types.all[exports.StringType.name] = exports.StringType;
+        types.all[exports.NothingType.signature] = exports.NothingType;
+        types.all[exports.BooleanType.signature] = exports.BooleanType;
+        types.all[exports.NumberType.signature] = exports.NumberType;
+        types.all[exports.StringType.signature] = exports.StringType;
         functions.forEach(function (fun) {
             var type = {
-                declarationNode: fun,
-                name: functionSignature(fun)
+                kind: "function",
+                signature: functionSignature(fun),
+                parameters: [],
+                returnType: exports.NothingType,
+                declarationNode: fun
             };
-            var other = types.all[type.name];
+            var other = types.functions[type.signature];
             if (other) {
                 var otherLoc = other.declarationNode.location.start;
-                throw new CompilerError("Function '" + other.name + "' already defined in line " + otherLoc.line + ".", fun.name.location);
+                throw new CompilerError("Function '" + other.signature + "' already defined in line " + otherLoc.line + ".", fun.name.location);
             }
-            if (externalFunctions.lookup[type.name])
-                throw new CompilerError("Function '" + other.name + "' already defined externally.", fun.name.location);
-            types.all[type.name] = type;
-            types.functions[type.name] = type;
+            if (externalFunctions.lookup[type.signature])
+                throw new CompilerError("Function '" + other.signature + "' already defined externally.", fun.name.location);
+            fun.type = type;
+            types.all[type.signature] = type;
+            types.functions[type.signature] = type;
         });
         records.forEach(function (rec) {
             var type = {
+                kind: "record",
+                fields: [],
                 declarationNode: rec,
-                name: rec.name.value
+                signature: rec.name.value
             };
-            var other = types.all[type.name];
+            var other = types.records[type.signature];
             if (other) {
                 var otherLoc = other.declarationNode.location.start;
-                throw new CompilerError("Record '" + other.name + "' already defined in line " + otherLoc.line + ".", rec.name.location);
+                throw new CompilerError("Record '" + other.signature + "' already defined in line " + otherLoc.line + ".", rec.name.location);
             }
-            types.all[type.name] = type;
-            types.records[type.name] = type;
+            rec.type = type;
+            types.all[type.signature] = type;
+            types.records[type.signature] = type;
         });
         externalFunctions.functions.forEach(function (fun) {
-            if (!fun.returnTypeName) {
-                fun.returnTypeName = "nothing";
-                fun.returnType = exports.NothingType;
-            }
-            else {
-                var returnType = types.all[fun.returnTypeName];
-                if (!returnType)
-                    throw new CompilerError("Could not find type '" + fun.returnTypeName + "' for return value of external function '" + fun.name + "'.", nullLocation());
-                fun.returnType = returnType;
-            }
-            fun.args.forEach(function (arg, index) {
-                var argType = types.all[arg.typeName];
-                if (!argType)
-                    throw new CompilerError("Could not find type '" + arg + "' for argument " + (index + 1) + " of external function '" + fun.name + "'.", nullLocation());
-                fun.argTypes.push(argType);
-            });
             types.externalFunctions[fun.signature] = fun;
         });
         var _loop_1 = function (typeName) {
             var type = types.all[typeName];
-            if (type.declarationNode && type.declarationNode.kind == "function") {
-                var decl = type.declarationNode;
-                var paramNames_1 = {};
-                decl.params.forEach(function (param) {
-                    var otherParam = paramNames_1[param.name.value];
-                    if (otherParam) {
-                        var otherLoc = otherParam.name.location.start;
-                        throw new CompilerError("Duplicate parameter name '" + param.name.value + "' in function '" + type.name + ", see line " + otherLoc.line + ", column " + otherLoc.column + ".", param.name.location);
+            switch (type.kind) {
+                case "function": {
+                    var decl = type.declarationNode;
+                    var func_1 = type;
+                    if (decl == null)
+                        return "continue";
+                    var params_1 = {};
+                    decl.params.forEach(function (param) {
+                        var otherParam = params_1[param.name.value];
+                        if (otherParam) {
+                            var otherLoc = otherParam.name.location.start;
+                            throw new CompilerError("Duplicate parameter name '" + param.name.value + "' in function '" + type.signature + ", see line " + otherLoc.line + ", column " + otherLoc.column + ".", param.name.location);
+                        }
+                        var paramType = types.all[param.typeName.id.value];
+                        if (!paramType) {
+                            throw new CompilerError("Unknown type '" + param.typeName.id.value + "' for parameter '" + param.name.value + "' of function '" + type.signature + ".", param.typeName.id.location);
+                        }
+                        func_1.parameters.push({ name: param.name.value, type: paramType });
+                        param.type = paramType;
+                        params_1[param.name.value] = param;
+                    });
+                    var returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
+                    var returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
+                    if (!returnType) {
+                        throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
                     }
-                    var paramType = types.all[param.typeName.id.value];
-                    if (!paramType) {
-                        throw new CompilerError("Unknown type '" + param.typeName.id.value + "' for parameter '" + param.name.value + "' of function '" + type.name + ".", param.typeName.id.location);
-                    }
-                    param.type = paramType;
-                    paramNames_1[param.name.value] = param;
-                });
-                var returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
-                var returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
-                if (!returnType) {
-                    throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
+                    func_1.returnType = returnType;
+                    decl.returnType = returnType;
+                    break;
                 }
-                decl.returnType = returnType;
-            }
-            else if (type.declarationNode && type.declarationNode.kind == "record") {
-                var decl = type.declarationNode;
-                var fieldNames_1 = {};
-                decl.fields.forEach(function (field) {
-                    var otherField = fieldNames_1[field.name.value];
-                    if (otherField) {
-                        var otherLoc = otherField.name.location.start;
-                        throw new CompilerError("Duplicate field name '" + field.name.value + "' in record '" + type.name + "', see line " + otherLoc.line + ", column " + otherLoc.column + ".", field.name.location);
-                    }
-                    var fieldType = types.all[field.typeName.id.value];
-                    if (!fieldType) {
-                        throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.name + "'.", field.typeName.id.location);
-                    }
-                    field.type = type;
-                    fieldNames_1[field.name.value] = field;
-                });
+                case "record": {
+                    var decl = type.declarationNode;
+                    var rec_1 = type;
+                    var fieldNames_1 = {};
+                    decl.fields.forEach(function (field) {
+                        var otherField = fieldNames_1[field.name.value];
+                        if (otherField) {
+                            var otherLoc = otherField.name.location.start;
+                            throw new CompilerError("Duplicate field name '" + field.name.value + "' in record '" + type.signature + "', see line " + otherLoc.line + ", column " + otherLoc.column + ".", field.name.location);
+                        }
+                        var fieldType = types.all[field.typeName.id.value];
+                        if (!fieldType) {
+                            throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.signature + "'.", field.typeName.id.location);
+                        }
+                        rec_1.fields.push({ name: field.name.value, type: type });
+                        field.type = type;
+                        fieldNames_1[field.name.value] = field;
+                    });
+                    break;
+                }
             }
         };
         for (var typeName in types.all) {
@@ -6169,12 +6161,12 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 switch (node.operator) {
                     case "not":
                         if (node.value.type != exports.BooleanType)
-                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'boolean', but a '" + node.value.type.name + "'.", node.value.location);
+                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'boolean', but a '" + node.value.type.signature + "'.", node.value.location);
                         node.type = exports.BooleanType;
                         break;
                     case "-":
                         if (node.value.type != exports.NumberType)
-                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'number', but a '" + node.value.type.name + "'.", node.value.location);
+                            throw new CompilerError("Operand of " + node.operator + " operator is not a 'number', but a '" + node.value.type.signature + "'.", node.value.location);
                         node.type = exports.NumberType;
                         break;
                     default:
@@ -6190,16 +6182,16 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                     case "*":
                     case "/":
                         if (node.left.type != exports.NumberType)
-                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.signature + "'.", node.left.location);
                         if (node.right.type != exports.NumberType)
-                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.signature + "'.", node.right.location);
                         node.type = exports.NumberType;
                         break;
                     case "..":
                         if (node.left.type != exports.StringType)
-                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'string', but a '" + node.left.type.name + "'.", node.left.location);
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'string', but a '" + node.left.type.signature + "'.", node.left.location);
                         if (node.right.type != exports.StringType)
-                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'string', but a '" + node.right.type.name + "'.", node.right.location);
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'string', but a '" + node.right.type.signature + "'.", node.right.location);
                         node.type = exports.StringType;
                         break;
                     case "<":
@@ -6207,24 +6199,24 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                     case ">":
                     case ">=":
                         if (node.left.type != exports.NumberType)
-                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.name + "'.", node.left.location);
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'number', but a '" + node.left.type.signature + "'.", node.left.location);
                         if (node.right.type != exports.NumberType)
-                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.name + "'.", node.right.location);
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'number', but a '" + node.right.type.signature + "'.", node.right.location);
                         node.type = exports.BooleanType;
                         break;
                     case "==":
                     case "!=":
                         if (node.left.type != node.right.type)
-                            throw new CompilerError("Can not compare a '" + node.left.type.name + "' to a '" + node.right.type.name + "'.", node.location);
+                            throw new CompilerError("Can not compare a '" + node.left.type.signature + "' to a '" + node.right.type.signature + "'.", node.location);
                         node.type = exports.BooleanType;
                         break;
                     case "and":
                     case "or":
                     case "xor":
                         if (node.left.type != exports.BooleanType)
-                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'boolean', but a '" + node.left.type.name + "'.", node.left.location);
+                            throw new CompilerError("Left operand of " + node.operator + " operator is not a 'boolean', but a '" + node.left.type.signature + "'.", node.left.location);
                         if (node.right.type != exports.BooleanType)
-                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'boolean', but a '" + node.right.type.name + "'.", node.right.location);
+                            throw new CompilerError("Right operand of " + node.operator + " operator is not a 'boolean', but a '" + node.right.type.signature + "'.", node.right.location);
                         node.type = exports.BooleanType;
                         break;
                     default:
@@ -6234,7 +6226,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "if":
                 typeCheckRec(node.condition, types, scopes, enclosingFun, enclosingLoop);
                 if (node.condition.type != exports.BooleanType)
-                    throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+                    throw new CompilerError("Condition of if statement must be a 'boolean', but is a '" + node.condition.type.signature, node.condition.location);
                 scopes.push();
                 node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
@@ -6245,7 +6237,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "while":
                 typeCheckRec(node.condition, types, scopes, enclosingFun, enclosingLoop);
                 if (node.condition.type != exports.BooleanType)
-                    throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.name, node.condition.location);
+                    throw new CompilerError("Condition of while statement must be a 'boolean', but is a '" + node.condition.type.signature, node.condition.location);
                 scopes.push();
                 node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, node); });
                 scopes.pop();
@@ -6253,7 +6245,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
             case "repeat":
                 typeCheckRec(node.count, types, scopes, enclosingFun, enclosingLoop);
                 if (node.count.type != exports.NumberType)
-                    throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.name, node.count.location);
+                    throw new CompilerError("Condition of repeat statement must be a 'number', but is a '" + node.count.type.signature, node.count.location);
                 scopes.push();
                 node.block.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, node); });
                 scopes.pop();
@@ -6265,7 +6257,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                     if (!type)
                         throw new CompilerError("Unknown type '" + node.typeName.id.value + "' for variable '" + node.name.value + "'.", node.typeName.id.location);
                     if (type != node.value.type)
-                        throw new CompilerError("Can't assign a value of type '" + node.value.type.name + "' to variable '" + node.name.value + "' with type '" + type.name + ".", node.value.location);
+                        throw new CompilerError("Can't assign a value of type '" + node.value.type.signature + "' to variable '" + node.name.value + "' with type '" + type.signature + ".", node.value.location);
                     node.type = type;
                 }
                 else {
@@ -6287,7 +6279,7 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                 if (!symbol)
                     throw new CompilerError("Can not find variable or parameter with name '" + node.id.value + "'.", node.id.location);
                 if (symbol.type != node.value.type)
-                    throw new CompilerError("Can not assign a value of type '" + node.value.type.name + "' to a variable of type '" + symbol.type.name + ".", node.location);
+                    throw new CompilerError("Can not assign a value of type '" + node.value.type.signature + "' to a variable of type '" + symbol.type.signature + ".", node.location);
                 break;
             }
             case "variableAccess": {
@@ -6325,11 +6317,11 @@ define("language/Compiler", ["require", "exports", "language/Parser", "Utils"], 
                     if (node.value)
                         typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                     if (enclosingFun.returnType != exports.NothingType && !node.value)
-                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.name + "'.", node.location);
+                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.signature + "'.", node.location);
                     if (enclosingFun.returnType == exports.NothingType && node.value)
                         throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must not return a value.", node.location);
                     if (enclosingFun.returnType != exports.NothingType && node.value && enclosingFun.returnType != node.value.type)
-                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.name + "', but a value of type '" + node.value.type.name + "' is returned.", node.location);
+                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.signature + "', but a value of type '" + node.value.type.signature + "' is returned.", node.location);
                 }
                 break;
             case "break":
@@ -6696,7 +6688,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                 output += Compiler_2.functionSignature(func.ast);
                 output += "\nlocals:\n";
                 func.locals.forEach(function (local, index) {
-                    output += "   [" + index + "] " + local.name.value + ": " + local.type.name + "\n";
+                    output += "   [" + index + "] " + local.name.value + ": " + local.type.signature + "\n";
                 });
                 output += "\ninstructions:\n";
                 var lastLineInfoIndex = -1;
@@ -6937,7 +6929,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "language/Compiler"], function (require, exports, events, Widget_3, compiler) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_3, compiler, Compiler_3) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -6965,12 +6957,12 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             requestAnimationFrame(canvasResize);
             var functions = new compiler.ExternalFunctions();
             functions.addFunction("line", [
-                new compiler.ExternalFunctionParameter("x1", "number"),
-                new compiler.ExternalFunctionParameter("y1", "number"),
-                new compiler.ExternalFunctionParameter("x2", "number"),
-                new compiler.ExternalFunctionParameter("y2", "number"),
-                new compiler.ExternalFunctionParameter("color", "string")
-            ], "nothing", true, function (x1, y1, x2, y2, color) {
+                { name: "x1", type: Compiler_3.NumberType },
+                { name: "y1", type: Compiler_3.NumberType },
+                { name: "x2", type: Compiler_3.NumberType },
+                { name: "y2", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
                 var ctx = _this.context;
                 ctx.strokeStyle = color;
                 ctx.beginPath();
@@ -6979,13 +6971,13 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ctx.stroke();
             });
             functions.addFunction("clear", [
-                new compiler.ExternalFunctionParameter("color", "string")
-            ], "nothing", false, function (color) {
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (color) {
                 var ctx = _this.context;
                 ctx.fillStyle = color;
                 ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
             });
-            functions.addFunction("show", [], "nothing", true, function () {
+            functions.addFunction("show", [], Compiler_3.NothingType, true, function () {
                 var asyncResult = {
                     completed: false,
                     value: null
@@ -7125,7 +7117,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7271,7 +7263,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         RobotWorld.prototype.announceExternals = function () {
             var _this = this;
             var ext = new compiler.ExternalFunctions();
-            ext.addFunction("forward", [], "nothing", true, function () {
+            ext.addFunction("forward", [], Compiler_4.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
                 var asyncResult = {
                     completed: false,
@@ -7287,7 +7279,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("backward", [], "nothing", true, function () {
+            ext.addFunction("backward", [], Compiler_4.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Backward);
                 var asyncResult = {
                     completed: false,
@@ -7303,7 +7295,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnLeft", [], "nothing", true, function () {
+            ext.addFunction("turnLeft", [], Compiler_4.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnLeft);
                 var asyncResult = {
                     completed: false,
@@ -7319,7 +7311,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnRight", [], "nothing", true, function () {
+            ext.addFunction("turnRight", [], Compiler_4.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnRight);
                 var asyncResult = {
                     completed: false,
@@ -7335,7 +7327,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [new compiler.ExternalFunctionParameter("value", "number")], "nothing", true, function (number) {
+            ext.addFunction("print", [{ name: "value", type: Compiler_4.NumberType }], Compiler_4.NothingType, true, function (number) {
                 if (number < 0 || number > 99 || isNaN(number)) {
                     alert("The number must be between 0-99.");
                     return {
@@ -7364,7 +7356,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [new compiler.ExternalFunctionParameter("letter", "string")], "nothing", true, function (letter) {
+            ext.addFunction("print", [{ name: "letter", type: Compiler_4.StringType }], Compiler_4.NothingType, true, function (letter) {
                 if (letter.trim().length == 0) {
                     return {
                         completed: true,
@@ -7400,7 +7392,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("scanNumber", [], "number", false, function () {
+            ext.addFunction("scanNumber", [], Compiler_4.NumberType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -7411,7 +7403,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("scanLetter", [], "string", false, function () {
+            ext.addFunction("scanLetter", [], Compiler_4.StringType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -7422,25 +7414,25 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("isWallAhead", [], "boolean", false, function () {
+            ext.addFunction("isWallAhead", [], Compiler_4.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "wall";
             });
-            ext.addFunction("isNumberAhead", [], "boolean", false, function () {
+            ext.addFunction("isNumberAhead", [], Compiler_4.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "number";
             });
-            ext.addFunction("isLetterAhead", [], "boolean", false, function () {
+            ext.addFunction("isLetterAhead", [], Compiler_4.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "letter";
             });
-            ext.addFunction("distanceToWall", [], "number", false, function () {
+            ext.addFunction("distanceToWall", [], Compiler_4.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 var x = _this.world.robot.data.x + dirX;
@@ -7457,7 +7449,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 return distance;
             });
-            ext.addFunction("getDirection", [], "number", false, function () {
+            ext.addFunction("getDirection", [], Compiler_4.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 if (dirX == 1 && dirY == 0)
@@ -7470,33 +7462,33 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return 3;
                 return 0;
             });
-            ext.addFunction("getX", [], "number", false, function () {
+            ext.addFunction("getX", [], Compiler_4.NumberType, false, function () {
                 return _this.world.robot.data.x;
             });
-            ext.addFunction("getY", [], "number", false, function () {
+            ext.addFunction("getY", [], Compiler_4.NumberType, false, function () {
                 return _this.world.robot.data.y;
             });
-            ext.addFunction("getSpeed", [], "number", false, function () {
+            ext.addFunction("getSpeed", [], Compiler_4.NumberType, false, function () {
                 return 1 / _this.world.robot.moveDuration;
             });
-            ext.addFunction("setSpeed", [new compiler.ExternalFunctionParameter("speed", "number")], "nothing", false, function (speed) {
+            ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (speed) {
                 if (speed < 0) {
                     alert("The robot's speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.moveDuration = 1 / speed;
             });
-            ext.addFunction("getTurningSpeed", [], "number", false, function () {
+            ext.addFunction("getTurningSpeed", [], Compiler_4.NumberType, false, function () {
                 return 90 / _this.world.robot.turnDuration;
             });
-            ext.addFunction("setTurningSpeed", [new compiler.ExternalFunctionParameter("degrees", "number")], "nothing", false, function (degrees) {
+            ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (degrees) {
                 if (degrees < 0) {
                     alert("The robot's turning speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.turnDuration = 1 / degrees * 90;
             });
-            ext.addFunction("buildWall", [], "nothing", true, function (speed) {
+            ext.addFunction("buildWall", [], Compiler_4.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 _this.world.setTile(x, y, World.newWall());
@@ -7515,7 +7507,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("destroyWall", [], "nothing", true, function (speed) {
+            ext.addFunction("destroyWall", [], Compiler_4.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);

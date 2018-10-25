@@ -3,6 +3,7 @@ import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
+import { NumberType, StringType, NothingType } from "../language/Compiler";
 
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
@@ -38,12 +39,12 @@ export class CanvasWorld extends Widget {
 
 		let functions = new compiler.ExternalFunctions();
 		functions.addFunction("line", [
-			new compiler.ExternalFunctionParameter("x1", "number"),
-			new compiler.ExternalFunctionParameter("y1", "number"),
-			new compiler.ExternalFunctionParameter("x2", "number"),
-			new compiler.ExternalFunctionParameter("y2", "number"),
-			new compiler.ExternalFunctionParameter("color", "string")
-		], "nothing", true, (x1, y1, x2, y2, color) => {
+			{name: "x1", type: NumberType},
+			{name: "y1", type: NumberType},
+			{name: "x2", type: NumberType},
+			{name: "y2", type: NumberType},
+			{name: "color", type: StringType}
+		], NothingType, true, (x1, y1, x2, y2, color) => {
 			let ctx = this.context;
 			ctx.strokeStyle = color;
 			ctx.beginPath();
@@ -53,14 +54,14 @@ export class CanvasWorld extends Widget {
 		});
 
 		functions.addFunction("clear", [
-			new compiler.ExternalFunctionParameter("color", "string")
-		], "nothing", false, (color) => {
+			{name: "color", type: StringType}
+		], NothingType, false, (color) => {
 			let ctx = this.context;
 			ctx.fillStyle = color;
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 		});
 
-		functions.addFunction("show", [], "nothing", true, () => {
+		functions.addFunction("show", [], NothingType, true, () => {
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
 				value: null

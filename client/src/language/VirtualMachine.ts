@@ -1,4 +1,4 @@
-import { VariableDecl, Parameter, FunctionDecl, ExternalFunction, ExternalFunctions, NothingType } from "./Compiler";
+import { VariableDecl, ParameterDecl, FunctionDecl, ExternalFunction, ExternalFunctions, NothingType } from "./Compiler";
 import { assertNever } from "../Utils";
 import { Breakpoint } from "../widgets/Debugger";
 
@@ -88,7 +88,7 @@ export type Instruction =
 	;
 
 export class Slot {
-	constructor(public symbol: VariableDecl | Parameter, public scope: ScopeInfo, public value: Value) { }
+	constructor(public symbol: VariableDecl | ParameterDecl, public scope: ScopeInfo, public value: Value) { }
 }
 
 export interface ScopeInfo {
@@ -103,7 +103,7 @@ export interface LineInfo {
 
 export interface FunctionCode {
 	ast: FunctionDecl,
-	locals: Array<VariableDecl | Parameter>,
+	locals: Array<VariableDecl | ParameterDecl>,
 	numParameters: number,
 	instructions: Array<Instruction>,
 	lineInfos: Array<LineInfo>,

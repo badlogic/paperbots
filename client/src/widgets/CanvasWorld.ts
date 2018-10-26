@@ -108,6 +108,7 @@ export class CanvasWorld extends Widget {
 			ctx.beginPath();
 			ctx.ellipse(x,y,radiusX,radiusY,0 * Math.PI/180, 0, 2 * Math.PI);
 			ctx.fill();
+			
 
 		});
 
@@ -123,6 +124,43 @@ export class CanvasWorld extends Widget {
 			ctx.font = fontSize.toString()+"px"+fontFamily;
 			ctx.fillStyle = color;
 			ctx.fillText(text,x,y);
+		});
+		functions.addFunction("loadImage",[
+			new compiler.ExternalFunctionParameter("url","string")
+		],"string",false,(url) =>{
+				var image = new Image();
+				image.src = url;
+
+				return image;
+		});
+		functions.addFunction("drawImage",[
+			new compiler.ExternalFunctionParameter("image","string"),
+			new compiler.ExternalFunctionParameter("x","number"),
+			new compiler.ExternalFunctionParameter("y","number"),
+			new compiler.ExternalFunctionParameter("width","number"),
+			new compiler.ExternalFunctionParameter("height","number")
+		],"nothing",false,(image,x,y,width,height) =>{
+			let ctx = this.context;
+			
+			ctx.drawImage(image,x,y,width,height);
+		});
+		functions.addFunction("loadSound",[
+			new compiler.ExternalFunctionParameter("url","string")
+		],"string",false,(url)=>{
+			var sound = new Audio();
+			sound.src = url;
+
+			return sound;
+		});
+		functions.addFunction("playSound",[
+			new compiler.ExternalFunctionParameter("sound","string"),
+		],"nothing",false,(sound)=>{
+			sound.play();
+		});
+		functions.addFunction("stopSound",[
+			new compiler.ExternalFunctionParameter("sound","string")
+		],"nothing",false,(sound)=>{
+			sound.pause();
 		})
 		this.bus.event(new events.AnnounceExternalFunctions(functions));
 

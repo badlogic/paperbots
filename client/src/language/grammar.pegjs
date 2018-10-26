@@ -100,7 +100,7 @@ Statement
   / Continue
 
 Variable
-  = "var" _ id:Identifier _ typeName:(":" _ Type _)? "=" _ init: Expression
+  = "var" _ id:Identifier _ typeName:(":" _ Type _)? ("=" / "->") _ init: Expression
   {
     return {
       kind: "variable",
@@ -112,12 +112,12 @@ Variable
   }
 
 Assignment
-  = id:Identifier _ "=" _ value:Expression
+  = left:VariableAccessOrFunctionCall _ ("=" / "->") _ right:Expression
   {
     return {
       kind: "assignment",
-      id: id,
-      value: value,
+      left: left,
+      right: right,
       location: location()
     };
   }

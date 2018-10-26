@@ -1,7 +1,7 @@
-import { SyntaxError, IFileRange, parse } from "./Parser";
-import { Map, assertNever } from "../Utils"
-import { Instruction, JumpIns, FunctionCode, AsyncPromise, LineInfo, ScopeInfo } from "./VirtualMachine";
+import { assertNever, Map } from "../Utils";
 import { Breakpoint } from "../widgets/Debugger";
+import { IFileRange, parse, SyntaxError } from "./Parser";
+import { AsyncPromise, FunctionCode, Instruction, JumpIns, LineInfo, ScopeInfo } from "./VirtualMachine";
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) { }
@@ -17,6 +17,7 @@ export interface BaseNode {
 }
 
 export interface Expression extends BaseNode {
+	kind: string
 	type: Type
 }
 
@@ -48,8 +49,8 @@ export interface FunctionCall extends Expression {
 
 export interface FieldAccess extends Expression {
 	kind: "fieldAccess",
-	record: AstNode,
-	name: string
+	record: Expression,
+	name: Identifier
 }
 
 export interface ArrayAccess extends Expression {
@@ -92,8 +93,8 @@ export interface Repeat extends BaseNode {
 
 export interface Assignment extends BaseNode {
 	kind: "assignment",
-	id: Identifier,
-	value: Expression
+	left: Expression,
+	right: Expression
 }
 
 export interface TypeName {
@@ -395,13 +396,22 @@ export class ExternalFunctions {
 		this.functions.push(extFun);
 		this.lookup[extFun.signature] = extFun;
 	}
+
+	copy () {
+		let copy = new ExternalFunctions();
+		for(var i = 0; i < this.functions.length; i++) {
+			var f = this.functions[i];
+			copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
+		}
+		return copy;
+	}
 }
 
 export class ExternalFunction {
 	public readonly signature: string;
 
-	constructor(public name: string, public args: Array<Parameter>, public returnType: Type, public async: boolean, public fun: (...args: any[]) => any, public index: number) {
-		this.signature = name + "(" + args.map(arg => arg.type.signature).join(",") + ")";
+	constructor(public name: string, public parameters: Array<Parameter>, public returnType: Type, public async: boolean, public fun: (...args: any[]) => any, public index: number) {
+		this.signature = name + "(" + parameters.map(arg => arg.type.signature).join(",") + ")";
 	}
 }
 
@@ -436,6 +446,9 @@ export function compile(input: string, externalFunctions: ExternalFunctions): Mo
 		}
 		functions.unshift(mainFunction);
 
+		// Create a defensive copy of the external functions as the compiler
+		// might add additional ones for record constructors etc.
+		externalFunctions = externalFunctions.copy()
 		let types = typeCheck(functions, records, externalFunctions);
 		let codes = emitProgram(functions, externalFunctions);
 
@@ -471,12 +484,23 @@ function nullLocation(): IFileRange {
 }
 
 export function functionSignature(fun: FunctionDecl | FunctionCall): string {
+	// TODO in the future, sigs might contain return type
 	switch(fun.kind) {
 		case "function":
 			return fun.name.value + "(" + fun.params.map(param => param.typeName.id.value).join(",") + ")";
 		case "functionCall":
 			return fun.name.value + "(" + fun.args.map(arg => arg.type.signature).join(",") + ")";
 	}
+}
+
+export function functionSignatureFromTypes(funcName: string, types: Type[], returnType: Type) {
+	var sig = funcName + "("
+	types.forEach((type, index) => {
+		sig += type.signature;
+		if (index != types.length - 1) sig += ",";
+	})
+	sig += ")"; // TODO in the future, sigs might contain return type
+	return sig;
 }
 
 function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, externalFunctions: ExternalFunctions): Types {
@@ -532,15 +556,10 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		rec.type = type;
 		types.all[type.signature] = type;
 		types.records[type.signature] = type;
-
-		// create constructor function
-		// TODO
 	});
 
-	externalFunctions.functions.forEach(fun => {
-		types.externalFunctions[fun.signature] = fun;
-	});
-
+	// Resolve all types of function parameters, return types
+	// and record fields.
 	for(let typeName in types.all) {
 		let type = types.all[typeName];
 
@@ -583,7 +602,6 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			case "record": {
 				// Assign field types, bail if a type is unknown
 				// Also check duplicate field names
-				// TODO check for recursive types
 				let decl = type.declarationNode;
 				let rec = type;
 
@@ -600,14 +618,40 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 					if (!fieldType) {
 						throw new CompilerError(`Unknown type '${field.typeName.id.value}' for field '${field.name.value}' of record '${type.signature}'.`, field.typeName.id.location);
 					}
-					rec.fields.push({name: field.name.value, type: type});
-					field.type = type;
+					rec.fields.push({name: field.name.value, type: fieldType});
+					field.type = fieldType;
 					fieldNames[field.name.value] = field;
 				});
 				break;
 			}
 		}
 	}
+
+	// Create constructor and equals functions for all records
+	// TODO check for recursive types
+	records.forEach(rec => {
+		let params: Array<Parameter> = [];
+		rec.fields.forEach(field =>
+			params.push({name: field.name.value, type: field.type})
+		);
+		externalFunctions.addFunction(rec.name.value, params, rec.type, false, (...args: any[]) => {
+			let value = [];
+			for (var i = 0; i < args.length; i++) {
+				value[i] = args[i];
+			}
+			return value;
+		});
+
+		// TODO emit equals for structural equality check but only
+		// if there is no user defined equals(a: recordType, b: recordType): boolean
+	});
+
+	// Create the external function look up, copy
+	// the user provided externals, otherwise we
+	// keep adding record funtions!
+	externalFunctions.functions.forEach(fun => {
+		types.externalFunctions[fun.signature] = fun;
+	});
 
 	// We now have all function and record types figured out
 	// time to traverse all main program and function statement blocks
@@ -673,6 +717,8 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 					break;
 				case "==":
 				case "!=":
+					// TODO record types need to be compared structurally via the generated
+					// or user defined equals()
 					if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.signature}' to a '${node.right.type.signature}'.`, node.location);
 					node.type = BooleanType;
 					break;
@@ -737,10 +783,21 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			scopes.pop();
 			break;
 		case "assignment": {
-			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
-			let symbol = scopes.findSymbol(node.id);
-			if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${node.id.value}'.`, node.id.location);
-			if (symbol.type != node.value.type) throw new CompilerError(`Can not assign a value of type '${node.value.type.signature}' to a variable of type '${symbol.type.signature}.`, node.location);
+			typeCheckRec(node.left as AstNode, types, scopes, enclosingFun, enclosingLoop);
+			typeCheckRec(node.right as AstNode, types, scopes, enclosingFun, enclosingLoop);
+
+			if (node.left.kind == "variableAccess") {
+				let varAccess = node.left as VariableAccess;
+				let symbol = scopes.findSymbol(varAccess.name);
+				if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${varAccess.name.value}'.`, node.left.location);
+				if (symbol.type != node.right.type) throw new CompilerError(`Can not assign a value of type '${node.right.type.signature}' to a variable of type '${symbol.type.signature}.`, node.location);
+			} else if (node.left.kind == "fieldAccess") {
+				// TODO implement, is there something missing still?
+				let fieldAccess = node.left as FieldAccess;
+				if (fieldAccess.type != node.right.type) throw new CompilerError(`Can not assign a value of type '${node.right.type.signature}' to a variable of type '${fieldAccess.type.signature}.`, node.location);
+			} else {
+				throw new CompilerError(`Array element assignments type check not implemented yet.`, node.location);
+			}
 			break;
 		}
 		case "variableAccess": {
@@ -786,9 +843,22 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		case "comment":
 			break;
 		case "fieldAccess":
+			typeCheckRec(node.record as AstNode, types, scopes, enclosingFun, enclosingLoop)
+			if (node.record.type.kind != "record") throw new CompilerError(`Can only access fields on record types, but got a ${node.record.type}.`, node.location);
+			let recordType = node.record.type;
+			// TODO wtf is going on here
+			for (var i = 0; i < recordType.fields.length; i++) {
+				let field = recordType.fields[i];
+				if (field.name == node.name.value) {
+					node.type = field.type;
+					return;
+				}
+			}
+			throw new CompilerError(`Could not find field '${node.name.value}' on record of type ${node.record.type.signature}.`, node.location);
+			break;
 		case "arrayAccess":
 			// TODO implement
-			throw new CompilerError(`Field an array access not implemented yet.`, node.location);
+			throw new CompilerError(`Array access not implemented yet.`, node.location);
 		default:
 			assertNever(node);
 	}
@@ -931,6 +1001,25 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 	});
 }
 
+function emitOperatorOverload(instructions: Instruction[], opNode: BinaryOp, overLoadName: string, returnType: Type, functionLookup: Map<FunctionCode>, externalFunctionLookup): boolean {
+	if (!(opNode.left.type.kind == "record" && opNode.right.type.kind == "record" && opNode.left.type == opNode.right.type)) return false;
+
+	let sig = functionSignatureFromTypes(overLoadName, [opNode.left.type, opNode.right.type], returnType);
+	if (functionLookup[sig] || externalFunctionLookup[sig]) {
+		// Either the function is a function inside the program, or an external function
+		if (functionLookup[sig]) {
+			instructions.push({kind: "call", functionIndex: functionLookup[sig].index});
+		} else {
+			let externalFun = externalFunctionLookup[sig];
+			instructions.push({kind: "callExt", functionIndex: externalFun.index });
+		}
+		return true;
+	} else {
+		instructions.push({kind: "binaryOp", operator: opNode.operator});
+		return false;
+	}
+}
+
 function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolean) {
 	let fun = context.fun;
 	let instructions = fun.instructions;
@@ -947,10 +1036,26 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "binaryOp":
+			// TODO record types need to be compared structurally via the generated
+			// or user defined equals()
 			emitAstNode(node.left as AstNode, context, false);
 			emitAstNode(node.right as AstNode, context, false);
+
 			if (node.operator == "..") instructions.push({kind: "stringConcat" });
-			else instructions.push({kind: "binaryOp", operator: node.operator});
+
+			var overwritten = false;
+			if (node.operator == "==") {
+				overwritten = emitOperatorOverload(instructions, node, "equals", BooleanType, functionLookup, externalFunctionLookup);
+			}
+			if (node.operator == "!=") {
+				overwritten = emitOperatorOverload(instructions, node, "equals", BooleanType, functionLookup, externalFunctionLookup);
+				instructions.push({kind: "unaryOp", operator: "not"});
+			}
+
+			if (!overwritten) {
+				instructions.push({kind: "binaryOp", operator: node.operator});
+			}
+
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "unaryOp":
@@ -971,9 +1076,27 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "assignment":
-			emitAstNode(node.value as AstNode, context, false);
-			instructions.push({kind: "store", slotIndex: context.scopes.findSymbol(node.id).slotIndex});
-			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			emitAstNode(node.right as AstNode, context, false);
+			if (node.left.kind == "variableAccess") {
+				instructions.push({kind: "store", slotIndex: context.scopes.findSymbol((node.left as VariableAccess).name).slotIndex});
+				emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			} else if (node.left.kind == "fieldAccess") {
+				let fieldAccess = node.left as FieldAccess;
+				emitAstNode(fieldAccess.record as AstNode, context, false);
+				let recordType = fieldAccess.record.type as RecordType;
+				var fieldIndex = 0;
+				for (; fieldIndex < recordType.fields.length; fieldIndex++) {
+					if (recordType.fields[fieldIndex].name == fieldAccess.name.value) break;
+				}
+				// TODO deep copy assignment of record types
+				instructions.push({kind: "storeField", fieldIndex: fieldIndex});
+				emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			} else if (node.left.kind == "arrayAccess") {
+				// TODO implement
+				throw new CompilerError(`Array element assignment emission not implemented yet.`, node.location);
+			} else {
+				throw new CompilerError(`Illegal assignment operation.`, node.location);
+			}
 			break;
 		case "functionCall":
 			// push all arguments onto the stack, left to right
@@ -1126,9 +1249,18 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 		case "comment":
 			break;
 		case "fieldAccess":
+			emitAstNode(node.record as AstNode, context, false);
+			let recordType = node.record.type as RecordType;
+			var fieldIndex = 0
+			for (; fieldIndex < recordType.fields.length; fieldIndex++) {
+				if (recordType.fields[fieldIndex].name == node.name.value) break;
+			}
+			instructions.push({kind: "loadField", fieldIndex: fieldIndex});
+			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
+			break;
 		case "arrayAccess":
 			// TODO implement
-			throw new CompilerError(`Field an array access not implemented yet.`, node.location);
+			throw new CompilerError(`Array access emission not implemented yet.`, node.location);
 		default:
 			assertNever(node);
 	}

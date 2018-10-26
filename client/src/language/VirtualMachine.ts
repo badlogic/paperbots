@@ -37,6 +37,16 @@ export interface StoreIns {
 	slotIndex: number
 }
 
+export interface LoadFieldIns {
+	kind: "loadField"
+	fieldIndex: number
+}
+
+export interface StoreFieldIns {
+	kind: "storeField"
+	fieldIndex: number
+}
+
 export interface CallIns {
 	kind: "call"
 	functionIndex: number
@@ -78,6 +88,8 @@ export type Instruction =
 	|	UnaryOpIns
 	|	LoadIns
 	|	StoreIns
+	|	LoadFieldIns
+	|	StoreFieldIns
 	| 	CallIns
 	|	CallExternalIns
 	|	JumpIfTrueIns
@@ -308,6 +320,16 @@ export class VirtualMachine {
 			case "load":
 				stack.push(frame.slots[ins.slotIndex].value);
 				break;
+			case "storeField": {
+				let rec = stack.pop();
+				rec[ins.fieldIndex] = stack.pop()
+				break;
+			}
+			case "loadField": {
+				let rec = stack.pop()
+				stack.push(rec[ins.fieldIndex]);
+				break;
+			}
 			case "jump":
 				frame.pc = ins.offset;
 				break;
@@ -329,7 +351,7 @@ export class VirtualMachine {
 			}
 			case "callExt": {
 				let fun = externalFunctions.functions[ins.functionIndex];
-				let extArgs = new Array(fun.args.length);
+				let extArgs = new Array(fun.parameters.length);
 				for (var i = extArgs.length - 1; i >= 0 ; i--) {
 					extArgs[i] = stack.pop();
 				}

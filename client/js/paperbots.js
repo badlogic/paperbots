@@ -558,9 +558,12 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
             this.state = VMState.Running;
             this.frames = Array();
             this.stack = Array();
+            this.restart();
+        }
+        VirtualMachine.prototype.restart = function () {
             this.frames.push(new Frame(this.functions[0]));
             this.state = VMState.Running;
-        }
+        };
         VirtualMachine.prototype.run = function (numInstructions) {
             if (this.frames.length == 0)
                 this.state = VMState.Completed;
@@ -6859,6 +6862,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                     while (vm.state != VirtualMachine_1.VMState.Completed) {
                         vm.run(10000);
                     }
+                    vm.restart();
                 }
                 var total = (performance.now() - start) / 1000;
                 var perRun = total / 5;
@@ -6869,7 +6873,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
         BenchmarkPage.renderModule = function (module) {
             var output = "";
             module.code.forEach(function (func) {
-                output += Compiler_2.functionSignature(func.ast);
+                output += func.ast.type.signature;
                 output += "\nlocals:\n";
                 func.locals.forEach(function (local, index) {
                     output += "   [" + index + "] " + local.name.value + ": " + local.type.signature + "\n";
@@ -6915,7 +6919,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             _this.justLoaded = false;
             _this.isEmbedUrls = true;
             _this.urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
-            _this.lastTimeoutHandle = 0;
+            _this.lastTimeoutHandle = null;
             _this.urlWidgets = {};
             _this.lastLine = -1;
             return _this;
@@ -8937,6 +8941,38 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
         return IndexPage;
     }());
     exports.IndexPage = IndexPage;
+});
+define("Stack", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Stack = (function () {
+        function Stack(initialData) {
+            var _a;
+            if (initialData === void 0) { initialData = []; }
+            this._items = [];
+            (_a = this._items).push.apply(_a, initialData);
+        }
+        Stack.prototype.push = function (item) {
+            this._items.push(item);
+        };
+        Stack.prototype.pop = function () {
+            return this._items.pop();
+        };
+        Stack.prototype.peek = function () {
+            if (this.isEmpty())
+                return undefined;
+            else
+                return this._items[this._items.length - 1];
+        };
+        Stack.prototype.isEmpty = function () {
+            return this._items.length === 0;
+        };
+        Stack.prototype.size = function () {
+            return this._items.length;
+        };
+        return Stack;
+    }());
+    exports.Stack = Stack;
 });
 define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_5, Toolbar_3, Api_4, Dialog_3) {
     "use strict";

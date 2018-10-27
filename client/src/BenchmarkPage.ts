@@ -1,4 +1,4 @@
-import { compile, ExternalFunctions, CompilerError, Module, functionSignature, FunctionDecl } from "./language/Compiler";
+import { compile, ExternalFunctions, CompilerError, Module, Types, FunctionDecl } from "./language/Compiler";
 import { VirtualMachine, VMState } from "./language/VirtualMachine";
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
@@ -71,6 +71,7 @@ fib(30)
 				while (vm.state != VMState.Completed) {
 					vm.run(10000);
 				}
+				vm.restart();
 			}
 			let total = (performance.now() - start) / 1000;
 			let perRun = total / 5;
@@ -83,7 +84,7 @@ fib(30)
 	static renderModule (module: Module): string {
 		var output = "";
 		module.code.forEach(func => {
-			output += functionSignature(func.ast as FunctionDecl);
+			output += (func.ast as FunctionDecl).type.signature;
 			output += "\nlocals:\n"
 			func.locals.forEach((local, index) => {
 				output += `   [${index}] ` + local.name.value + ": " + local.type.signature + "\n";

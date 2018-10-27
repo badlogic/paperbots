@@ -163,6 +163,10 @@ export class VirtualMachine {
 	asyncPromise: AsyncPromise<any>;
 
 	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
+		this.restart();
+	}
+
+	restart () {
 		this.frames.push(new Frame(this.functions[0]));
 		this.state = VMState.Running;
 	}

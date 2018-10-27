@@ -125,7 +125,7 @@ export class Editor extends Widget {
 	extractUrls (text: string): string[] {
 		return text.match(this.urlRegex);
 	}
-	lastTimeoutHandle = 0;
+	lastTimeoutHandle = null;
 	urlWidgets: Map<{ widget: LineWidget, line: string, delete: boolean }> = { };
 	embedUrls() {
 		Object.keys(this.urlWidgets).forEach(line => {

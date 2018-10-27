@@ -6,18 +6,24 @@
     "dev": "concurrently \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs\"",
     "dev-without-java": "concurrently \"./node_modules/lite-server/bin/lite-server -c lite-server.json\" \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs\"",
     "server": "./node_modules/lite-server/bin/lite-server -c lite-server.json",
-    "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs && tsc"
+    "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs && tsc",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register tests/**/*.ts"
   },
   "dependencies": {
     "monaco-editor": "0.14.3"
   },
   "devDependencies": {
-    "ts-pegjs": "0.2.2",
-    "typescript": "3.1.1",
-    "nodemon": "1.18.4",
-    "lite-server": "2.4.0",
-    "concurrently": "4.0.1",
     "@types/codemirror": "0.0.61",
-    "@types/jquery": "3.3.10"
+    "@types/jquery": "3.3.10",
+    "@types/mocha": "5.2.0",
+    "@types/node": "10.12.0",
+    "chai": "^4.2.0",
+    "concurrently": "4.0.1",
+    "lite-server": "2.4.0",
+    "mocha": "^5.2.0",
+    "nodemon": "1.18.4",
+    "ts-node": "^7.0.1",
+    "ts-pegjs": "0.2.2",
+    "typescript": "3.1.1"
   }
 }

@@ -110,7 +110,7 @@ export class Debugger extends Widget {
 		this.debug.click(() => {
 			this.state = DebuggerState.Paused;
 			this.snapshot = null;
-			this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+			this.vm = new vm.VirtualMachine(this.lastModule.functions, this.lastModule.externalFunctions);
 			this.bus.event(new events.Debug());
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 		});
@@ -147,7 +147,7 @@ export class Debugger extends Widget {
 				if (this.snapshot) {
 					requestAnimationFrame(stepOverAsync);
 				} else {
-					if (this.vm.state == vm.VMState.Completed) {
+					if (this.vm.state == vm.VirtualMachineState.Completed) {
 						alert("Program complete.");
 						this.bus.event(new events.Stop())
 						return;
@@ -174,7 +174,7 @@ export class Debugger extends Widget {
 			// having to wait for an async call to
 			// complete.
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
-			if (this.vm.state == vm.VMState.Completed) {
+			if (this.vm.state == vm.VirtualMachineState.Completed) {
 				alert("Program complete.");
 				this.bus.event(new events.Stop())
 				return;
@@ -184,7 +184,7 @@ export class Debugger extends Widget {
 		this.stepInto.click(() => {
 			this.vm.stepInto();
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
-			if (this.vm.state == vm.VMState.Completed) {
+			if (this.vm.state == vm.VirtualMachineState.Completed) {
 				alert("Program complete.");
 				this.bus.event(new events.Stop())
 				return;
@@ -205,13 +205,13 @@ export class Debugger extends Widget {
 	runProject () {
 		this.state = DebuggerState.Running;
 		this.snapshot = null;
-		this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+		this.vm = new vm.VirtualMachine(this.lastModule.functions, this.lastModule.externalFunctions);
 		this.bus.event(new events.Run())
 		requestAnimationFrame(this.advanceVm);
 	}
 
 	checkVmStopped () {
-		if (this.vm.state == vm.VMState.Completed) {
+		if (this.vm.state == vm.VirtualMachineState.Completed) {
 			this.state = DebuggerState.Stopped;
 			alert("Program complete.");
 			this.bus.event(new events.Stop())

@@ -546,28 +546,28 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         return Frame;
     }());
     exports.Frame = Frame;
-    var VMState;
-    (function (VMState) {
-        VMState[VMState["Running"] = 0] = "Running";
-        VMState[VMState["Completed"] = 1] = "Completed";
-    })(VMState = exports.VMState || (exports.VMState = {}));
+    var VirtualMachineState;
+    (function (VirtualMachineState) {
+        VirtualMachineState[VirtualMachineState["Running"] = 0] = "Running";
+        VirtualMachineState[VirtualMachineState["Completed"] = 1] = "Completed";
+    })(VirtualMachineState = exports.VirtualMachineState || (exports.VirtualMachineState = {}));
     var VirtualMachine = (function () {
         function VirtualMachine(functions, externalFunctions) {
             this.functions = functions;
             this.externalFunctions = externalFunctions;
-            this.state = VMState.Running;
+            this.state = VirtualMachineState.Running;
             this.frames = Array();
             this.stack = Array();
             this.restart();
         }
         VirtualMachine.prototype.restart = function () {
             this.frames.push(new Frame(this.functions[0]));
-            this.state = VMState.Running;
+            this.state = VirtualMachineState.Running;
         };
         VirtualMachine.prototype.run = function (numInstructions) {
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
+                this.state = VirtualMachineState.Completed;
+            if (this.state == VirtualMachineState.Completed)
                 return;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
@@ -584,7 +584,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
             }
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
+                this.state = VirtualMachineState.Completed;
         };
         VirtualMachine.prototype.hitBreakpoint = function () {
             if (this.frames.length == 0)
@@ -596,8 +596,8 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         VirtualMachine.prototype.stepOver = function (lastSnapshot) {
             if (lastSnapshot === void 0) { lastSnapshot = null; }
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
+                this.state = VirtualMachineState.Completed;
+            if (this.state == VirtualMachineState.Completed)
                 return null;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
@@ -621,7 +621,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 if (this.asyncPromise)
                     return snapshot;
                 if (this.frames.length == 0) {
-                    this.state = VMState.Completed;
+                    this.state = VirtualMachineState.Completed;
                     return null;
                 }
                 if (executed++ > 1000)
@@ -641,8 +641,8 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         };
         VirtualMachine.prototype.stepInto = function () {
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
+                this.state = VirtualMachineState.Completed;
+            if (this.state == VirtualMachineState.Completed)
                 return;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
@@ -673,14 +673,14 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
             }
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
+                this.state = VirtualMachineState.Completed;
+            if (this.state == VirtualMachineState.Completed)
                 return;
         };
         VirtualMachine.prototype.getLineNumber = function () {
             if (this.frames.length == 0)
-                this.state = VMState.Completed;
-            if (this.state == VMState.Completed)
+                this.state = VirtualMachineState.Completed;
+            if (this.state == VirtualMachineState.Completed)
                 return -1;
             var frameIndex = this.frames.length - 1;
             var frame = this.frames[frameIndex];
@@ -689,7 +689,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         VirtualMachine.prototype.step = function () {
             var _a = this, frames = _a.frames, stack = _a.stack, functions = _a.functions, externalFunctions = _a.externalFunctions;
             if (frames.length == 0) {
-                this.state = VMState.Completed;
+                this.state = VirtualMachineState.Completed;
                 return;
             }
             var frame = frames[frames.length - 1];
@@ -901,7 +901,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.debug.click(function () {
                 _this.state = DebuggerState.Paused;
                 _this.snapshot = null;
-                _this.vm = new vm.VirtualMachine(_this.lastModule.code, _this.lastModule.externalFunctions);
+                _this.vm = new vm.VirtualMachine(_this.lastModule.functions, _this.lastModule.externalFunctions);
                 _this.bus.event(new events.Debug());
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
             });
@@ -930,7 +930,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                         requestAnimationFrame(stepOverAsync);
                     }
                     else {
-                        if (_this.vm.state == vm.VMState.Completed) {
+                        if (_this.vm.state == vm.VirtualMachineState.Completed) {
                             alert("Program complete.");
                             _this.bus.event(new events.Stop());
                             return;
@@ -949,7 +949,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     return;
                 }
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == vm.VMState.Completed) {
+                if (_this.vm.state == vm.VirtualMachineState.Completed) {
                     alert("Program complete.");
                     _this.bus.event(new events.Stop());
                     return;
@@ -958,7 +958,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.stepInto.click(function () {
                 _this.vm.stepInto();
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
-                if (_this.vm.state == vm.VMState.Completed) {
+                if (_this.vm.state == vm.VirtualMachineState.Completed) {
                     alert("Program complete.");
                     _this.bus.event(new events.Stop());
                     return;
@@ -976,12 +976,12 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         Debugger.prototype.runProject = function () {
             this.state = DebuggerState.Running;
             this.snapshot = null;
-            this.vm = new vm.VirtualMachine(this.lastModule.code, this.lastModule.externalFunctions);
+            this.vm = new vm.VirtualMachine(this.lastModule.functions, this.lastModule.externalFunctions);
             this.bus.event(new events.Run());
             requestAnimationFrame(this.advanceVm);
         };
         Debugger.prototype.checkVmStopped = function () {
-            if (this.vm.state == vm.VMState.Completed) {
+            if (this.vm.state == vm.VirtualMachineState.Completed) {
                 this.state = DebuggerState.Stopped;
                 alert("Program complete.");
                 this.bus.event(new events.Stop());
@@ -5980,6 +5980,29 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         return Types;
     }());
     exports.Types = Types;
+    function moduleToString(module) {
+        var output = "";
+        module.functions.forEach(function (func) {
+            output += func.ast.type.signature;
+            output += "\nlocals:\n";
+            func.locals.forEach(function (local, index) {
+                output += "   [" + index + "] " + local.name.value + ": " + local.type.signature + "\n";
+            });
+            output += "\ninstructions:\n";
+            var lastLineInfoIndex = -1;
+            func.instructions.forEach(function (ins, index) {
+                var line = func.lineInfos[index];
+                if (lastLineInfoIndex != line.index) {
+                    output += "\n";
+                    lastLineInfoIndex = line.index;
+                }
+                output += "    " + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+            });
+            output += "\n";
+        });
+        return output;
+    }
+    exports.moduleToString = moduleToString;
     var Scopes = (function () {
         function Scopes() {
             this.scopes = new Array();
@@ -6116,7 +6139,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             var types = typeCheck(functions, records, externalFunctions);
             var codes = emitProgram(functions, externalFunctions);
             return {
-                code: codes,
+                functions: codes,
                 ast: ast,
                 types: types,
                 externalFunctions: externalFunctions
@@ -6425,22 +6448,16 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 break;
             }
             case "record":
-                throw new CompilerError("Type checking of node type " + node.kind + " implemented", node.location);
+                throw new CompilerError("Can not declare " + node.kind + " in function.", node.location);
             case "return":
-                if (enclosingFun == null) {
-                    if (node.value)
-                        throw new CompilerError("Can not return a value from the main program.", node.location);
-                }
-                else {
-                    if (node.value)
-                        typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
-                    if (enclosingFun.returnType != exports.NothingType && !node.value)
-                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "'.", node.location);
-                    if (enclosingFun.returnType == exports.NothingType && node.value)
-                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must not return a value.", node.location);
-                    if (enclosingFun.returnType != exports.NothingType && node.value && enclosingFun.returnType != node.value.type)
-                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "', but a value of type '" + node.value.type.signature + "' is returned.", node.location);
-                }
+                if (node.value)
+                    typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
+                if (enclosingFun.returnType != exports.NothingType && !node.value)
+                    throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "'.", node.location);
+                if (enclosingFun.returnType == exports.NothingType && node.value)
+                    throw new CompilerError("Function '" + enclosingFun.type.signature + "' must not return a value.", node.location);
+                if (enclosingFun.returnType != exports.NothingType && node.value && enclosingFun.returnType != node.value.type)
+                    throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "', but a value of type '" + node.value.type.signature + "' is returned.", node.location);
                 break;
             case "break":
             case "continue":
@@ -6452,7 +6469,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "fieldAccess":
                 typeCheckRec(node.record, types, scopes, enclosingFun, enclosingLoop);
                 if (node.record.type.kind != "record")
-                    throw new CompilerError("Can only access fields on record types, but got a " + node.record.type + ".", node.location);
+                    throw new CompilerError("Can only access fields on record types, but got a " + node.record.type.signature + ".", node.location);
                 var recordType = node.record.type;
                 for (var i = 0; i < recordType.fields.length; i++) {
                     var field = recordType.fields[i];
@@ -6841,7 +6858,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                         alert("Error in " + title + ": " + e.message);
                         return;
                     }
-                    dom.find(".pb-benchmark-vm-code").html(BenchmarkPage.renderModule(module));
+                    dom.find(".pb-benchmark-vm-code").html(Compiler_2.moduleToString(module));
                 });
                 editor.setValue(source);
             }, 400);
@@ -6856,10 +6873,10 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                 }
                 var result = dom.find(".pb-benchmark-result");
                 result.text("Benchmark running...");
-                var vm = new VirtualMachine_1.VirtualMachine(module.code, module.externalFunctions);
+                var vm = new VirtualMachine_1.VirtualMachine(module.functions, module.externalFunctions);
                 var start = performance.now();
                 for (var runs = 0; runs < 5; runs++) {
-                    while (vm.state != VirtualMachine_1.VMState.Completed) {
+                    while (vm.state != VirtualMachine_1.VirtualMachineState.Completed) {
                         vm.run(10000);
                     }
                     vm.restart();
@@ -6869,28 +6886,6 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                 result.text("Total: " + total + " secs, " + perRun + " secs/run");
             });
             parent.append(dom);
-        };
-        BenchmarkPage.renderModule = function (module) {
-            var output = "";
-            module.code.forEach(function (func) {
-                output += func.ast.type.signature;
-                output += "\nlocals:\n";
-                func.locals.forEach(function (local, index) {
-                    output += "   [" + index + "] " + local.name.value + ": " + local.type.signature + "\n";
-                });
-                output += "\ninstructions:\n";
-                var lastLineInfoIndex = -1;
-                func.instructions.forEach(function (ins, index) {
-                    var line = func.lineInfos[index];
-                    if (lastLineInfoIndex != line.index) {
-                        output += "\n";
-                        lastLineInfoIndex = line.index;
-                    }
-                    output += "    " + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
-                });
-                output += "\n";
-            });
-            return output;
         };
         return BenchmarkPage;
     }());
@@ -8941,38 +8936,6 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
         return IndexPage;
     }());
     exports.IndexPage = IndexPage;
-});
-define("Stack", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Stack = (function () {
-        function Stack(initialData) {
-            var _a;
-            if (initialData === void 0) { initialData = []; }
-            this._items = [];
-            (_a = this._items).push.apply(_a, initialData);
-        }
-        Stack.prototype.push = function (item) {
-            this._items.push(item);
-        };
-        Stack.prototype.pop = function () {
-            return this._items.pop();
-        };
-        Stack.prototype.peek = function () {
-            if (this.isEmpty())
-                return undefined;
-            else
-                return this._items[this._items.length - 1];
-        };
-        Stack.prototype.isEmpty = function () {
-            return this._items.length === 0;
-        };
-        Stack.prototype.size = function () {
-            return this._items.length;
-        };
-        return Stack;
-    }());
-    exports.Stack = Stack;
 });
 define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_5, Toolbar_3, Api_4, Dialog_3) {
     "use strict";

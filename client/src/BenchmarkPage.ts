@@ -1,5 +1,5 @@
-import { compile, ExternalFunctions, CompilerError, Module, Types, FunctionDecl } from "./language/Compiler";
-import { VirtualMachine, VMState } from "./language/VirtualMachine";
+import { compile, ExternalFunctions, CompilerError, Module, Types, FunctionDecl, moduleToString } from "./language/Compiler";
+import { VirtualMachine, VirtualMachineState } from "./language/VirtualMachine";
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
 
@@ -49,7 +49,7 @@ fib(30)
 					alert("Error in " + title + ": " + (e as CompilerError).message);
 					return;
 				}
-				dom.find(".pb-benchmark-vm-code").html(BenchmarkPage.renderModule(module));
+				dom.find(".pb-benchmark-vm-code").html(moduleToString(module));
 			});
 			editor.setValue(source);
 		}, 400);
@@ -65,10 +65,10 @@ fib(30)
 
 			let result = dom.find(".pb-benchmark-result");
 			result.text("Benchmark running...");
-			let vm = new VirtualMachine(module.code, module.externalFunctions);
+			let vm = new VirtualMachine(module.functions, module.externalFunctions);
 			let start = performance.now();
 			for (var runs = 0; runs < 5; runs++) {
-				while (vm.state != VMState.Completed) {
+				while (vm.state != VirtualMachineState.Completed) {
 					vm.run(10000);
 				}
 				vm.restart();
@@ -79,29 +79,5 @@ fib(30)
 		})
 
 		parent.append(dom);
-	}
-
-	static renderModule (module: Module): string {
-		var output = "";
-		module.code.forEach(func => {
-			output += (func.ast as FunctionDecl).type.signature;
-			output += "\nlocals:\n"
-			func.locals.forEach((local, index) => {
-				output += `   [${index}] ` + local.name.value + ": " + local.type.signature + "\n";
-			});
-
-			output += "\ninstructions:\n"
-			var lastLineInfoIndex = -1;
-			func.instructions.forEach((ins, index) => {
-				let line = func.lineInfos[index];
-				if (lastLineInfoIndex != line.index) {
-					output += "\n";
-					lastLineInfoIndex = line.index;
-				}
-				output += "    " + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
-			});
-			output += "\n";
-		});
-		return output;
 	}
 }

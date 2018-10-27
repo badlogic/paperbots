@@ -327,8 +327,32 @@ export class Types {
 export interface Module {
 	types: Types,
 	ast: Array<AstNode>,
-	code: Array<FunctionCode>,
+	functions: Array<FunctionCode>,
 	externalFunctions: ExternalFunctions
+}
+
+export function moduleToString (module: Module): string {
+	var output = "";
+	module.functions.forEach(func => {
+		output += (func.ast as FunctionDecl).type.signature;
+		output += "\nlocals:\n"
+		func.locals.forEach((local, index) => {
+			output += `   [${index}] ` + local.name.value + ": " + local.type.signature + "\n";
+		});
+
+		output += "\ninstructions:\n"
+		var lastLineInfoIndex = -1;
+		func.instructions.forEach((ins, index) => {
+			let line = func.lineInfos[index];
+			if (lastLineInfoIndex != line.index) {
+				output += "\n";
+				lastLineInfoIndex = line.index;
+			}
+			output += "    " + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+		});
+		output += "\n";
+	});
+	return output;
 }
 
 class Scopes {
@@ -522,7 +546,7 @@ export function compile(input: string, externalFunctions: ExternalFunctions): Mo
 		let codes = emitProgram(functions, externalFunctions);
 
 		return {
-			code: codes,
+			functions: codes,
 			ast: ast,
 			types: types,
 			externalFunctions: externalFunctions
@@ -748,8 +772,6 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 					break;
 				case "==":
 				case "!=":
-					// TODO record types need to be compared structurally via the generated
-					// or user defined equals()
 					if (node.left.type != node.right.type) throw new CompilerError(`Can not compare a '${node.left.type.signature}' to a '${node.right.type.signature}'.`, node.location);
 					node.type = BooleanType;
 					break;
@@ -823,7 +845,6 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 				if (!symbol) throw new CompilerError(`Can not find variable or parameter with name '${varAccess.name.value}'.`, node.left.location);
 				if (symbol.type != node.right.type) throw new CompilerError(`Can not assign a value of type '${node.right.type.signature}' to a variable of type '${symbol.type.signature}.`, node.location);
 			} else if (node.left.kind == "fieldAccess") {
-				// TODO implement, is there something missing still?
 				let fieldAccess = node.left as FieldAccess;
 				if (fieldAccess.type != node.right.type) throw new CompilerError(`Can not assign a value of type '${node.right.type.signature}' to a variable of type '${fieldAccess.type.signature}.`, node.location);
 			} else {
@@ -855,19 +876,15 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 		}
 		case "record":
-			throw new CompilerError(`Type checking of node type ${node.kind} implemented`, node.location);
+			throw new CompilerError(`Can not declare ${node.kind} in function.`, node.location);
 		case "return":
-			if (enclosingFun == null) {
-				if (node.value) throw new CompilerError("Can not return a value from the main program.", node.location);
-			} else {
-				if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
-				// function returns a value, but no value given
-				if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}'.`, node.location);
-				// function returns no value, but value given
-				if (enclosingFun.returnType == NothingType && node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must not return a value.`, node.location);
-				// function returns a value, value given, but type don't match
-				if (enclosingFun.returnType != NothingType && node.value && enclosingFun.returnType != node.value.type) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}', but a value of type '${node.value.type.signature}' is returned.`, node.location);
-			}
+			if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
+			// function returns a value, but no value given
+			if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}'.`, node.location);
+			// function returns no value, but value given
+			if (enclosingFun.returnType == NothingType && node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must not return a value.`, node.location);
+			// function returns a value, value given, but type don't match
+			if (enclosingFun.returnType != NothingType && node.value && enclosingFun.returnType != node.value.type) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}', but a value of type '${node.value.type.signature}' is returned.`, node.location);
 			break;
 		case "break":
 		case "continue":
@@ -877,7 +894,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			break;
 		case "fieldAccess":
 			typeCheckRec(node.record as AstNode, types, scopes, enclosingFun, enclosingLoop)
-			if (node.record.type.kind != "record") throw new CompilerError(`Can only access fields on record types, but got a ${node.record.type}.`, node.location);
+			if (node.record.type.kind != "record") throw new CompilerError(`Can only access fields on record types, but got a ${node.record.type.signature}.`, node.location);
 			let recordType = node.record.type;
 			// TODO wtf is going on here
 			for (var i = 0; i < recordType.fields.length; i++) {

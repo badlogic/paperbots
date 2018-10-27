@@ -138,7 +138,7 @@ export interface AsyncPromise<T> {
 	value: T;
 }
 
-export enum VMState {
+export enum VirtualMachineState {
 	Running,
 	Completed
 }
@@ -156,7 +156,7 @@ export interface StepOverSnapshot {
 }
 
 export class VirtualMachine {
-	state = VMState.Running;
+	state = VirtualMachineState.Running;
 	frames = Array<Frame>();
 	stack = Array<Value>();
 	asyncFun: ExternalFunction;
@@ -168,12 +168,12 @@ export class VirtualMachine {
 
 	restart () {
 		this.frames.push(new Frame(this.functions[0]));
-		this.state = VMState.Running;
+		this.state = VirtualMachineState.Running;
 	}
 
 	run(numInstructions: number) {
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
+		if (this.state == VirtualMachineState.Completed) return;
 
 		if (this.asyncPromise) {
 			if (this.asyncPromise.completed) {
@@ -190,7 +190,7 @@ export class VirtualMachine {
 			if (this.hitBreakpoint()) break;
 		}
 
-		if (this.frames.length == 0) this.state = VMState.Completed;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
 	}
 
 	hitBreakpoint() {
@@ -202,8 +202,8 @@ export class VirtualMachine {
 
 
 	stepOver (lastSnapshot: StepOverSnapshot = null): StepOverSnapshot {
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return null;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
+		if (this.state == VirtualMachineState.Completed) return null;
 
 		if (this.asyncPromise) {
 			if (this.asyncPromise.completed) {
@@ -228,7 +228,7 @@ export class VirtualMachine {
 			if (this.asyncPromise)
 				return snapshot;
 			if (this.frames.length == 0) {
-				this.state = VMState.Completed;
+				this.state = VirtualMachineState.Completed;
 				return null;
 			}
 			if (executed++ > 1000)
@@ -251,8 +251,8 @@ export class VirtualMachine {
 	}
 
 	stepInto () {
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
+		if (this.state == VirtualMachineState.Completed) return;
 
 		if (this.asyncPromise) {
 			if (this.asyncPromise.completed) {
@@ -282,13 +282,13 @@ export class VirtualMachine {
 			if (this.hitBreakpoint()) break;
 		}
 
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
+		if (this.state == VirtualMachineState.Completed) return;
 	}
 
 	getLineNumber() {
-		if (this.frames.length == 0) this.state = VMState.Completed;
-		if (this.state == VMState.Completed) return -1;
+		if (this.frames.length == 0) this.state = VirtualMachineState.Completed;
+		if (this.state == VirtualMachineState.Completed) return -1;
 
 		let frameIndex = this.frames.length - 1;
 		let frame = this.frames[frameIndex];
@@ -299,7 +299,7 @@ export class VirtualMachine {
 		let {frames, stack, functions, externalFunctions} = this;
 
 		if (frames.length == 0) {
-			this.state = VMState.Completed;
+			this.state = VirtualMachineState.Completed;
 			return;
 		}
 

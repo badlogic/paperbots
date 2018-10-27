@@ -4,14 +4,13 @@
         "noImplicitAny": false,
         "removeComments": true,
         "preserveConstEnums": true,
-        "outFile": "js/paperbots.js",
+        "outFile": "site/js/paperbots.js",
         "sourceMap": true
     },
     "include": [
-		"src/**/*",
+        "src/**/*",
     ],
     "exclude": [
-        "node_modules",
-        "**/*.spec.ts"
+        "node_modules"
 	]
 }

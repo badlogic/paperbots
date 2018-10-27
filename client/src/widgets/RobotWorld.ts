@@ -50,7 +50,6 @@ export class RobotWorld extends Widget {
 		this.assets.loadImage("img/wall.png");
 		this.assets.loadImage("img/floor.png");
 		this.assets.loadImage("img/robot.png");
-		requestAnimationFrame(() => { this.draw(); });
 
 		let tools = this.container.find("#pb-robot-world-tools input");
 		for (var i = 0; i < tools.length; i++) {
@@ -66,6 +65,7 @@ export class RobotWorld extends Widget {
 		var dragged = false;
 		this.toolsHandler = {
 			down: (x, y) => {
+				requestAnimationFrame(() => {this.draw()});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -80,6 +80,7 @@ export class RobotWorld extends Widget {
 				dragged = false;
 			},
 			up: (x, y) => {
+				requestAnimationFrame(() => {this.draw()});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -135,6 +136,7 @@ export class RobotWorld extends Widget {
 			moved: (x, y) => {
 			},
 			dragged: (x, y) => {
+				requestAnimationFrame(() => {this.draw()});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -155,6 +157,7 @@ export class RobotWorld extends Widget {
 		};
 		this.input.addListener(this.toolsHandler);
 		this.announceExternals();
+		requestAnimationFrame(() => { this.draw(); });
 		return this.container[0];
 	}
 
@@ -440,6 +443,7 @@ export class RobotWorld extends Widget {
 			});
 			this.world = new World(this.worldData);
 			this.isRunning = false;
+			requestAnimationFrame(() => {this.draw()});
 		} else if(event instanceof events.Run || event instanceof events.Debug) {
 			this.input.removeListener(this.toolsHandler);
 			this.container.find("#pb-robot-world-tools input").each((index, element) => {
@@ -447,11 +451,14 @@ export class RobotWorld extends Widget {
 			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));
 			this.isRunning = true;
+			requestAnimationFrame(() => {this.draw()});
 		} else if (event instanceof events.ProjectLoaded) {
 			this.world = new World(event.project.contentObject.world);
+			requestAnimationFrame(() => {this.draw()});
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.contentObject.type = "robot";
 			event.project.contentObject.world = this.world.data;
+			requestAnimationFrame(() => {this.draw()});
 		}
 	}
 
@@ -475,10 +482,10 @@ export class RobotWorld extends Widget {
 	}
 
 	draw () {
-		requestAnimationFrame(() => { this.draw(); });
 		this.time.update();
 
 		if (this.isRunning) {
+			requestAnimationFrame(() => { this.draw(); });
 			this.world.update(this.time.delta);
 		}
 
@@ -493,6 +500,8 @@ export class RobotWorld extends Widget {
 		this.drawGrid();
 		if (!this.assets.hasMoreToLoad()) {
 			this.drawWorld();
+		} else {
+			requestAnimationFrame(() => {this.draw()});
 		}
 	}
 

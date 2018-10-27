@@ -7329,7 +7329,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             this.assets.loadImage("img/wall.png");
             this.assets.loadImage("img/floor.png");
             this.assets.loadImage("img/robot.png");
-            requestAnimationFrame(function () { _this.draw(); });
             var tools = this.container.find("#pb-robot-world-tools input");
             for (var i = 0; i < tools.length; i++) {
                 $(tools[i]).click(function (tool) {
@@ -7343,6 +7342,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
+                    requestAnimationFrame(function () { _this.draw(); });
                     var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                     x = ((x / cellSize) | 0) - 1;
                     y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -7357,6 +7357,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     dragged = false;
                 },
                 up: function (x, y) {
+                    requestAnimationFrame(function () { _this.draw(); });
                     var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                     x = ((x / cellSize) | 0) - 1;
                     y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -7420,6 +7421,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 moved: function (x, y) {
                 },
                 dragged: function (x, y) {
+                    requestAnimationFrame(function () { _this.draw(); });
                     var cellSize = _this.canvas.clientWidth / (World.WORLD_SIZE + 1);
                     x = ((x / cellSize) | 0) - 1;
                     y = (((_this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -7441,6 +7443,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             };
             this.input.addListener(this.toolsHandler);
             this.announceExternals();
+            requestAnimationFrame(function () { _this.draw(); });
             return this.container[0];
         };
         RobotWorld.prototype.announceExternals = function () {
@@ -7714,6 +7717,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
         RobotWorld.prototype.onEvent = function (event) {
+            var _this = this;
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
@@ -7721,6 +7725,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
+                requestAnimationFrame(function () { _this.draw(); });
             }
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
@@ -7729,13 +7734,16 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
+                requestAnimationFrame(function () { _this.draw(); });
             }
             else if (event instanceof events.ProjectLoaded) {
                 this.world = new World(event.project.contentObject.world);
+                requestAnimationFrame(function () { _this.draw(); });
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.contentObject.type = "robot";
                 event.project.contentObject.world = this.world.data;
+                requestAnimationFrame(function () { _this.draw(); });
             }
         };
         RobotWorld.prototype.getWorld = function () {
@@ -7756,9 +7764,9 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         };
         RobotWorld.prototype.draw = function () {
             var _this = this;
-            requestAnimationFrame(function () { _this.draw(); });
             this.time.update();
             if (this.isRunning) {
+                requestAnimationFrame(function () { _this.draw(); });
                 this.world.update(this.time.delta);
             }
             var ctx = this.ctx;
@@ -7769,6 +7777,9 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             this.drawGrid();
             if (!this.assets.hasMoreToLoad()) {
                 this.drawWorld();
+            }
+            else {
+                requestAnimationFrame(function () { _this.draw(); });
             }
         };
         RobotWorld.prototype.drawImage = function (img, x, y, w, h) {

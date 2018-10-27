@@ -836,7 +836,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, compiler, vm) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -1125,7 +1125,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.vmState.empty();
             if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
                 this.vm.frames.slice(0).reverse().forEach(function (frame, index) {
-                    var signature = compiler.functionSignature(frame.code.ast);
+                    var signature = frame.code.ast.type.signature;
                     var lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
                     var dom = $("\n\t\t\t\t\t<div class=\"pb-debugger-callstack-frame\">\n\t\t\t\t\t</div>\n\t\t\t\t");
                     dom.text(signature + " line " + lineInfo.line);
@@ -1160,7 +1160,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         Debugger.prototype.renderVmState = function (vm) {
             var output = "";
             this.vm.frames.slice(0).reverse().forEach(function (frame) {
-                output += compiler.functionSignature(frame.code.ast);
+                output += frame.code.ast.type.signature;
                 output += "\nlocals:\n";
                 frame.slots.forEach(function (slot, index) {
                     output += "   [" + index + "] " + slot.symbol.name.value + ": " + slot.value + "\n";
@@ -5907,6 +5907,76 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         kind: "primitive",
         signature: "string"
     };
+    var Types = (function () {
+        function Types() {
+            this.all = {};
+            this.functions = {};
+            this.functionsNoReturnType = {};
+            this.externalFunctions = {};
+            this.externalFunctionsNoReturnType = {};
+            this.records = {};
+        }
+        Types.prototype.add = function (type) {
+            this.all[type.signature] = type;
+            switch (type.kind) {
+                case "primitive":
+                    break;
+                case "record":
+                    this.records[type.signature] = type;
+                    break;
+                case "function":
+                    this.functions[type.signature] = type;
+                    this.functionsNoReturnType[type.signature.substr(0, type.signature.lastIndexOf(":"))] = type;
+                    break;
+            }
+        };
+        Types.prototype.addExternal = function (extFunc) {
+            this.externalFunctions[Types.functionSignature(extFunc.name, extFunc.parameters.map(function (p) { return p.type; }), extFunc.returnType)] = extFunc;
+            this.externalFunctionsNoReturnType[Types.functionSignatureNoReturnType(extFunc.name, extFunc.parameters.map(function (p) { return p.type; }))] = extFunc;
+        };
+        Types.prototype.get = function (signature) {
+            return this.all[signature];
+        };
+        Types.prototype.getRecord = function (signature) {
+            return this.records[signature];
+        };
+        Types.prototype.getFunction = function (signature) {
+            return this.functions[signature];
+        };
+        Types.prototype.getExternalFunction = function (signature) {
+            return this.externalFunctions[signature];
+        };
+        Types.prototype.findFunction = function (name, paramTypes) {
+            var sig = Types.functionSignatureNoReturnType(name, paramTypes);
+            return this.functionsNoReturnType[sig];
+        };
+        Types.prototype.findExternalFunction = function (name, paramTypes) {
+            var sig = Types.functionSignatureNoReturnType(name, paramTypes);
+            return this.externalFunctionsNoReturnType[sig];
+        };
+        Types.functionSignature = function (funcName, types, returnType) {
+            var sig = funcName + "(";
+            types.forEach(function (type, index) {
+                sig += type.signature;
+                if (index != types.length - 1)
+                    sig += ",";
+            });
+            sig += "):" + returnType.signature;
+            return sig;
+        };
+        Types.functionSignatureNoReturnType = function (funcName, types) {
+            var sig = funcName + "(";
+            types.forEach(function (type, index) {
+                sig += type.signature;
+                if (index != types.length - 1)
+                    sig += ",";
+            });
+            sig += ")";
+            return sig;
+        };
+        return Types;
+    }());
+    exports.Types = Types;
     var Scopes = (function () {
         function Scopes() {
             this.scopes = new Array();
@@ -6008,7 +6078,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             this.async = async;
             this.fun = fun;
             this.index = index;
-            this.signature = name + "(" + parameters.map(function (arg) { return arg.type.signature; }).join(",") + ")";
+            this.signature = Types.functionSignature(name, parameters.map(function (p) { return p.type; }), returnType);
         }
         return ExternalFunction;
     }());
@@ -6072,56 +6142,12 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             }
         };
     }
-    function functionSignature(fun) {
-        switch (fun.kind) {
-            case "function":
-                return fun.name.value + "(" + fun.params.map(function (param) { return param.typeName.id.value; }).join(",") + ")";
-            case "functionCall":
-                return fun.name.value + "(" + fun.args.map(function (arg) { return arg.type.signature; }).join(",") + ")";
-        }
-    }
-    exports.functionSignature = functionSignature;
-    function functionSignatureFromTypes(funcName, types, returnType) {
-        var sig = funcName + "(";
-        types.forEach(function (type, index) {
-            sig += type.signature;
-            if (index != types.length - 1)
-                sig += ",";
-        });
-        sig += ")";
-        return sig;
-    }
-    exports.functionSignatureFromTypes = functionSignatureFromTypes;
     function typeCheck(functions, records, externalFunctions) {
-        var types = {
-            all: {},
-            functions: {},
-            externalFunctions: {},
-            records: {}
-        };
-        types.all[exports.NothingType.signature] = exports.NothingType;
-        types.all[exports.BooleanType.signature] = exports.BooleanType;
-        types.all[exports.NumberType.signature] = exports.NumberType;
-        types.all[exports.StringType.signature] = exports.StringType;
-        functions.forEach(function (fun) {
-            var type = {
-                kind: "function",
-                signature: functionSignature(fun),
-                parameters: [],
-                returnType: exports.NothingType,
-                declarationNode: fun
-            };
-            var other = types.functions[type.signature];
-            if (other) {
-                var otherLoc = other.declarationNode.location.start;
-                throw new CompilerError("Function '" + other.signature + "' already defined in line " + otherLoc.line + ".", fun.name.location);
-            }
-            if (externalFunctions.lookup[type.signature])
-                throw new CompilerError("Function '" + other.signature + "' already defined externally.", fun.name.location);
-            fun.type = type;
-            types.all[type.signature] = type;
-            types.functions[type.signature] = type;
-        });
+        var types = new Types();
+        types.add(exports.NothingType);
+        types.add(exports.BooleanType);
+        types.add(exports.NumberType);
+        types.add(exports.StringType);
         records.forEach(function (rec) {
             var type = {
                 kind: "record",
@@ -6129,72 +6155,33 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 declarationNode: rec,
                 signature: rec.name.value
             };
-            var other = types.records[type.signature];
+            var other = types.getRecord(type.signature);
             if (other) {
                 var otherLoc = other.declarationNode.location.start;
                 throw new CompilerError("Record '" + other.signature + "' already defined in line " + otherLoc.line + ".", rec.name.location);
             }
             rec.type = type;
-            types.all[type.signature] = type;
-            types.records[type.signature] = type;
+            types.add(type);
         });
-        var _loop_1 = function (typeName) {
-            var type = types.all[typeName];
-            switch (type.kind) {
-                case "function": {
-                    var decl = type.declarationNode;
-                    var func_1 = type;
-                    if (decl == null)
-                        return "continue";
-                    var params_1 = {};
-                    decl.params.forEach(function (param) {
-                        var otherParam = params_1[param.name.value];
-                        if (otherParam) {
-                            var otherLoc = otherParam.name.location.start;
-                            throw new CompilerError("Duplicate parameter name '" + param.name.value + "' in function '" + type.signature + ", see line " + otherLoc.line + ", column " + otherLoc.column + ".", param.name.location);
-                        }
-                        var paramType = types.all[param.typeName.id.value];
-                        if (!paramType) {
-                            throw new CompilerError("Unknown type '" + param.typeName.id.value + "' for parameter '" + param.name.value + "' of function '" + type.signature + ".", param.typeName.id.location);
-                        }
-                        func_1.parameters.push({ name: param.name.value, type: paramType });
-                        param.type = paramType;
-                        params_1[param.name.value] = param;
-                    });
-                    var returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
-                    var returnType = returnTypeName ? types.all[returnTypeName] : exports.NothingType;
-                    if (!returnType) {
-                        throw new CompilerError("Unknown return type '" + returnTypeName, decl.returnTypeName.id.location);
-                    }
-                    func_1.returnType = returnType;
-                    decl.returnType = returnType;
-                    break;
+        records.forEach(function (r) {
+            var decl = r.type.declarationNode;
+            var rec = r.type;
+            var fieldNames = {};
+            decl.fields.forEach(function (field) {
+                var otherField = fieldNames[field.name.value];
+                if (otherField) {
+                    var otherLoc = otherField.name.location.start;
+                    throw new CompilerError("Duplicate field name '" + field.name.value + "' in record '" + rec.signature + "', see line " + otherLoc.line + ", column " + otherLoc.column + ".", field.name.location);
                 }
-                case "record": {
-                    var decl = type.declarationNode;
-                    var rec_1 = type;
-                    var fieldNames_1 = {};
-                    decl.fields.forEach(function (field) {
-                        var otherField = fieldNames_1[field.name.value];
-                        if (otherField) {
-                            var otherLoc = otherField.name.location.start;
-                            throw new CompilerError("Duplicate field name '" + field.name.value + "' in record '" + type.signature + "', see line " + otherLoc.line + ", column " + otherLoc.column + ".", field.name.location);
-                        }
-                        var fieldType = types.all[field.typeName.id.value];
-                        if (!fieldType) {
-                            throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + type.signature + "'.", field.typeName.id.location);
-                        }
-                        rec_1.fields.push({ name: field.name.value, type: fieldType });
-                        field.type = fieldType;
-                        fieldNames_1[field.name.value] = field;
-                    });
-                    break;
+                var fieldType = types.get(field.typeName.id.value);
+                if (!fieldType) {
+                    throw new CompilerError("Unknown type '" + field.typeName.id.value + "' for field '" + field.name.value + "' of record '" + rec.signature + "'.", field.typeName.id.location);
                 }
-            }
-        };
-        for (var typeName in types.all) {
-            _loop_1(typeName);
-        }
+                rec.fields.push({ name: field.name.value, type: fieldType });
+                field.type = fieldType;
+                fieldNames[field.name.value] = field;
+            });
+        });
         records.forEach(function (rec) {
             var params = [];
             rec.fields.forEach(function (field) {
@@ -6213,7 +6200,48 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             });
         });
         externalFunctions.functions.forEach(function (fun) {
-            types.externalFunctions[fun.signature] = fun;
+            types.addExternal(fun);
+        });
+        functions.forEach(function (funDecl) {
+            var type = {
+                kind: "function",
+                signature: "",
+                parameters: [],
+                returnType: exports.NothingType,
+                declarationNode: funDecl
+            };
+            funDecl.type = type;
+            var params = {};
+            funDecl.params.forEach(function (param) {
+                var otherParam = params[param.name.value];
+                if (otherParam) {
+                    var otherLoc = otherParam.name.location.start;
+                    throw new CompilerError("Duplicate parameter name '" + param.name.value + "' in function '" + type.signature + ", see line " + otherLoc.line + ", column " + otherLoc.column + ".", param.name.location);
+                }
+                var paramType = types.get(param.typeName.id.value);
+                if (!paramType) {
+                    throw new CompilerError("Unknown type '" + param.typeName.id.value + "' for parameter '" + param.name.value + "' of function '" + type.signature + ".", param.typeName.id.location);
+                }
+                type.parameters.push({ name: param.name.value, type: paramType });
+                param.type = paramType;
+                params[param.name.value] = param;
+            });
+            var returnTypeName = funDecl.returnTypeName ? funDecl.returnTypeName.id.value : null;
+            var returnType = returnTypeName ? types.get(returnTypeName) : exports.NothingType;
+            if (!returnType) {
+                throw new CompilerError("Unknown return type '" + returnTypeName, funDecl.returnTypeName.id.location);
+            }
+            funDecl.returnType = returnType;
+            type.returnType = returnType;
+            type.signature = Types.functionSignature(funDecl.name.value, type.parameters.map(function (param) { return param.type; }), type.returnType);
+            var other = types.getFunction(type.signature);
+            if (other) {
+                var otherLoc = other.declarationNode.location.start;
+                throw new CompilerError("Function '" + other.signature + "' already defined in line " + otherLoc.line + ".", funDecl.name.location);
+            }
+            if (types.getExternalFunction(type.signature))
+                throw new CompilerError("Function '" + other.signature + "' already defined externally.", funDecl.name.location);
+            types.add(type);
         });
         functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes(), node, null); });
         return types;
@@ -6326,7 +6354,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "variable":
                 typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 if (node.typeName) {
-                    var type = types.all[node.typeName.id.value];
+                    var type = types.get(node.typeName.id.value);
                     if (!type)
                         throw new CompilerError("Unknown type '" + node.typeName.id.value + "' for variable '" + node.name.value + "'.", node.typeName.id.location);
                     if (type != node.value.type)
@@ -6376,18 +6404,20 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             }
             case "functionCall": {
                 node.args.forEach(function (arg) { return typeCheckRec(arg, types, scopes, enclosingFun, enclosingLoop); });
-                var signature = functionSignature(node);
-                var funType = types.functions[signature];
+                var funType = types.findFunction(node.name.value, node.args.map(function (a) { return a.type; }));
+                var resolvedFunction = funType;
                 var returnType;
                 if (!funType) {
-                    var externalFun = types.externalFunctions[signature];
+                    var externalFun = types.findExternalFunction(node.name.value, node.args.map(function (a) { return a.type; }));
                     if (!externalFun)
-                        throw new CompilerError("Can not find function '" + signature + "'.", node.location);
+                        throw new CompilerError("Can not find function '" + Types.functionSignatureNoReturnType(node.name.value, node.args.map(function (a) { return a.type; })) + "'.", node.location);
+                    resolvedFunction = externalFun;
                     returnType = externalFun.returnType;
                 }
                 else {
                     returnType = funType.declarationNode.returnType;
                 }
+                node.resolvedFunction = resolvedFunction;
                 node.type = returnType;
                 break;
             }
@@ -6402,11 +6432,11 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                     if (node.value)
                         typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                     if (enclosingFun.returnType != exports.NothingType && !node.value)
-                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.signature + "'.", node.location);
+                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "'.", node.location);
                     if (enclosingFun.returnType == exports.NothingType && node.value)
-                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must not return a value.", node.location);
+                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must not return a value.", node.location);
                     if (enclosingFun.returnType != exports.NothingType && node.value && enclosingFun.returnType != node.value.type)
-                        throw new CompilerError("Function '" + functionSignature(enclosingFun) + "' must return a value of type '" + enclosingFun.returnType.signature + "', but a value of type '" + node.value.type.signature + "' is returned.", node.location);
+                        throw new CompilerError("Function '" + enclosingFun.type.signature + "' must return a value of type '" + enclosingFun.returnType.signature + "', but a value of type '" + node.value.type.signature + "' is returned.", node.location);
                 }
                 break;
             case "break":
@@ -6462,7 +6492,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 index: functionCodes.length
             };
             functionCodes.push(funCode);
-            functionLookup[functionSignature(fun)] = funCode;
+            functionLookup[fun.type.signature] = funCode;
         });
         functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)); });
         return functionCodes;
@@ -6514,8 +6544,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                     context.fun.instructions.push({ kind: "pop" });
                     break;
                 case "functionCall": {
-                    if (context.functionLookup[functionSignature(stmt)]) {
-                        var calledFun = context.functionLookup[functionSignature(stmt)].ast;
+                    if (context.functionLookup[stmt.resolvedFunction.signature]) {
+                        var calledFun = context.functionLookup[stmt.resolvedFunction.signature].ast;
                         if (calledFun.returnType && calledFun.returnType != exports.NothingType) {
                             var lineInfo_1 = context.fun.lineInfos[context.fun.instructions.length - 1];
                             emitLineInfo(context.fun.lineInfos, lineInfo_1.index, lineInfo_1.line, 1);
@@ -6524,7 +6554,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                         break;
                     }
                     else {
-                        var calledFun = context.externalFunctionLookup[functionSignature(stmt)];
+                        var calledFun = context.externalFunctionLookup[stmt.resolvedFunction.signature];
                         if (calledFun.returnType && calledFun.returnType != exports.NothingType) {
                             var lineInfo_2 = context.fun.lineInfos[context.fun.instructions.length - 1];
                             emitLineInfo(context.fun.lineInfos, lineInfo_2.index, lineInfo_2.line, 1);
@@ -6550,22 +6580,21 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             }
         });
     }
-    function emitOperatorOverload(instructions, opNode, overLoadName, returnType, functionLookup, externalFunctionLookup) {
+    function tryEmitRecordOperatorOveride(opNode, overLoadName, returnType, context) {
         if (!(opNode.left.type.kind == "record" && opNode.right.type.kind == "record" && opNode.left.type == opNode.right.type))
             return false;
-        var sig = functionSignatureFromTypes(overLoadName, [opNode.left.type, opNode.right.type], returnType);
-        if (functionLookup[sig] || externalFunctionLookup[sig]) {
-            if (functionLookup[sig]) {
-                instructions.push({ kind: "call", functionIndex: functionLookup[sig].index });
-            }
-            else {
-                var externalFun = externalFunctionLookup[sig];
-                instructions.push({ kind: "callExt", functionIndex: externalFun.index });
-            }
+        var functionLookup = context.functionLookup, externalFunctionLookup = context.externalFunctionLookup;
+        var instructions = context.fun.instructions;
+        var sig = Types.functionSignature(overLoadName, [opNode.left.type, opNode.right.type], returnType);
+        if (functionLookup[sig]) {
+            instructions.push({ kind: "call", functionIndex: functionLookup[sig].index });
+            return true;
+        }
+        else if (externalFunctionLookup[sig]) {
+            instructions.push({ kind: "callExt", functionIndex: externalFunctionLookup[sig].index });
             return true;
         }
         else {
-            instructions.push({ kind: "binaryOp", operator: opNode.operator });
             return false;
         }
     }
@@ -6586,17 +6615,15 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "binaryOp":
                 emitAstNode(node.left, context, false);
                 emitAstNode(node.right, context, false);
-                if (node.operator == "..")
+                if (node.operator == "..") {
                     instructions.push({ kind: "stringConcat" });
-                var overwritten = false;
-                if (node.operator == "==") {
-                    overwritten = emitOperatorOverload(instructions, node, "equals", exports.BooleanType, functionLookup, externalFunctionLookup);
                 }
-                if (node.operator == "!=") {
-                    overwritten = emitOperatorOverload(instructions, node, "equals", exports.BooleanType, functionLookup, externalFunctionLookup);
+                else if (node.operator == "==" && tryEmitRecordOperatorOveride(node, "equals", exports.BooleanType, context)) {
+                }
+                else if (node.operator == "!=" && tryEmitRecordOperatorOveride(node, "equals", exports.BooleanType, context)) {
                     instructions.push({ kind: "unaryOp", operator: "not" });
                 }
-                if (!overwritten) {
+                else {
                     instructions.push({ kind: "binaryOp", operator: node.operator });
                 }
                 if (isStatement)
@@ -6648,11 +6675,11 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 break;
             case "functionCall":
                 node.args.forEach(function (arg) { return emitAstNode(arg, context, false); });
-                if (functionLookup[functionSignature(node)]) {
-                    instructions.push({ kind: "call", functionIndex: functionLookup[functionSignature(node)].index });
+                if (functionLookup[node.resolvedFunction.signature]) {
+                    instructions.push({ kind: "call", functionIndex: functionLookup[node.resolvedFunction.signature].index });
                 }
                 else {
-                    var externalFun = externalFunctionLookup[functionSignature(node)];
+                    var externalFun = externalFunctionLookup[node.resolvedFunction.signature];
                     instructions.push({ kind: "callExt", functionIndex: externalFun.index });
                 }
                 if (isStatement)

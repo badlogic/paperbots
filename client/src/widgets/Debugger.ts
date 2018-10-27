@@ -351,7 +351,7 @@ export class Debugger extends Widget {
 		this.vmState.empty();
 		if (this.state == DebuggerState.Paused && this.vm && this.vm.frames.length > 0) {
 			this.vm.frames.slice(0).reverse().forEach((frame, index) => {
-				let signature = compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
+				let signature = (frame.code.ast as compiler.FunctionDecl).type.signature;
 				let lineInfo = frame.code.lineInfos[index == 0 ? frame.pc : frame.pc - 1];
 				let dom = $(/*html*/`
 					<div class="pb-debugger-callstack-frame">
@@ -399,7 +399,7 @@ export class Debugger extends Widget {
 	renderVmState(vm: vm.VirtualMachine) {
 		var output = "";
 		this.vm.frames.slice(0).reverse().forEach(frame => {
-			output += compiler.functionSignature(frame.code.ast as compiler.FunctionDecl);
+			output += (frame.code.ast as compiler.FunctionDecl).type.signature;
 			output += "\nlocals:\n"
 			frame.slots.forEach((slot, index) => {
 				output += `   [${index}] ` + slot.symbol.name.value + ": " + slot.value + "\n";

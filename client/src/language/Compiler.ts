@@ -45,6 +45,7 @@ export interface FunctionCall extends Expression {
 	kind: "functionCall",
 	name: Identifier,
 	args: Array<Expression>
+	resolvedFunction: FunctionType | ExternalFunction
 }
 
 export interface FieldAccess extends Expression {
@@ -121,7 +122,7 @@ export interface RecordDecl extends BaseNode {
 	kind: "record",
 	name: Identifier,
 	fields: Array<RecordFieldDecl>,
-	type: Type,
+	type: RecordType,
 }
 
 export interface Return extends BaseNode {
@@ -144,7 +145,7 @@ export interface FunctionDecl extends BaseNode {
 	returnTypeName?: TypeName,
 	returnType?: Type,
 	block: Array<AstNode>,
-	type?: Type
+	type?: FunctionType
 }
 
 export interface ParameterDecl {
@@ -247,11 +248,80 @@ export const StringType: PrimitiveType = {
 
 export type Type = PrimitiveType | FunctionType | RecordType | ArrayType;
 
-export interface Types {
-	all: Map<Type>,
-	functions: Map<FunctionType>,
-	externalFunctions: Map<ExternalFunction>,
-	records: Map<RecordType>;
+export class Types {
+	private all: Map<Type> = { }
+	private functions: Map<FunctionType> = { }
+	private functionsNoReturnType: Map<FunctionType> = { }
+	private externalFunctions: Map<ExternalFunction> = { }
+	private externalFunctionsNoReturnType: Map<ExternalFunction> = { }
+	private records: Map<RecordType> = { }
+
+	add(type: Type) {
+		this.all[type.signature] = type;
+		switch(type.kind) {
+			case "primitive":
+				break;
+			case "record":
+				this.records[type.signature] = type;
+				break;
+			case "function":
+				this.functions[type.signature] = type;
+				// TODO this is nasty
+				this.functionsNoReturnType[type.signature.substr(0, type.signature.lastIndexOf(":"))] = type;
+				break;
+		}
+	}
+
+	addExternal(extFunc: ExternalFunction) {
+		this.externalFunctions[Types.functionSignature(extFunc.name, extFunc.parameters.map(p=>p.type), extFunc.returnType)] = extFunc;
+		this.externalFunctionsNoReturnType[Types.functionSignatureNoReturnType(extFunc.name, extFunc.parameters.map(p=>p.type))] = extFunc;
+	}
+
+	get(signature: string) {
+		return this.all[signature];
+	}
+
+	getRecord(signature: string) {
+		return this.records[signature];
+	}
+
+	getFunction(signature: string) {
+		return this.functions[signature];
+	}
+
+	getExternalFunction(signature: string) {
+		return this.externalFunctions[signature];
+	}
+
+	findFunction(name: string, paramTypes: Type[]) {
+		let sig = Types.functionSignatureNoReturnType(name, paramTypes);
+		return this.functionsNoReturnType[sig];
+	}
+
+	findExternalFunction(name: string, paramTypes: Type[]) {
+		let sig = Types.functionSignatureNoReturnType(name, paramTypes);
+		return this.externalFunctionsNoReturnType[sig];
+	}
+
+	static functionSignature(funcName: string, types: Type[], returnType: Type) {
+		var sig = funcName + "("
+		types.forEach((type, index) => {
+			sig += type.signature;
+			if (index != types.length - 1) sig += ",";
+		})
+		sig += "):" + returnType.signature;
+		return sig;
+	}
+
+	static functionSignatureNoReturnType(funcName: string, types: Type[]) {
+		var sig = funcName + "("
+		types.forEach((type, index) => {
+			sig += type.signature;
+			if (index != types.length - 1) sig += ",";
+		})
+		sig += ")";
+		return sig;
+	}
 }
 
 export interface Module {
@@ -408,10 +478,9 @@ export class ExternalFunctions {
 }
 
 export class ExternalFunction {
-	public readonly signature: string;
-
+	public readonly signature: string
 	constructor(public name: string, public parameters: Array<Parameter>, public returnType: Type, public async: boolean, public fun: (...args: any[]) => any, public index: number) {
-		this.signature = name + "(" + parameters.map(arg => arg.type.signature).join(",") + ")";
+		this.signature = Types.functionSignature(name, parameters.map(p=>p.type), returnType);
 	}
 }
 
@@ -483,62 +552,18 @@ function nullLocation(): IFileRange {
 	}
 }
 
-export function functionSignature(fun: FunctionDecl | FunctionCall): string {
-	// TODO in the future, sigs might contain return type
-	switch(fun.kind) {
-		case "function":
-			return fun.name.value + "(" + fun.params.map(param => param.typeName.id.value).join(",") + ")";
-		case "functionCall":
-			return fun.name.value + "(" + fun.args.map(arg => arg.type.signature).join(",") + ")";
-	}
-}
-
-export function functionSignatureFromTypes(funcName: string, types: Type[], returnType: Type) {
-	var sig = funcName + "("
-	types.forEach((type, index) => {
-		sig += type.signature;
-		if (index != types.length - 1) sig += ",";
-	})
-	sig += ")"; // TODO in the future, sigs might contain return type
-	return sig;
-}
-
 function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, externalFunctions: ExternalFunctions): Types {
-	let types: Types = {
-		all: {},
-		functions: {},
-		externalFunctions: {},
-		records: {}
-	}
+	let types = new Types()
 
 	// register built-in types
-	types.all[NothingType.signature] = NothingType;
-	types.all[BooleanType.signature] = BooleanType;
-	types.all[NumberType.signature] = NumberType;
-	types.all[StringType.signature] = StringType;
+	types.add(NothingType)
+	types.add(BooleanType)
+	types.add(NumberType);
+	types.add(StringType);
 
-	// gather all record and function types first and do some basic duplicate checking
-	functions.forEach(fun => {
-		let type: FunctionType = {
-			kind: "function",
-			signature: functionSignature(fun),
-			parameters: [],
-			returnType: NothingType,
-			declarationNode: fun,
-		}
-
-		let other = types.functions[type.signature];
-		if (other) {
-			let otherLoc = other.declarationNode.location.start;
-			throw new CompilerError(`Function '${other.signature}' already defined in line ${otherLoc.line}.`, fun.name.location);
-		}
-
-		if (externalFunctions.lookup[type.signature]) throw new CompilerError(`Function '${other.signature}' already defined externally.`, fun.name.location);
-
-		fun.type = type;
-		types.all[type.signature] = type;
-		types.functions[type.signature] = type;
-	});
+	// gather all record and do basic duplicate testing
+	// We do not resolve field types here yet, as
+	// we have not seen all record types at this point.
 	records.forEach(rec => {
 		let type: Type = {
 			kind: "record",
@@ -547,87 +572,43 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			signature: rec.name.value
 		}
 
-		let other = types.records[type.signature];
+		let other = types.getRecord(type.signature);
 		if (other) {
 			let otherLoc = other.declarationNode.location.start;
 			throw new CompilerError(`Record '${other.signature}' already defined in line ${otherLoc.line}.`, rec.name.location);
 		}
 
 		rec.type = type;
-		types.all[type.signature] = type;
-		types.records[type.signature] = type;
+		types.add(type);
 	});
 
-	// Resolve all types of function parameters, return types
-	// and record fields.
-	for(let typeName in types.all) {
-		let type = types.all[typeName];
+	// Now that we have seen all records, resolve the record field types
+	records.forEach(r => {
+		// Assign field types, bail if a type is unknown
+		// Also check duplicate field names
+		let decl = r.type.declarationNode;
+		let rec = r.type;
 
-		switch (type.kind) {
-			// Assign function parameter types and return types, bail if a type is unknown
-			// Also check duplicate parameter names
-			case "function": {
-				let decl = type.declarationNode;
-				let func = type;
-				if (decl == null) continue;
-
-				// Check and assign parameter types
-				let params: Map<ParameterDecl> = {};
-				decl.params.forEach(param => {
-					let otherParam = params[param.name.value];
-					if (otherParam) {
-						let otherLoc = otherParam.name.location.start;
-						throw new CompilerError(`Duplicate parameter name '${param.name.value}' in function '${type.signature}, see line ${otherLoc.line}, column ${otherLoc.column}.`, param.name.location);
-					}
-
-					let paramType = types.all[param.typeName.id.value];
-					if (!paramType) {
-						throw new CompilerError(`Unknown type '${param.typeName.id.value}' for parameter '${param.name.value}' of function '${type.signature}.`, param.typeName.id.location);
-					}
-					func.parameters.push({name: param.name.value, type: paramType});
-					param.type = paramType;
-					params[param.name.value] = param;
-				});
-
-				// Check and assign return type
-				let returnTypeName = decl.returnTypeName ? decl.returnTypeName.id.value : null;
-				let returnType =  returnTypeName ? types.all[returnTypeName] : NothingType;
-				if (!returnType) {
-					throw new CompilerError(`Unknown return type '${returnTypeName}`, decl.returnTypeName.id.location);
-				}
-				func.returnType = returnType;
-				decl.returnType = returnType;
-				break;
+		// Check and assign field types
+		let fieldNames: Map<RecordFieldDecl> = {};
+		decl.fields.forEach(field => {
+			let otherField = fieldNames[field.name.value];
+			if (otherField) {
+				let otherLoc = otherField.name.location.start;
+				throw new CompilerError(`Duplicate field name '${field.name.value}' in record '${rec.signature}', see line ${otherLoc.line}, column ${otherLoc.column}.`, field.name.location);
 			}
-			case "record": {
-				// Assign field types, bail if a type is unknown
-				// Also check duplicate field names
-				let decl = type.declarationNode;
-				let rec = type;
 
-				// Check and assign field types
-				let fieldNames: Map<RecordFieldDecl> = {};
-				decl.fields.forEach(field => {
-					let otherField = fieldNames[field.name.value];
-					if (otherField) {
-						let otherLoc = otherField.name.location.start;
-						throw new CompilerError(`Duplicate field name '${field.name.value}' in record '${type.signature}', see line ${otherLoc.line}, column ${otherLoc.column}.`, field.name.location);
-					}
-
-					let fieldType = types.all[field.typeName.id.value];
-					if (!fieldType) {
-						throw new CompilerError(`Unknown type '${field.typeName.id.value}' for field '${field.name.value}' of record '${type.signature}'.`, field.typeName.id.location);
-					}
-					rec.fields.push({name: field.name.value, type: fieldType});
-					field.type = fieldType;
-					fieldNames[field.name.value] = field;
-				});
-				break;
+			let fieldType = types.get(field.typeName.id.value);
+			if (!fieldType) {
+				throw new CompilerError(`Unknown type '${field.typeName.id.value}' for field '${field.name.value}' of record '${rec.signature}'.`, field.typeName.id.location);
 			}
-		}
-	}
+			rec.fields.push({name: field.name.value, type: fieldType});
+			field.type = fieldType;
+			fieldNames[field.name.value] = field;
+		});
+	});
 
-	// Create constructor and equals functions for all records
+	// Create constructor functions for all records
 	// TODO check for recursive types
 	records.forEach(rec => {
 		let params: Array<Parameter> = [];
@@ -641,16 +622,66 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			}
 			return value;
 		});
-
-		// TODO emit equals for structural equality check but only
-		// if there is no user defined equals(a: recordType, b: recordType): boolean
 	});
 
 	// Create the external function look up, copy
 	// the user provided externals, otherwise we
 	// keep adding record funtions!
 	externalFunctions.functions.forEach(fun => {
-		types.externalFunctions[fun.signature] = fun;
+		types.addExternal(fun);
+	});
+
+	// Gather all functions and do a basic duplicate check
+	// The signature is resolved in the next step.
+	functions.forEach(funDecl => {
+		let type: FunctionType = {
+			kind: "function",
+			// empty signature, can only construct this after we have assigned param/return types
+			signature: "",
+			parameters: [],
+			returnType: NothingType,
+			declarationNode: funDecl,
+		}
+		funDecl.type = type;
+
+		// Check and assign parameter types
+		let params: Map<ParameterDecl> = {};
+		funDecl.params.forEach(param => {
+			let otherParam = params[param.name.value];
+			if (otherParam) {
+				let otherLoc = otherParam.name.location.start;
+				throw new CompilerError(`Duplicate parameter name '${param.name.value}' in function '${type.signature}, see line ${otherLoc.line}, column ${otherLoc.column}.`, param.name.location);
+			}
+
+			let paramType = types.get(param.typeName.id.value);
+			if (!paramType) {
+				throw new CompilerError(`Unknown type '${param.typeName.id.value}' for parameter '${param.name.value}' of function '${type.signature}.`, param.typeName.id.location);
+			}
+			type.parameters.push({name: param.name.value, type: paramType});
+			param.type = paramType;
+			params[param.name.value] = param;
+		});
+
+		// Check and assign return type
+		let returnTypeName = funDecl.returnTypeName ? funDecl.returnTypeName.id.value : null;
+		let returnType =  returnTypeName ? types.get(returnTypeName) : NothingType;
+		if (!returnType) {
+			throw new CompilerError(`Unknown return type '${returnTypeName}`, funDecl.returnTypeName.id.location);
+		}
+		funDecl.returnType = returnType;
+		type.returnType = returnType;
+
+		// We can now assign the signature to the function
+		type.signature = Types.functionSignature(funDecl.name.value, type.parameters.map(param => param.type), type.returnType);
+
+		let other = types.getFunction(type.signature);
+		if (other) {
+			let otherLoc = other.declarationNode.location.start;
+			throw new CompilerError(`Function '${other.signature}' already defined in line ${otherLoc.line}.`, funDecl.name.location);
+		}
+		if (types.getExternalFunction(type.signature)) throw new CompilerError(`Function '${other.signature}' already defined externally.`, funDecl.name.location);
+
+		types.add(type);
 	});
 
 	// We now have all function and record types figured out
@@ -764,7 +795,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		case "variable":
 			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.typeName) {
-				let type = types.all[node.typeName.id.value];
+				let type = types.get(node.typeName.id.value);
 				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
 				if (type != node.value.type) throw new CompilerError(`Can't assign a value of type '${node.value.type.signature}' to variable '${node.name.value}' with type '${type.signature}.`, node.value.location);
 				node.type = type;
@@ -808,16 +839,18 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		}
 		case "functionCall": {
 			node.args.forEach(arg => typeCheckRec(arg as AstNode, types, scopes, enclosingFun, enclosingLoop));
-			let signature = functionSignature(node);
-			let funType = types.functions[signature];
+			let funType = types.findFunction(node.name.value, node.args.map(a => a.type));
+			var resolvedFunction: FunctionType | ExternalFunction = funType;
 			var returnType: Type;
 			if (!funType) {
-				let externalFun = types.externalFunctions[signature];
-				if(!externalFun) throw new CompilerError(`Can not find function '${signature}'.`, node.location);
+				let externalFun = types.findExternalFunction(node.name.value, node.args.map(a => a.type));
+				if(!externalFun) throw new CompilerError(`Can not find function '${Types.functionSignatureNoReturnType(node.name.value, node.args.map(a => a.type))}'.`, node.location);
+				resolvedFunction = externalFun;
 				returnType = externalFun.returnType;
 			} else {
 				returnType = (funType.declarationNode as FunctionDecl).returnType;
 			}
+			node.resolvedFunction = resolvedFunction;
 			node.type = returnType;
 			break;
 		}
@@ -829,11 +862,11 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			} else {
 				if (node.value) typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 				// function returns a value, but no value given
-				if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must return a value of type '${enclosingFun.returnType.signature}'.`, node.location);
+				if (enclosingFun.returnType != NothingType && !node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}'.`, node.location);
 				// function returns no value, but value given
-				if (enclosingFun.returnType == NothingType && node.value) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must not return a value.`, node.location);
+				if (enclosingFun.returnType == NothingType && node.value) throw new CompilerError(`Function '${enclosingFun.type.signature}' must not return a value.`, node.location);
 				// function returns a value, value given, but type don't match
-				if (enclosingFun.returnType != NothingType && node.value && enclosingFun.returnType != node.value.type) throw new CompilerError(`Function '${functionSignature(enclosingFun)}' must return a value of type '${enclosingFun.returnType.signature}', but a value of type '${node.value.type.signature}' is returned.`, node.location);
+				if (enclosingFun.returnType != NothingType && node.value && enclosingFun.returnType != node.value.type) throw new CompilerError(`Function '${enclosingFun.type.signature}' must return a value of type '${enclosingFun.returnType.signature}', but a value of type '${node.value.type.signature}' is returned.`, node.location);
 			}
 			break;
 		case "break":
@@ -888,7 +921,7 @@ function emitProgram (functions: Array<FunctionDecl>, externalFunctions: Externa
 			index: functionCodes.length
 		}
 		functionCodes.push(funCode);
-		functionLookup[functionSignature(fun as FunctionDecl)] = funCode;
+		functionLookup[fun.type.signature] = funCode;
 	});
 
 	functionCodes.forEach(fun => emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)));
@@ -964,8 +997,8 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 			case "functionCall": {
 				// function calls may leave a value on the stack if
 				// they return a value.
-				if (context.functionLookup[functionSignature(stmt)]) {
-					let calledFun = context.functionLookup[functionSignature(stmt)].ast;
+				if (context.functionLookup[stmt.resolvedFunction.signature]) {
+					let calledFun = context.functionLookup[stmt.resolvedFunction.signature].ast;
 					if (calledFun.returnType && calledFun.returnType != NothingType) {
 						let lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
 						emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
@@ -973,7 +1006,7 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 					}
 					break;
 				} else {
-					let calledFun = context.externalFunctionLookup[functionSignature(stmt)];
+					let calledFun = context.externalFunctionLookup[stmt.resolvedFunction.signature];
 					if (calledFun.returnType && calledFun.returnType != NothingType) {
 						let lineInfo = context.fun.lineInfos[context.fun.instructions.length - 1];
 						emitLineInfo(context.fun.lineInfos, lineInfo.index, lineInfo.line, 1);
@@ -1001,21 +1034,20 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 	});
 }
 
-function emitOperatorOverload(instructions: Instruction[], opNode: BinaryOp, overLoadName: string, returnType: Type, functionLookup: Map<FunctionCode>, externalFunctionLookup): boolean {
+function tryEmitRecordOperatorOveride(opNode: BinaryOp, overLoadName: string, returnType: Type, context: EmitterContext): boolean {
 	if (!(opNode.left.type.kind == "record" && opNode.right.type.kind == "record" && opNode.left.type == opNode.right.type)) return false;
 
-	let sig = functionSignatureFromTypes(overLoadName, [opNode.left.type, opNode.right.type], returnType);
-	if (functionLookup[sig] || externalFunctionLookup[sig]) {
-		// Either the function is a function inside the program, or an external function
-		if (functionLookup[sig]) {
-			instructions.push({kind: "call", functionIndex: functionLookup[sig].index});
-		} else {
-			let externalFun = externalFunctionLookup[sig];
-			instructions.push({kind: "callExt", functionIndex: externalFun.index });
-		}
+	let {functionLookup, externalFunctionLookup} = context;
+	let instructions = context.fun.instructions;
+
+	let sig = Types.functionSignature(overLoadName, [opNode.left.type, opNode.right.type], returnType);
+	if (functionLookup[sig]) {
+		instructions.push({kind: "call", functionIndex: functionLookup[sig].index});
+		return true;
+	} else if (externalFunctionLookup[sig]) {
+		instructions.push({kind: "callExt", functionIndex: externalFunctionLookup[sig].index });
 		return true;
 	} else {
-		instructions.push({kind: "binaryOp", operator: opNode.operator});
 		return false;
 	}
 }
@@ -1041,21 +1073,16 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			emitAstNode(node.left as AstNode, context, false);
 			emitAstNode(node.right as AstNode, context, false);
 
-			if (node.operator == "..") instructions.push({kind: "stringConcat" });
 
-			var overwritten = false;
-			if (node.operator == "==") {
-				overwritten = emitOperatorOverload(instructions, node, "equals", BooleanType, functionLookup, externalFunctionLookup);
-			}
-			if (node.operator == "!=") {
-				overwritten = emitOperatorOverload(instructions, node, "equals", BooleanType, functionLookup, externalFunctionLookup);
+			if (node.operator == "..") {
+				instructions.push({kind: "stringConcat" });
+			} else if (node.operator == "==" && tryEmitRecordOperatorOveride(node, "equals", BooleanType, context)) {
+				// overriden function does everything for us
+			} else if (node.operator == "!=" && tryEmitRecordOperatorOveride(node, "equals", BooleanType, context)) {
 				instructions.push({kind: "unaryOp", operator: "not"});
-			}
-
-			if (!overwritten) {
+			} else {
 				instructions.push({kind: "binaryOp", operator: node.operator});
 			}
-
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "unaryOp":
@@ -1103,10 +1130,10 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			node.args.forEach(arg => emitAstNode(arg as AstNode, context, false));
 
 			// Either the function is a function inside the program, or an external function
-			if (functionLookup[functionSignature(node)]) {
-				instructions.push({kind: "call", functionIndex: functionLookup[functionSignature(node)].index});
+			if (functionLookup[node.resolvedFunction.signature]) {
+				instructions.push({kind: "call", functionIndex: functionLookup[node.resolvedFunction.signature].index});
 			} else {
-				let externalFun = externalFunctionLookup[functionSignature(node)];
+				let externalFun = externalFunctionLookup[node.resolvedFunction.signature];
 				instructions.push({kind: "callExt", functionIndex: externalFun.index });
 			}
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);

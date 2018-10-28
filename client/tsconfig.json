@@ -5,7 +5,8 @@
         "removeComments": true,
         "preserveConstEnums": true,
         "outFile": "site/js/paperbots.js",
-        "sourceMap": true
+        "sourceMap": true,
+        "inlineSources": true
     },
     "include": [
         "src/**/*",

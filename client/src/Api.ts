@@ -109,6 +109,23 @@ export class Api {
 		});
 	}
 
+	static getFeaturedProjects(success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
+		this.request("api/getfeaturedprojects", { },
+		(projects: Array<Project>) => {
+			projects.forEach(project => {
+				try {
+					project.contentObject = JSON.parse(project.content);
+				} catch (e) {
+					console.log(e);
+					error({error: "ServerError"});
+				}
+			});
+			success(projects);
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
 	public static getUserName() {
 		return this.getCookie("name");
 	}

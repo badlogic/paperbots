@@ -132,6 +132,10 @@ public class Server {
 			ctx.json(new ProjectRequest(projectId));
 		});
 
+		app.post("/api/getfeaturedprojects", ctx -> {
+			ctx.json(paperbots.getFeaturedProjects());
+		});
+
 		// Error handling
 		app.error(404, ctx -> {
 			ctx.redirect("/404.html");

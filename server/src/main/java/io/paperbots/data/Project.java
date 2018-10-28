@@ -11,6 +11,7 @@ public class Project {
 	private String lastModified;
 	private boolean isPublic;
 	private ProjectType type;
+	private boolean isFeatured;
 
 	public Project () {
 	}
@@ -85,5 +86,13 @@ public class Project {
 
 	public void setType (ProjectType type) {
 		this.type = type;
+	}
+
+	public boolean isFeatured () {
+		return isFeatured;
+	}
+
+	public void setFeatured (boolean isFeatured) {
+		this.isFeatured = isFeatured;
 	}
 }

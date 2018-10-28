@@ -308,6 +308,16 @@ public class Paperbots {
 		});
 	}
 
+	public Project[] getFeaturedProjects () {
+		return jdbi.withHandle(handle -> {
+			List<Project> projects = handle
+				.createQuery(
+					"SELECT code, userName, title, type, lastModified, created, content FROM projects WHERE featured=1 AND public=1 ORDER BY lastModified DESC")
+				.mapToBean(Project.class).list();
+			return projects.toArray(new Project[projects.size()]);
+		});
+	}
+
 	private static char[] _base62chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
 	private static SecureRandom random = new SecureRandom();
 

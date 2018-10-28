@@ -167,6 +167,7 @@ export class VirtualMachine {
 	}
 
 	restart () {
+		this.frames.length = 0;
 		this.frames.push(new Frame(this.functions[0]));
 		this.state = VirtualMachineState.Running;
 	}

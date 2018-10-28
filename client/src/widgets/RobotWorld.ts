@@ -13,7 +13,7 @@ export class RobotWorld extends Widget {
 	private container: JQuery<HTMLElement>;
 	private canvas: HTMLCanvasElement;
 	private world: World;
-	private worldData; WorldData;
+	private worldData: WorldData;
 	private ctx: CanvasRenderingContext2D;
 	private assets = new AssetManager();
 	private selectedTool = "Robot";
@@ -24,11 +24,19 @@ export class RobotWorld extends Widget {
 	private time = new TimeKeeper();
 	private toolsHandler: InputListener;
 	private isRunning = false;
+	private noTools = false;
+	private lastFrameTime = -1;
 
-	constructor(bus: events.EventBus) {
+	constructor(bus: events.EventBus, noTools: boolean = false) {
 		super(bus);
 
 		this.worldData = new WorldData();
+		this.world = new World(this.worldData);
+		this.noTools = noTools;
+	}
+
+	setWorldData(worldData: WorldData) {
+		this.worldData = worldData;
 		this.world = new World(this.worldData);
 	}
 
@@ -45,6 +53,7 @@ export class RobotWorld extends Widget {
 				<canvas id="pb-robot-world-canvas"></canvas>
 			</div>
 		`);
+		if (this.noTools) this.container.find("#pb-robot-world-tools").hide();
 		this.canvas = this.container.find("#pb-robot-world-canvas")[0] as HTMLCanvasElement;
 		this.ctx = this.canvas.getContext("2d");
 		this.assets.loadImage("img/wall.png");
@@ -65,7 +74,7 @@ export class RobotWorld extends Widget {
 		var dragged = false;
 		this.toolsHandler = {
 			down: (x, y) => {
-				requestAnimationFrame(() => {this.draw()});
+				requestAnimationFrame(() => {this.draw(0)});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -80,7 +89,7 @@ export class RobotWorld extends Widget {
 				dragged = false;
 			},
 			up: (x, y) => {
-				requestAnimationFrame(() => {this.draw()});
+				requestAnimationFrame(() => {this.draw(0)});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -136,7 +145,7 @@ export class RobotWorld extends Widget {
 			moved: (x, y) => {
 			},
 			dragged: (x, y) => {
-				requestAnimationFrame(() => {this.draw()});
+				requestAnimationFrame(() => {this.draw(0)});
 				let cellSize = this.canvas.clientWidth / (World.WORLD_SIZE + 1);
 				x = ((x / cellSize) | 0) - 1;
 				y = (((this.canvas.clientHeight - y) / cellSize) | 0) - 1;
@@ -155,9 +164,9 @@ export class RobotWorld extends Widget {
 				dragged = true;
 			}
 		};
-		this.input.addListener(this.toolsHandler);
+		if (!this.noTools) this.input.addListener(this.toolsHandler);
 		this.announceExternals();
-		requestAnimationFrame(() => { this.draw(); });
+		requestAnimationFrame(() => { this.draw(0); });
 		return this.container[0];
 	}
 
@@ -443,7 +452,7 @@ export class RobotWorld extends Widget {
 			});
 			this.world = new World(this.worldData);
 			this.isRunning = false;
-			requestAnimationFrame(() => {this.draw()});
+			requestAnimationFrame(() => {this.draw(0)});
 		} else if(event instanceof events.Run || event instanceof events.Debug) {
 			this.input.removeListener(this.toolsHandler);
 			this.container.find("#pb-robot-world-tools input").each((index, element) => {
@@ -451,14 +460,14 @@ export class RobotWorld extends Widget {
 			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));
 			this.isRunning = true;
-			requestAnimationFrame(() => {this.draw()});
+			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.ProjectLoaded) {
 			this.world = new World(event.project.contentObject.world);
-			requestAnimationFrame(() => {this.draw()});
+			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.contentObject.type = "robot";
 			event.project.contentObject.world = this.world.data;
-			requestAnimationFrame(() => {this.draw()});
+			requestAnimationFrame(() => {this.draw(0)});
 		}
 	}
 
@@ -481,11 +490,14 @@ export class RobotWorld extends Widget {
 		this.drawingSize = this.cellSize * World.WORLD_SIZE;
 	}
 
-	draw () {
+	draw (frameTime: number) {
 		this.time.update();
 
 		if (this.isRunning) {
-			requestAnimationFrame(() => { this.draw(); });
+			if (frameTime != this.lastFrameTime) {
+				this.lastFrameTime = frameTime;
+				requestAnimationFrame((time) => {console.log(time); this.draw(time)});
+			}
 			this.world.update(this.time.delta);
 		}
 
@@ -501,7 +513,7 @@ export class RobotWorld extends Widget {
 		if (!this.assets.hasMoreToLoad()) {
 			this.drawWorld();
 		} else {
-			requestAnimationFrame(() => {this.draw()});
+			requestAnimationFrame((time) => {console.log(time); this.draw(time)});
 		}
 	}
 

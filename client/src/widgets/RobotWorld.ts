@@ -496,7 +496,7 @@ export class RobotWorld extends Widget {
 		if (this.isRunning) {
 			if (frameTime != this.lastFrameTime) {
 				this.lastFrameTime = frameTime;
-				requestAnimationFrame((time) => {console.log(time); this.draw(time)});
+				requestAnimationFrame((time) => this.draw(time));
 			}
 			this.world.update(this.time.delta);
 		}
@@ -513,7 +513,7 @@ export class RobotWorld extends Widget {
 		if (!this.assets.hasMoreToLoad()) {
 			this.drawWorld();
 		} else {
-			requestAnimationFrame((time) => {console.log(time); this.draw(time)});
+			requestAnimationFrame((time) => {this.draw(time)});
 		}
 	}
 

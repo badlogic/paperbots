@@ -7705,7 +7705,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (this.isRunning) {
                 if (frameTime != this.lastFrameTime) {
                     this.lastFrameTime = frameTime;
-                    requestAnimationFrame(function (time) { console.log(time); _this.draw(time); });
+                    requestAnimationFrame(function (time) { return _this.draw(time); });
                 }
                 this.world.update(this.time.delta);
             }
@@ -7719,7 +7719,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 this.drawWorld();
             }
             else {
-                requestAnimationFrame(function (time) { console.log(time); _this.draw(time); });
+                requestAnimationFrame(function (time) { _this.draw(time); });
             }
         };
         RobotWorld.prototype.drawImage = function (img, x, y, w, h) {

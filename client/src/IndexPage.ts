@@ -21,29 +21,28 @@ export class IndexPage implements EventListener {
 		// Render the components
 		let dom = $(/*html*/ `
 			<div id="pb-index-page">
-
-				<h1 style="text-align: center;">Welcome to <span style="color: orange">Paperbots</span>.<br>Want to learn how to program?</h1>
-				<div id="pb-index-page-example"></div>
-				<div>
-					<a class="pb-button">Teach me programming</a>
-					<a class="pb-button">I am a programmer</a>
+				<img style="display: inline-block; margin-top: 2em;" height="200px" src="img/paperbots.svg">
+				<h1 style="text-align: center">Want to learn how to code?</h1>
+				<div style="margin-bottom: 2em;">
+					<a class="pb-button" href="/learn.html">Teach me how to code</a>
+					<a class="pb-button" href="/devs.html">I am a programmer</a>
 				</div>
-				<div class="pb-index-page-section">
+				<div id="pb-index-page-example"></div>
+				<div class="pb-page-section">
 					<h1>What is Paperbots?</h1>
 
 					<p>Paperbots lets you write different types of programs, from
 						instructions for a robot, to games and interactive art. Best of
-						all: you can share them with your friends, and they can share
-						their programs with you!</p>
+						all: you can share your programs with your friends!</p>
 
-					<p>If you do not yet know how to program, the Paperbots course
+					<p>If you do not yet know how to program, the <a href="/learn.html">Paperbots course</a>
 						will teach you all you need to know.</p>
 
-					<p>Are you a seasoned programmer? Great! Create interesting programs
-						so others can learn and remix them.</p>
+					<p>Are you a seasoned programmer? Great! Read the <a href="/for-devs.html">language documentation</a>, then create interesting programs
+						others can remix and learn from.</p>
 				</div>
+				<h1>Featured projects</h1>
 				<div class="pb-index-page-featured">
-					<h1>Featured projects</h1>
 				</div>
 			</div>
 		`);

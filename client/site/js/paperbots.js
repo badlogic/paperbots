@@ -7226,6 +7226,97 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
     }());
     exports.CanvasPage = CanvasPage;
 });
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.focus();
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
+});
 define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
@@ -8000,189 +8091,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
     }());
     exports.World = World;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_5, Events_2, RobotWorld_1, Compiler_5, VirtualMachine_2) {
-    "use strict";
-    exports.__esModule = true;
-    var Player = (function (_super) {
-        __extends(Player, _super);
-        function Player(project, autoplay, showSourceLink, bus) {
-            if (autoplay === void 0) { autoplay = false; }
-            if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_2.EventBus(); }
-            var _this = _super.call(this, bus) || this;
-            _this.project = project;
-            _this.autoplay = autoplay;
-            _this.showSourceLink = showSourceLink;
-            _this.vm = null;
-            _this.world = new RobotWorld_1.RobotWorld(bus, true);
-            return _this;
-        }
-        Player.prototype.render = function () {
-            var _this = this;
-            this.bus.addListener(this);
-            this.bus.addListener(this.world);
-            var dom = $("\n\t\t\t<div class=\"pb-player-widget\">\n\t\t\t\t<div id=\"pb-player-buttons\">\n\t\t\t\t\t<div id=\"pb-player-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-player-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<a id=\"pb-player-source\" href=\"\"><i class=\"fas fa-code\"></i> Source</a>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            dom.append(this.world.render());
-            if (this.showSourceLink) {
-                dom.find("#pb-player-source").attr("href", "/project.html?id=" + this.project.code);
-            }
-            else {
-                dom.find("#pb-player-source").hide();
-            }
-            var advanceVm = function () {
-                _this.vm.run(1000);
-                if (_this.vm.state != VirtualMachine_2.VirtualMachineState.Completed) {
-                    requestAnimationFrame(advanceVm);
-                }
-                else {
-                    _this.bus.event(new Events_2.Stop());
-                    _this.vm.restart();
-                    _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
-                    stop.hide();
-                    run.show();
-                }
-            };
-            var run = dom.find("#pb-player-run");
-            run.click(function () {
-                _this.bus.event(new Events_2.Run());
-                stop.show();
-                run.hide();
-                _this.vm.restart();
-                advanceVm();
-            });
-            var stop = dom.find("#pb-player-stop");
-            stop.hide();
-            stop.click(function () {
-                _this.bus.event(new Events_2.Stop());
-                _this.vm.restart();
-                _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
-                stop.hide();
-                run.show();
-            });
-            var module = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
-            this.vm = new VirtualMachine_2.VirtualMachine(module.functions, module.externalFunctions);
-            this.bus.event(new Events_2.ProjectLoaded(this.project));
-            if (this.autoplay)
-                run.click();
-            return dom[0];
-        };
-        Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_2.AnnounceExternalFunctions) {
-                this.extFuncs = event.functions;
-            }
-        };
-        return Player;
-    }(Widget_5.Widget));
-    exports.Player = Player;
-});
-define("widgets/Dialog", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Dialog = (function () {
-        function Dialog(title, content, buttons) {
-            this.buttons = Array();
-            this.dom = this.renderDialog(title, content, buttons);
-        }
-        Dialog.prototype.show = function () {
-            document.body.appendChild(this.dom[0]);
-        };
-        Dialog.prototype.hide = function () {
-            this.dom.remove();
-        };
-        Dialog.prototype.renderDialog = function (title, content, buttons) {
-            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
-            dom.find(".pb-dialog-body").append(content);
-            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
-            for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
-                this.buttons.push(button);
-                buttonsDiv.append(button);
-            }
-            dom.find(".pb-dialog-footer").append(buttonsDiv);
-            return dom;
-        };
-        Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.focus();
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed();
-            });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
-            return dialog;
-        };
-        Dialog.prompt = function (title, value, confirmed, cancled) {
-            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-                cancled();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed(textField.val());
-            });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
-            textField.keyup(function (event) {
-                if (event.keyCode == 13) {
-                    dialog.buttons[1].click();
-                }
-            });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        return Dialog;
-    }());
-    exports.Dialog = Dialog;
-});
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_1, Dialog_1) {
-    "use strict";
-    exports.__esModule = true;
-    var EmbeddedPage = (function () {
-        function EmbeddedPage(parent) {
-            var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
-            Api_1.Api.loadProject(Api_1.Api.getProjectId(), function (project) {
-                dom.append(new Player_1.Player(project).render());
-            }, function () {
-                Dialog_1.Dialog.alert("Sorry", $("Could not load project " + Api_1.Api.getProjectId()));
-            });
-            parent.append(dom);
-        }
-        return EmbeddedPage;
-    }());
-    exports.EmbeddedPage = EmbeddedPage;
-});
 define("widgets/SplitPane", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -8303,7 +8211,7 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
     "use strict";
     exports.__esModule = true;
     var DOCS = [
@@ -8577,10 +8485,10 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (requi
             }
         };
         return Docs;
-    }(Widget_6.Widget));
+    }(Widget_5.Widget));
     exports.Docs = Docs;
 });
-define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_7) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
     "use strict";
     exports.__esModule = true;
     var Description = (function (_super) {
@@ -8595,20 +8503,20 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
         Description.prototype.onEvent = function (event) {
         };
         return Description;
-    }(Widget_7.Widget));
+    }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_3, Toolbar_1, Debugger_2, Editor_2, RobotWorld_2, SplitPane_1, Docs_1, Description_1, Api_2, Dialog_2) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
         function ProjectPage(parent) {
             var _this = this;
-            this.eventBus = new Events_3.EventBus();
+            this.eventBus = new Events_2.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
             this.editor = new Editor_2.Editor(this.eventBus);
             this["debugger"] = new Debugger_2.Debugger(this.eventBus);
-            this.playground = new RobotWorld_2.RobotWorld(this.eventBus);
+            this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.unsaved = false;
@@ -8660,7 +8568,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
-            var projectId = Api_2.Api.getProjectId();
+            var projectId = Api_1.Api.getProjectId();
             if (projectId) {
                 this.loadProject(projectId);
             }
@@ -8679,31 +8587,31 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var _this = this;
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
             var spinner = content.find("#pb-spinner");
-            var dialog = new Dialog_2.Dialog("Loading", content[0], []);
+            var dialog = new Dialog_1.Dialog("Loading", content[0], []);
             dialog.show();
-            Api_2.Api.loadProject(id, function (project) {
+            Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
-                _this.eventBus.event(new Events_3.ProjectLoaded(project));
+                _this.eventBus.event(new Events_2.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();
                 if (error.error == "ProjectDoesNotExist") {
-                    Dialog_2.Dialog.alert("Sorry", $("<p>The project with id " + id + " does not exist.</p>")).buttons[0].click(function () {
+                    Dialog_1.Dialog.alert("Sorry", $("<p>The project with id " + id + " does not exist.</p>")).buttons[0].click(function () {
                         window.location = "/";
                     });
                 }
                 else {
-                    Dialog_2.Dialog.alert("Sorry", $("<p>Couldn't load project " + id + ".</p>"));
+                    Dialog_1.Dialog.alert("Sorry", $("<p>Couldn't load project " + id + ".</p>"));
                 }
             });
         };
         ProjectPage.prototype.onEvent = function (event) {
-            if (event instanceof Events_3.ProjectChanged) {
+            if (event instanceof Events_2.ProjectChanged) {
                 this.unsaved = true;
             }
-            else if (event instanceof Events_3.ProjectSaved) {
+            else if (event instanceof Events_2.ProjectSaved) {
                 this.unsaved = false;
             }
-            else if (event instanceof Events_3.ProjectLoaded) {
+            else if (event instanceof Events_2.ProjectLoaded) {
                 this.unsaved = false;
             }
         };
@@ -8711,7 +8619,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_8, Events_4, Dialog_3, Api_3, Utils_5) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_5) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -8741,7 +8649,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.title = dom.find("#pb-toolbar-title");
             this.title.change(function () {
-                _this.bus.event(new Events_4.ProjectChanged());
+                _this.bus.event(new Events_3.ProjectChanged());
             });
             this.login = dom.find("#pb-toolbar-login");
             this.login.click(function (e) {
@@ -8760,14 +8668,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-projects").click(function () {
-                Api_3.Api.getUserProjects(Api_3.Api.getUserName(), function (projects) {
+                Api_2.Api.getUserProjects(Api_2.Api.getUserName(), function (projects) {
                     _this.projectsDialog(projects);
                 }, function (e) {
                     _this.serverErrorDialog();
                 });
             });
             dom.find("#pb-toolbar-logout").click(function () {
-                Api_3.Api.logout(function () { _this.bus.event(new Events_4.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+                Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
             this.setupLoginAndUser();
             window.onclick = function (event) {
@@ -8804,13 +8712,13 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             return dom[0];
         };
         Toolbar.prototype.setupLoginAndUser = function () {
-            var userName = Api_3.Api.getUserName();
+            var userName = Api_2.Api.getUserName();
             if (userName) {
                 this.login.hide();
                 this.signup.hide();
                 this.user.find("#pb-user-name").text(userName);
                 this.user.show();
-                this.profile.attr("href", Api_3.Api.getUserUrl(Api_3.Api.getUserName()));
+                this.profile.attr("href", Api_2.Api.getUserUrl(Api_2.Api.getUserName()));
             }
             else {
                 this.login.show();
@@ -8830,12 +8738,12 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_3.Dialog("Log in", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_2.Dialog("Log in", content[0], ["Cancel", "Log in"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_3.Api.login(emailOrUser.val(), function () {
+                Api_2.Api.login(emailOrUser.val(), function () {
                     dialog.hide();
                     _this.verifyDialog();
                 }, function (userDoesNotExist) {
@@ -8864,14 +8772,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_3.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_2.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_3.Api.verify(emailOrUser.val(), function () {
+                Api_2.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
-                    _this.bus.event(new Events_4.LoggedIn());
+                    _this.bus.event(new Events_3.LoggedIn());
                 }, function (invalidCode) {
                     if (invalidCode) {
                         spinner.hide();
@@ -8900,12 +8808,12 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_3.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
+            var dialog = new Dialog_2.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_3.Api.signup(email.val(), name.val(), function () {
+                Api_2.Api.signup(email.val(), name.val(), function () {
                     dialog.hide();
                     _this.verifyDialog();
                 }, function (reqError) {
@@ -8945,36 +8853,36 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             dialog.show();
         };
         Toolbar.prototype.serverErrorDialog = function () {
-            Dialog_3.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
+            Dialog_2.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
         Toolbar.prototype.projectsDialog = function (projects) {
             var content = $("\n\t\t<div style=\"height: 200px; overflow: auto;\">\n\t\t\t<table style=\"height: 160px; width: 100%; overflow: auto;\">\n\t\t\t</table>\n\t\t</div>");
             var table = content.find("table");
             projects.forEach(function (project) {
-                var entry = $("\n\t\t\t\t<tr><td><a href=\"" + Api_3.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></td><td style=\"text-align: right;\">" + project.lastModified + "</td>\n\t\t\t");
+                var entry = $("\n\t\t\t\t<tr><td><a href=\"" + Api_2.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></td><td style=\"text-align: right;\">" + project.lastModified + "</td>\n\t\t\t");
                 table.append(entry);
             });
-            var dialog = new Dialog_3.Dialog(Api_3.Api.getUserName() + "'s projects", content[0], ["Close"]);
+            var dialog = new Dialog_2.Dialog(Api_2.Api.getUserName() + "'s projects", content[0], ["Close"]);
             dialog.buttons[0].click(function () { return dialog.hide(); });
             dialog.show();
         };
         Toolbar.prototype.saveProject = function () {
             var _this = this;
-            if (!Api_3.Api.getUserName()) {
-                Dialog_3.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
+            if (!Api_2.Api.getUserName()) {
+                Dialog_2.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
                 return;
             }
             if (this.title.val().trim().length == 0) {
-                Dialog_3.Dialog.alert("Sorry", $("<p>Can not save project without a title<p>")).show();
+                Dialog_2.Dialog.alert("Sorry", $("<p>Can not save project without a title<p>")).show();
                 return;
             }
             var internalSave = function () {
                 var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + _this.title.val() + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
                 var spinner = content.find("#pb-spinner");
-                var dialog = new Dialog_3.Dialog("Saving", content[0], []);
+                var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
-                var saveProject = new Events_4.BeforeSaveProject({
-                    code: _this.loadedProject && _this.loadedProject.userName == Api_3.Api.getUserName() ? Api_3.Api.getProjectId() : null,
+                var saveProject = new Events_3.BeforeSaveProject({
+                    code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
                     contentObject: {},
                     content: null,
                     created: null,
@@ -8982,7 +8890,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     lastModified: null,
                     public: true,
                     title: _this.title.val(),
-                    userName: Api_3.Api.getUserName(),
+                    userName: Api_2.Api.getUserName(),
                     type: "robot"
                 });
                 _this.bus.event(saveProject);
@@ -8992,24 +8900,24 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 }
                 catch (e) {
                     dialog.hide();
-                    Dialog_3.Dialog.alert("Sorry", $("<p>An error occured while saving the project.<p>")).show();
+                    Dialog_2.Dialog.alert("Sorry", $("<p>An error occured while saving the project.<p>")).show();
                     return;
                 }
-                Api_3.Api.saveProject(saveProject.project, function (projectCode) {
+                Api_2.Api.saveProject(saveProject.project, function (projectCode) {
                     if (!_this.loadedProject)
                         _this.loadedProject = saveProject.project;
                     _this.loadedProject.code = projectCode;
-                    _this.loadedProject.userName = Api_3.Api.getUserName();
+                    _this.loadedProject.userName = Api_2.Api.getUserName();
                     dialog.hide();
-                    history.pushState(null, document.title, Api_3.Api.getProjectUrl(projectCode));
-                    _this.bus.event(new Events_4.ProjectSaved());
+                    history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
+                    _this.bus.event(new Events_3.ProjectSaved());
                 }, function (error) {
                     _this.serverErrorDialog();
                     dialog.hide();
                 });
             };
-            if (this.loadedProject && this.loadedProject.userName != Api_3.Api.getUserName()) {
-                Dialog_3.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
+            if (this.loadedProject && this.loadedProject.userName != Api_2.Api.getUserName()) {
+                Dialog_2.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
                     internalSave();
                 }).show();
             }
@@ -9018,24 +8926,24 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         Toolbar.prototype.onEvent = function (event) {
-            if (event instanceof Events_4.LoggedIn || event instanceof Events_4.LoggedOut) {
+            if (event instanceof Events_3.LoggedIn || event instanceof Events_3.LoggedOut) {
                 this.setupLoginAndUser();
             }
-            else if (event instanceof Events_4.Run || event instanceof Events_4.Debug) {
+            else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
                 Utils_5.setElementEnabled(this.save, false);
                 Utils_5.setElementEnabled(this["new"], false);
                 Utils_5.setElementEnabled(this.title, false);
             }
-            else if (event instanceof Events_4.Stop) {
+            else if (event instanceof Events_3.Stop) {
                 Utils_5.setElementEnabled(this.save, true);
                 Utils_5.setElementEnabled(this["new"], true);
                 Utils_5.setElementEnabled(this.title, true);
             }
-            else if (event instanceof Events_4.ProjectLoaded) {
+            else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
                 this.title.val(event.project.title);
-                if (this.loadedProject.userName != Api_3.Api.getUserName()) {
-                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
+                if (this.loadedProject.userName != Api_2.Api.getUserName()) {
+                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
                 }
                 else {
                     this.by.html("");
@@ -9043,8 +8951,83 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         return Toolbar;
-    }(Widget_8.Widget));
+    }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
+});
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_4, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+    "use strict";
+    exports.__esModule = true;
+    var Player = (function (_super) {
+        __extends(Player, _super);
+        function Player(project, autoplay, showSourceLink, bus) {
+            if (autoplay === void 0) { autoplay = false; }
+            if (showSourceLink === void 0) { showSourceLink = false; }
+            if (bus === void 0) { bus = new Events_4.EventBus(); }
+            var _this = _super.call(this, bus) || this;
+            _this.project = project;
+            _this.autoplay = autoplay;
+            _this.showSourceLink = showSourceLink;
+            _this.vm = null;
+            _this.world = new RobotWorld_2.RobotWorld(bus, true);
+            return _this;
+        }
+        Player.prototype.render = function () {
+            var _this = this;
+            this.bus.addListener(this);
+            this.bus.addListener(this.world);
+            var dom = $("\n\t\t\t<div class=\"pb-player-widget\">\n\t\t\t\t<div id=\"pb-player-buttons\">\n\t\t\t\t\t<div id=\"pb-player-run\" class=\"pb-debugger-run-icon pb-debugger-button\"></div>\n\t\t\t\t\t<div id=\"pb-player-stop\" class=\"pb-debugger-stop-icon pb-debugger-button\"></div>\n\t\t\t\t\t<a id=\"pb-player-source\" href=\"\"><i class=\"fas fa-code\"></i> Source</a>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            dom.append(this.world.render());
+            if (this.showSourceLink) {
+                dom.find("#pb-player-source").attr("href", "/project.html?id=" + this.project.code);
+            }
+            else {
+                dom.find("#pb-player-source").hide();
+            }
+            var advanceVm = function () {
+                _this.vm.run(1000);
+                if (_this.vm.state != VirtualMachine_2.VirtualMachineState.Completed) {
+                    requestAnimationFrame(advanceVm);
+                }
+                else {
+                    _this.bus.event(new Events_4.Stop());
+                    _this.vm.restart();
+                    _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
+                    stop.hide();
+                    run.show();
+                }
+            };
+            var run = dom.find("#pb-player-run");
+            run.click(function () {
+                _this.bus.event(new Events_4.Run());
+                stop.show();
+                run.hide();
+                _this.vm.restart();
+                advanceVm();
+            });
+            var stop = dom.find("#pb-player-stop");
+            stop.hide();
+            stop.click(function () {
+                _this.bus.event(new Events_4.Stop());
+                _this.vm.restart();
+                _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
+                stop.hide();
+                run.show();
+            });
+            var module = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
+            this.vm = new VirtualMachine_2.VirtualMachine(module.functions, module.externalFunctions);
+            this.bus.event(new Events_4.ProjectLoaded(this.project));
+            if (this.autoplay)
+                run.click();
+            return dom[0];
+        };
+        Player.prototype.onEvent = function (event) {
+            if (event instanceof Events_4.AnnounceExternalFunctions) {
+                this.extFuncs = event.functions;
+            }
+        };
+        return Player;
+    }(Widget_8.Widget));
+    exports.Player = Player;
 });
 define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_5, RobotWorld_3) {
     "use strict";
@@ -9071,18 +9054,55 @@ define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widge
     }(Widget_9.Widget));
     exports.ProjectPreview = ProjectPreview;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_6, Toolbar_2, Api_4, Dialog_4, Player_2) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_6, Toolbar_2) {
     "use strict";
     exports.__esModule = true;
-    var IndexPage = (function () {
-        function IndexPage(parent) {
+    var DevsPage = (function () {
+        function DevsPage(parent) {
             this.eventBus = new Events_6.EventBus();
             this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
-            var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\n\t\t\t\t<h1 style=\"text-align: center;\">Welcome to <span style=\"color: orange\">Paperbots</span>.<br>Want to learn how to program?</h1>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div>\n\t\t\t\t\t<a class=\"pb-button\">Teach me programming</a>\n\t\t\t\t\t<a class=\"pb-button\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-index-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share them with your friends, and they can share\n\t\t\t\t\t\ttheir programs with you!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the Paperbots course\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Create interesting programs\n\t\t\t\t\t\tso others can learn and remix them.</p>\n\t\t\t\t</div>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-learn-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>\n\t\t\t\t\t\tPaperbots is an educational programming environment running in the browser. It\n\t\t\t\t\t\twas created to enable teaching or self-learning of computational thinking and programming.\n\t\t\t\t\t</p>\n\n\t\t\t\t\t<p>Paperbots consists of:</p>\n\t\t\t\t\t<ul>\n\t\t\t\t\t\t<li>The <a href=\"https://github.com/badlogic/paperbots/tree/master/client/src/language\">Wee programming language, compiler and virtual machine.</a></li>\n\t\t\t\t\t\t<li>The <a href=\"/\">Paperbots website</a>, where users can\n\t\t\t\t\t\t\t<ul>\n\t\t\t\t\t\t\t\t<li>Create an account.</li>\n\t\t\t\t\t\t\t\t<li>Create programs for different micro worlds in a browser based IDE.</li>\n\t\t\t\t\t\t\t\t<li>Save programs to their account.</li>\n\t\t\t\t\t\t\t\t<li>Share programs with others.</li>\n\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t</li>\n\t\t\t\t\t\t<li>The <a href=\"/learn.html\">Paperbots course</a> guiding beginner's through learning computational thinking and programming.</li>\n\t\t\t\t\t</ul>\n\n\t\t\t\t\t<h1>Why Paperbots?</h1>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tThe foremost goal of Paperbots is to make it easier to learn (and teach) computational\n\t\t\t\t\t\tthinking and programming.\n\t\t\t\t\t</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tThere are many educational programming environments, like <a href=\"https://scratch.mit.edu\">Scratch</a>,\n\t\t\t\t\t\tcommonly in use in computing education. Scratch is a great way to give kids up until the age of 12 a taste\n\t\t\t\t\t\tof computing. However, past that age, Scratch is viewed as being \"for kids\" and \"not being the real deal\".\n\t\t\t\t\t\tYoung adults want something that is closer to the \"real world\". It is also not immediately clear\n\t\t\t\t\t\thow to go from Scratch to a \"real\" programming environment.\n\t\t\t\t\t<p>\n\t\t\t\t\t\tIn that real world, \"professional\" programming languages, like Python or Lua, are touted as being great for\n\t\t\t\t\t\tbeginners. While these languages are indeed great, their surrounding programming\n\t\t\t\t\t\tenvironments and ecosystems are very complex. It is non-trivial to get setup, and the development\n\t\t\t\t\t\tenvironments are overwhelming. It is also very hard to share programs you've created with\n\t\t\t\t\t\tthese tools.\n\t\t\t\t\t</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tWith Paperbots, I'm trying to build a bridge between the world of Scratch and professional programming\n\t\t\t\t\t\tenvironments.\n\t\t\t\t\t</p>\n\n\t\t\t\t\t<h1>I know how to program, why should I care?</h1>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tBecause Paperbots is not only an educational tool, but also a recreational tool. If you are looking\n\t\t\t\t\t\tfor a simple environment to quickly whip up and share ideas for small games or generative art,\n\t\t\t\t\t\tPaperbots might be for you.\n\t\t\t\t\t</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tAs a side-effect, your programs can serve as inspiration for beginners! And maybe yourself\n\t\t\t\t\t\thave kids or friends who'd like to get a glimpse into computational programming. Maybe Paperbots\n\t\t\t\t\t\tcan be their pathway into that particular rabbit hole.\n\t\t\t\t\t</p>\n\n\t\t\t\t\t<h1>How to use this site</h1>\n\t\t\t\t\t<h2>Accounting</h2>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tYou may already have noticed the <code>Sign up</code> and <code>Log in</code> buttons in the top\n\t\t\t\t\t\tright corner. You can create a new account with the former, or log in with the latter by providing\n\t\t\t\t\t\tyour user name or email address.\n\t\t\t\t\t</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tOnce you are logged in, your <code>user name</code> will appear in the top right corner. Click it to quickly\n\t\t\t\t\t\taccess your most recent programs, view your profile, or log out.\n\t\t\t\t\t</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tWith an account, you can save and share your programs, and access them from multiple devices.\n\t\t\t\t\t\tThat said, an account is not a requirement for creating programs on this site. They will however\n\t\t\t\t\t\tget lost forever as soon as you close the browser tab.\n\t\t\t\t\t</p>\n\n\t\t\t\t\t<h2>Creating and saving programs</h2>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tThe <code>New</code> button in the top left corner will open a blank program in the Paperbots IDE.</p>\n\t\t\t\t\t<p>\n\t\t\t\t\t\tInside the IDE, you will get an additional button called <code>Save</code> that lets you save your\n\t\t\t\t\t\tprogram (provided you are logged in). The <code>Save</code> is also available when viewing other people's\n\t\t\t\t\t\tprojects. Clicking it will save a copy of that program into your account.\n\t\t\t\t\t</p>\n\n\t\t\t\t\t<h2>A quick IDE tour</h2>\n\n\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            $(parent).append(dom);
+        }
+        DevsPage.prototype.onEvent = function (event) {
+        };
+        return DevsPage;
+    }());
+    exports.DevsPage = DevsPage;
+});
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_3, Dialog_3) {
+    "use strict";
+    exports.__esModule = true;
+    var EmbeddedPage = (function () {
+        function EmbeddedPage(parent) {
+            var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
+            Api_3.Api.loadProject(Api_3.Api.getProjectId(), function (project) {
+                dom.append(new Player_1.Player(project).render());
+            }, function () {
+                Dialog_3.Dialog.alert("Sorry", $("Could not load project " + Api_3.Api.getProjectId()));
+            });
+            parent.append(dom);
+        }
+        return EmbeddedPage;
+    }());
+    exports.EmbeddedPage = EmbeddedPage;
+});
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_7, Toolbar_3, Api_4, Dialog_4, Player_2) {
+    "use strict";
+    exports.__esModule = true;
+    var IndexPage = (function () {
+        function IndexPage(parent) {
+            this.eventBus = new Events_7.EventBus();
+            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            this.eventBus.addListener(this);
+            parent.append(this.toolbar.render());
+            var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<h1 style=\"text-align: center\">Want to learn how to code?</h1>\n\t\t\t\t<div style=\"margin-bottom: 2em;\">\n\t\t\t\t\t<a class=\"pb-button\" href=\"/learn.html\">Teach me how to code</a>\n\t\t\t\t\t<a class=\"pb-button\" href=\"/devs.html\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share your programs with your friends!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the <a href=\"/learn.html\">Paperbots course</a>\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Read the <a href=\"/for-devs.html\">language documentation</a>, then create interesting programs\n\t\t\t\t\t\tothers can remix and learn from.</p>\n\t\t\t\t</div>\n\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             Api_4.Api.loadProject("IgMlfr", function (project) {
                 dom.find("#pb-index-page-example").append(new Player_2.Player(project, true, true).render());
             }, function () { });
@@ -9108,13 +9128,33 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_7, Toolbar_3, Api_5, Dialog_5) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_4) {
+    "use strict";
+    exports.__esModule = true;
+    var LearnPage = (function () {
+        function LearnPage(parent) {
+            this.eventBus = new Events_8.EventBus();
+            this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            this.eventBus.addListener(this);
+            parent.append(this.toolbar.render());
+            var dom = $("\n\t\t\t<div id=\"pb-learn-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share them with your friends, and they can share\n\t\t\t\t\t\ttheir programs with you!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the Paperbots course\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Create interesting programs\n\t\t\t\t\t\tso others can learn and remix them. <code>ests</code></p>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            $(parent).append(dom);
+        }
+        LearnPage.prototype.onEvent = function (event) {
+        };
+        return LearnPage;
+    }());
+    exports.LearnPage = LearnPage;
+});
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_9, Toolbar_5, Api_5, Dialog_5) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
-            this.eventBus = new Events_7.EventBus();
-            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
+            this.eventBus = new Events_9.EventBus();
+            this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");

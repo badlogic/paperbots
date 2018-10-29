@@ -100,6 +100,15 @@ export class Api {
 		});
 	}
 
+	public static deleteProject(projectId: string, success: () => void, error: () => void) {
+		this.request("api/deleteproject", { projectId: projectId },
+		( ) => {
+			success();
+		}, (e: RequestError) => {
+			error();
+		});
+	}
+
 	static getUserProjects (userName: string, worldData: boolean, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
 		this.request("api/getprojects", { userName: Api.getUserName(), worldData: worldData },
 		(projects: Array<Project>) => {

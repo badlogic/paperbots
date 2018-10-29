@@ -84,6 +84,13 @@ define("Api", ["require", "exports"], function (require, exports) {
                 error(e);
             });
         };
+        Api.deleteProject = function (projectId, success, error) {
+            this.request("api/deleteproject", { projectId: projectId }, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
         Api.getUserProjects = function (userName, worldData, success, error) {
             this.request("api/getprojects", { userName: Api.getUserName(), worldData: worldData }, function (projects) {
                 success(projects);
@@ -9185,8 +9192,16 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                     projectDom.append(preview);
                     projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
                     if (project.userName == Api_5.Api.getUserName()) {
-                        projectDom.append("\n\t\t\t\t\t\t<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>\n\t\t\t\t\t");
-                        projectDom.find(".pb-project-list-item-delete").click(function () {
+                        var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
+                        projectDom.append(deleteButton);
+                        deleteButton.click(function () {
+                            Dialog_5.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
+                                Api_5.Api.deleteProject(project.code, function () {
+                                    projectDom.fadeOut(1000);
+                                }, function () {
+                                    Dialog_5.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
+                                });
+                            }).show();
                         });
                     }
                     projectDom.appendTo(projectsDom);

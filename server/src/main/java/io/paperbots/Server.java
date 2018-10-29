@@ -132,8 +132,9 @@ public class Server {
 			ctx.json(new ProjectRequest(projectId));
 		});
 
-		app.post("/api/getfeaturedprojects", ctx -> {
-			ctx.json(paperbots.getFeaturedProjects());
+		app.post("/api/deleteproject", ctx -> {
+			ProjectRequest request = ctx.bodyAsClass(ProjectRequest.class);
+			paperbots.deleteProject(ctx.cookie("token"), request.projectId);
 		});
 
 		// Error handling

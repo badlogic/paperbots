@@ -293,6 +293,23 @@ public class Paperbots {
 		});
 	}
 
+	public void deleteProject (String token, String projectId) {
+		User user = getUserForToken(token);
+
+		jdbi.withHandle(handle -> {
+			try {
+				Project project = handle.createQuery("SELECT userName FROM projects WHERE code=:code").bind("code", projectId).mapToBean(Project.class).findOnly();
+				if (!project.getUserName().equals(user.getName())) {
+					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+				}
+				handle.createUpdate("delete from projects where code=:code").bind("code", projectId).execute();
+				return null;
+			} catch (IllegalStateException t) {
+				throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+			}
+		});
+	}
+
 	public Project[] getUserProjects (String token, String userName, boolean worldData) {
 		User user = token != null && token.length() > 0 ? getUserForToken(token) : null;
 		return jdbi.withHandle(handle -> {

@@ -81,11 +81,16 @@ export class UserPage implements EventListener {
 					</div>
 				`);
 				if (project.userName == Api.getUserName()) {
-					projectDom.append(/*html*/`
-						<i class="pb-project-list-item-delete fas fa-trash-alt"></i>
-					`)
-					projectDom.find(".pb-project-list-item-delete").click(() => {
-
+					let deleteButton = $(/*html*/`<i class="pb-project-list-item-delete fas fa-trash-alt"></i>`);
+					projectDom.append(deleteButton);
+					deleteButton.click(() => {
+						Dialog.confirm("Delete project", $(`<p>Are you sure you want to delete project '${project.title}'?</p>`), () => {
+							Api.deleteProject(project.code, () => {
+								projectDom.fadeOut(1000);
+							}, () => {
+								Dialog.alert("Sorry", $(`<p>Could not delete project '${project.title}'.</p>`));
+							});
+						}).show();
 					});
 				}
 				projectDom.appendTo(projectsDom);

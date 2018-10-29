@@ -293,12 +293,17 @@ public class Paperbots {
 		});
 	}
 
-	public Project[] getUserProjects (String token, String userName) {
+	public Project[] getUserProjects (String token, String userName, boolean worldData) {
 		User user = token != null && token.length() > 0 ? getUserForToken(token) : null;
 		return jdbi.withHandle(handle -> {
-			List<Project> projects = handle
-				.createQuery("SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE userName=:userName ORDER BY lastModified DESC")
-				.bind("userName", userName).mapToBean(Project.class).list();
+			List<Project> projects = worldData
+				? handle.createQuery(
+					"SELECT code, userName, title, public, type, lastModified, created, content FROM projects WHERE userName=:userName ORDER BY lastModified DESC")
+					.bind("userName", userName).mapToBean(Project.class).list()
+				: handle
+					.createQuery(
+						"SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE userName=:userName ORDER BY lastModified DESC")
+					.bind("userName", userName).mapToBean(Project.class).list();
 
 			if (!userName.equals(user.getName())) {
 				return (Project[])projects.stream().filter(p -> p.isPublic()).toArray();

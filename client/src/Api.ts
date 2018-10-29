@@ -100,8 +100,8 @@ export class Api {
 		});
 	}
 
-	static getUserProjects (userName: string, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
-		this.request("api/getprojects", { userName: Api.getUserName() },
+	static getUserProjects (userName: string, worldData: boolean, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
+		this.request("api/getprojects", { userName: Api.getUserName(), worldData: worldData },
 		(projects: Array<Project>) => {
 			success(projects);
 		}, (e: RequestError) => {

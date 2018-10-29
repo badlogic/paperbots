@@ -1,4 +1,6 @@
-/** element styles **/
+/*------------------------------------------------------------------------
+ELEMENT STYLES
+------------------------------------------------------------------------*/
 * {
 	box-sizing: border-box;
 }
@@ -24,7 +26,7 @@ table, th, td {
 }
 
 a {
-	color: orange;
+	color: #e69e19;
     text-decoration: none;
     background-color: transparent;
 }
@@ -32,39 +34,22 @@ a {
 code {
 	padding: 0.2em 0.4em;
     margin: 0;
-	color: orange;
+	color: #e69e19;
     background-color: #333333;
     border-radius: 3px;
     font-family: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,Courier,monospace;
 }
 
-/** page styles **/
-#pb-index-page, #pb-learn-page, #pb-devs-page, #pb-user-page {
-	width: 100%;
-	height: 100vh;
-	display: flex;
-	flex-direction: column;
-	padding: 0 2em;
-	align-items: center;
-	max-width: 800px;
-	margin: auto;
+/*------------------------------------------------------------------------
+SHARED COMPONENT STYLES
+------------------------------------------------------------------------*/
+.selected {
+	background: #2196f34a;
+	color: #ffffff;
 }
 
-#pb-project-page {
-	width: 100%;
-	height: 100vh;
-	display: flex;
-	flex-direction: column;
-}
-
-#pb-embed-page {
-	width: 100%;
-	height: 100%;
-}
-
-/** button styles **/
 .pb-button {
-	background-color: orange;
+	background-color: #e69e19;
     border: none;
     color: #1e1e1e;
     padding: 1em 1em;
@@ -79,7 +64,6 @@ code {
     margin: 0 0.25em;
 }
 
-/** Widget label styles */
 .pb-label {
 	padding: 0.25em 0.5em;
 	font-size: 14px;
@@ -98,7 +82,211 @@ code {
 	color: #ffffff;
 }
 
-/** toolbar styles **/
+.pb-input-field {
+	width: 100%;
+	height: 30px;
+	background: #555;
+	border: 0;
+	outline: 0;
+	color: #aaaaaa;
+	font-size: 20px;
+	text-align: left;
+	border-radius: 5px;
+	padding: 0 0.5em;
+	margin-bottom: 0.5em;
+}
+
+/** Dialog styles **/
+.pb-dialog {
+	position: fixed;
+	z-index: 10001;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background-color: rgba(0, 0, 0, 0.2);
+}
+
+.pb-dialog-content {
+	position: relative;
+	margin: auto;
+	width: 30%;
+	min-width: 400px;
+	padding: 20px;
+	background-color: #252526;
+	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+	border-radius: 10px;
+}
+
+.pb-dialog-header {
+	font-size: 1.2em;
+	margin-bottom: 10px;
+}
+
+.pb-dialog-body {
+}
+
+.pb-dialog-footer {
+}
+
+.pb-dialog-buttons {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+}
+
+.pb-dialog-buttons input {
+	padding: 0.5em 1em;
+	margin-left: 5px;
+	outline: 0;
+	border: none;
+	background: none;
+	font-size: 16px;
+	color: #aaaaaa;
+	cursor: pointer;
+}
+
+.pb-dialog-buttons input:hover {
+	color: #ffffff;
+}
+
+.pb-dialog-error {
+	color: #ff0000;
+}
+
+/** dropdowns styles **/
+.pb-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.pb-dropdown-content {
+    display: none;
+    position: absolute;
+	background-color: #252526;
+	border-radius: 5px;
+    min-width: 130px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	z-index: 20000;
+	top: 33px;
+	right: 0;
+}
+
+.pb-dropdown-content a {
+    color: #aaaaaa;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.pb-dropdown-content a:hover {
+	color: #ffffff;
+}
+
+/* Splitpane styles */
+.pb-split-pane {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.pb-split-pane-left, .pb-split-pane-right {
+	position: absolute;
+	width: 50%;
+	height: 100%;
+}
+
+.pb-split-pane-right {
+	left: 50%;
+	z-index: 8;
+}
+
+#pb-split-pane-toggle {
+	display: none;
+	cursor: pointer;
+    z-index: 8;
+    background-color: #333;
+    color: #ccc;
+    position: absolute;
+    top: 50%;
+    width: 24px;
+    left: -7px;
+    text-align: center;
+    border-radius: 3px;
+}
+
+.pb-split-pane-collapsed #pb-split-pane-toggle {
+	left: -14px;
+	border-radius: 3px 0 0 3px;
+}
+
+.pb-divider {
+	position: absolute;
+	width: 10px;
+	height: 100%;
+	left: 50%;
+	background: #252526;
+	z-index: 9999;
+	cursor: ew-resize;
+}
+
+.pb-split-pane .pb-editor-pane {
+	height: 100%;
+	overflow: auto;
+}
+
+/*------------------------------------------------------------------------
+WIDGET STYLES
+------------------------------------------------------------------------*/
+/** Preview widget styles **/
+.pb-preview-widget {
+}
+
+/** Player widget styles **/
+.pb-player-widget {
+	position: relative;
+}
+
+.pb-player-widget #pb-player-buttons {
+	transition: .5s ease;
+	opacity: 0;
+	position: absolute;
+	top: 45%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.pb-player-widget #pb-player-buttons div {
+	background-size: 90%;
+	margin-top: 1em;
+	max-width: 100px;
+	max-height: 100px;
+	width: 25%;
+	height: 25%;
+}
+
+.pb-player-widget:hover #pb-player-buttons {
+	opacity: 1;
+}
+
+.pb-player-widget #pb-robot-world {
+	opacity: 1;
+	width: 100%;
+	height: auto;
+	margin: auto;
+	transition: .5s ease;
+	backface-visibility: hidden;
+	padding: 0;
+}
+
+/** Toolbar widget styles **/
 #pb-toolbar {
 	width: 100%;
 	padding: 0.25em 1em 0.25em 1em;
@@ -111,7 +299,6 @@ code {
 .far, .fal, .fas {
 	margin-right: 0.5rem;
 }
-
 
 #pb-toolbar-logo {
 	font-size: 2em;
@@ -163,20 +350,6 @@ code {
 	opacity: 0.4;
 }
 
-.pb-input-field {
-	width: 100%;
-	height: 30px;
-	background: #555;
-	border: 0;
-	outline: 0;
-	color: #aaaaaa;
-	font-size: 20px;
-	text-align: left;
-	border-radius: 5px;
-	padding: 0 0.5em;
-	margin-bottom: 0.5em;
-}
-
 #pb-world-and-comments {
 	display: flex;
 	flex-direction: column;
@@ -186,6 +359,7 @@ code {
 	background: #252526;
 }
 
+/* Robot world widget styles **/
 #pb-robot-world {
 	user-select: none !important;
 	padding: 0.5em;
@@ -204,7 +378,7 @@ code {
 
 #pb-robot-world-tools input.selected {
 	color: #1e1e1e;
-	background: orange;
+	background: #e69e19;
 	font-weight: 700;
 }
 
@@ -214,26 +388,6 @@ code {
 
 #pb-robot-world canvas {
 	width: 100%;
-}
-
-#pb-debugger-and-editor-and-docs {
-	display: flex;
-	height: 100%;
-	width: 100%;
-}
-
-#pb-editor-and-docs {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-    width: 0px;
-}
-
-#pb-code-editor {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	min-width: 0px;
 }
 
 /** Docs styles */
@@ -250,7 +404,7 @@ code {
 }
 
 #pb-docs a {
-	color: orange;
+	color: #e69e19;
     text-decoration: none;
     background-color: transparent;
 }
@@ -401,12 +555,14 @@ code {
 	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cdefs%3E%3Cstyle%3E.icon-canvas-transparent,.icon-vs-out{fill:%23252526}.icon-canvas-transparent{opacity:0}.icon-vs-action-red{fill:%23f48771}%3C/style%3E%3C/defs%3E%3Ctitle%3Estop%3C/title%3E%3Cpath class='icon-canvas-transparent' d='M16 0v16H0V0z' id='canvas'/%3E%3Cpath class='icon-vs-action-red' d='M13 3v10H3V3z' id='iconBg'/%3E%3C/svg%3E");
 }
 
-.selected {
-	background: #2196f34a;
-	color: #ffffff;
+/* Code editor styles **/
+#pb-code-editor {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0px;
 }
 
-/* Code editor styles **/
 #pb-code-editor-code-mirror-wrapper {
 	position: relative;
 	flex: 1;
@@ -434,7 +590,6 @@ code {
 	margin: 1em;
 }
 
-/* CodeMirror styles */
 .CodeMirror {
 	width: 100%;
 	height: 100%;
@@ -469,148 +624,47 @@ code {
 	text-decoration: underline red;
 }
 
-/* Splitpane styles */
-/** Split pane housing a CodeEditor, FileEditor, FolderEditor or DescriptionEditor on the left, and the Preview on the right **/
-.pb-split-pane {
-	position: relative;
+/*------------------------------------------------------------------------
+PAGE STYLES
+------------------------------------------------------------------------*/
+#pb-index-page, #pb-learn-page, #pb-devs-page, #pb-user-page {
 	width: 100%;
-	height: 100%;
-}
-
-.pb-split-pane-left, .pb-split-pane-right {
-	position: absolute;
-	width: 50%;
-	height: 100%;
-}
-
-.pb-split-pane-right {
-	left: 50%;
-	z-index: 8;
-}
-
-#pb-split-pane-toggle {
-	display: none;
-	cursor: pointer;
-    z-index: 8;
-    background-color: #333;
-    color: #ccc;
-    position: absolute;
-    top: 50%;
-    width: 24px;
-    left: -7px;
-    text-align: center;
-    border-radius: 3px;
-}
-
-.pb-split-pane-collapsed #pb-split-pane-toggle {
-	left: -14px;
-	border-radius: 3px 0 0 3px;
-}
-
-.pb-divider {
-	position: absolute;
-	width: 10px;
-	height: 100%;
-	left: 50%;
-	background: #252526;
-	z-index: 9999;
-	cursor: ew-resize;
-}
-
-.pb-split-pane .pb-editor-pane {
-	height: 100%;
-	overflow: auto;
-}
-
-/** Dialogs **/
-.pb-dialog {
-	position: fixed;
-	z-index: 10001;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	overflow: auto;
-	background-color: rgba(0, 0, 0, 0.2);
-}
-
-.pb-dialog-content {
-	position: relative;
-	margin: auto;
-	width: 30%;
-	min-width: 400px;
-	padding: 20px;
-	background-color: #252526;
-	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-	border-radius: 10px;
-}
-
-.pb-dialog-header {
-	font-size: 1.2em;
-	margin-bottom: 10px;
-}
-
-.pb-dialog-body {
-}
-
-.pb-dialog-footer {
-}
-
-.pb-dialog-buttons {
+	height: 100vh;
 	display: flex;
-	flex-direction: row;
-	justify-content: flex-end;
+	flex-direction: column;
+	padding: 0 2em;
+	align-items: center;
+	max-width: 800px;
+	margin: auto;
 }
 
-.pb-dialog-buttons input {
-	padding: 0.5em 1em;
-	margin-left: 5px;
-	outline: 0;
-	border: none;
-	background: none;
-	font-size: 16px;
-	color: #aaaaaa;
-	cursor: pointer;
+#pb-project-page {
+	width: 100%;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
 }
 
-.pb-dialog-buttons input:hover {
-	color: #ffffff;
+#pb-embed-page {
+	width: 100%;
+	height: 100%;
 }
 
-.pb-dialog-error {
-	color: #ff0000;
+/** Page section styles **/
+.pb-page-section {
+	width: 100%;
 }
 
-/* The container <div> - needed to position the dropdown content */
-.dropdown {
-    position: relative;
-    display: inline-block;
+.pb-page-section p, .pb-page-section li {
+	font-size: 1.2rem;
+	line-height: 1.4;
 }
 
-/* Dropdown Content (Hidden by Default) */
-.dropdown-content {
-    display: none;
-    position: absolute;
-	background-color: #252526;
-	border-radius: 5px;
-    min-width: 130px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-	z-index: 20000;
-	top: 33px;
-	right: 0;
-}
-
-/* Links inside the dropdown */
-.dropdown-content a {
-    color: #aaaaaa;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-}
-
-/* Change color of dropdown links on hover */
-.dropdown-content a:hover {
-	color: #ffffff;
+.pb-page-section img {
+	display: block;
+	max-width: 100%;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 /* Benchmark page */
@@ -631,66 +685,6 @@ code {
 	color: #ffffff;
 	white-space: pre;
 	max-height: 10em;
-}
-
-/** player widget **/
-.pb-player-widget {
-	position: relative;
-}
-
-.pb-player-widget #pb-player-buttons {
-	transition: .5s ease;
-	opacity: 0;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: 100%;
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-}
-
-.pb-player-widget #pb-player-buttons div {
-	background-size: 90%;
-	margin-top: 1em;
-	max-width: 100px;
-	max-height: 100px;
-	width: 25%;
-	height: 25%;
-}
-
-.pb-player-widget:hover #pb-player-buttons {
-	opacity: 1;
-}
-
-.pb-player-widget #pb-robot-world {
-	opacity: 1;
-	width: 100%;
-	height: auto;
-	margin: auto;
-	transition: .5s ease;
-	backface-visibility: hidden;
-	padding: 0;
-}
-
-/** classes for sections in pages **/
-.pb-page-section {
-	width: 100%;
-}
-
-.pb-page-section p, li {
-	font-size: 1.2rem;
-	line-height: 1.4;
-}
-
-.pb-page-section img {
-	display: block;
-	max-width: 100%;
-	margin-left: auto;
-	margin-right: auto;
 }
 
 /** Index page **/
@@ -727,7 +721,93 @@ code {
     display: block;
 }
 
-/** oh god, this is so bad... */
+/** user page **/
+.pb-project-list-sort {
+	margin-bottom: 1em;
+}
+
+.pb-project-list-sort select {
+	color: #e69e19;
+	font-size: 1em;
+	outline: 0;
+	cursor: pointer;
+	background: #1e1e1e;
+	padding: 5px 8px;
+    border: none;
+    box-shadow: none;
+    background-image: none;
+    -webkit-appearance: none;
+}
+
+.pb-project-list-item {
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	background: #1e1e1e;
+	margin-bottom: 0.5em;
+	border-radius: 5px;
+}
+
+.pb-project-list-item .pb-player-widget {
+	width: 120px;
+	height: 120px;
+	min-width: 120px;
+	min-height: 120px;
+	padding: 10px;
+	align-self: center;
+}
+
+.pb-project-list-item-description {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+	padding-bottom: 0.5em;
+}
+
+.pb-project-list-item-description h3 {
+	margin: 0.8em 0;
+}
+
+.pb-project-list-item-description table {
+	align-self: flex-start;
+	font-size: 0.9em;
+}
+.pb-project-list-item-description td {
+	padding-right: 0.5em;
+}
+
+.pb-project-list-item-delete {
+	color: #d4d4d4;
+	opacity: 0;
+	transition: .5s ease;
+	padding: 0.8em 10px 0 0;
+	cursor: pointer;
+	margin: 0;
+	align-self: center;
+}
+
+.pb-project-list-item:hover .pb-project-list-item-delete {
+	opacity: 1;
+}
+
+/** project page **/
+#pb-debugger-and-editor-and-docs {
+	display: flex;
+	height: 100%;
+	width: 100%;
+}
+
+#pb-editor-and-docs {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+    width: 0px;
+}
+
+/*------------------------------------------------------------------------
+MEDIA QUERIES oh god, this is so bad...
+------------------------------------------------------------------------*/
 @media only screen and (min-width: 600px) and (max-width: 700px) {
 	#pb-toolbar {
 		padding: 0.2em;
@@ -785,8 +865,8 @@ code {
 		padding-left: 4px;
 	}
 
-	#pb-docs {
-		font-size: 0.8rem;
+	#pb-docs, #pb-docs li, #pb-docs a {
+		font-size: 0.8rem !important;
 	}
 
 	#pb-robot-world {
@@ -857,7 +937,7 @@ code {
 	}
 
 	#pb-docs {
-		font-size: 0.5rem;
+		font-size: 0.5rem !important;
 	}
 
 	#pb-robot-world {

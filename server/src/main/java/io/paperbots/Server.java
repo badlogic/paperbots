@@ -122,7 +122,7 @@ public class Server {
 
 		app.post("/api/getprojects", ctx -> {
 			ProjectsRequest request = ctx.bodyAsClass(ProjectsRequest.class);
-			ctx.json(paperbots.getUserProjects(ctx.cookie("token"), request.userName));
+			ctx.json(paperbots.getUserProjects(ctx.cookie("token"), request.userName, request.worldData));
 		});
 
 		app.post("/api/saveproject", ctx -> {
@@ -226,12 +226,14 @@ public class Server {
 
 	public static class ProjectsRequest {
 		public String userName;
+		public boolean worldData;
 
 		public ProjectsRequest () {
 		}
 
-		public ProjectsRequest (String userName) {
+		public ProjectsRequest (String userName, boolean worldData) {
 			this.userName = userName;
+			this.worldData = worldData;
 		}
 	}
 

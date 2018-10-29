@@ -41,9 +41,9 @@ export class Toolbar extends Widget {
 				<div style="flex: 1;"></div>
 				<div id="pb-toolbar-login" class="pb-toolbar-button"><i class="far fa-user-circle"></i><span>Log in</span></div>
 				<div id="pb-toolbar-signup" class="pb-toolbar-button"><i class="fas fa-user-plus"></i><span>Sign up</span></div>
-				<div id="pb-toolbar-user" class="pb-toolbar-button dropdown">
+				<div id="pb-toolbar-user" class="pb-toolbar-button pb-dropdown">
 					<div><i class="fas fa-user-circle"></i><span id="pb-user-name"></span></div>
-					<div class="dropdown-content">
+					<div class="pb-dropdown-content">
 						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
 						<a id="pb-toolbar-profile"><i class="fas fa-info-circle"></i> Profile</a>
 						<a id="pb-toolbar-logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
@@ -83,12 +83,12 @@ export class Toolbar extends Widget {
 		var justClicked = false;
 		this.user.click(() => {
 			justClicked = true;
-			$(".dropdown-content").toggle();
+			$(".pb-dropdown-content").toggle();
 		});
 		this.profile = dom.find("#pb-toolbar-profile");
 
 		dom.find("#pb-toolbar-projects").click(() => {
-			Api.getUserProjects(Api.getUserName(), (projects) => {
+			Api.getUserProjects(Api.getUserName(), false, (projects) => {
 				this.projectsDialog(projects);
 			}, (e) => {
 				this.serverErrorDialog();
@@ -107,7 +107,7 @@ export class Toolbar extends Widget {
 				return;
 			}
 			if (!(event.target as any).matches('#pb-toolbar-user')) {
-				var dropdowns = document.getElementsByClassName("dropdown-content");
+				var dropdowns = document.getElementsByClassName("pb-dropdown-content");
 				var i;
 				for (i = 0; i < dropdowns.length; i++) {
 					$(dropdowns[i]).hide();

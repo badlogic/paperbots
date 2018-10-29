@@ -84,8 +84,8 @@ define("Api", ["require", "exports"], function (require, exports) {
                 error(e);
             });
         };
-        Api.getUserProjects = function (userName, success, error) {
-            this.request("api/getprojects", { userName: Api.getUserName() }, function (projects) {
+        Api.getUserProjects = function (userName, worldData, success, error) {
+            this.request("api/getprojects", { userName: Api.getUserName(), worldData: worldData }, function (projects) {
                 success(projects);
             }, function (e) {
                 error(e);
@@ -8638,7 +8638,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\"><span id=\"pb-toolbar-logo-long\">Paperbots</span><span id=\"pb-toolbar-logo-short\">PB</span></a>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i><span>New</span></div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i><span>Save</span></div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i><span>Log in</span></div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i><span>Sign up</span></div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button dropdown\">\n\t\t\t\t\t<div><i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span></div>\n\t\t\t\t\t<div class=\"dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\"><span id=\"pb-toolbar-logo-long\">Paperbots</span><span id=\"pb-toolbar-logo-short\">PB</span></a>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i><span>New</span></div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i><span>Save</span></div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i><span>Log in</span></div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i><span>Sign up</span></div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button pb-dropdown\">\n\t\t\t\t\t<div><i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span></div>\n\t\t\t\t\t<div class=\"pb-dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
@@ -8665,11 +8665,11 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             var justClicked = false;
             this.user.click(function () {
                 justClicked = true;
-                $(".dropdown-content").toggle();
+                $(".pb-dropdown-content").toggle();
             });
             this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-projects").click(function () {
-                Api_2.Api.getUserProjects(Api_2.Api.getUserName(), function (projects) {
+                Api_2.Api.getUserProjects(Api_2.Api.getUserName(), false, function (projects) {
                     _this.projectsDialog(projects);
                 }, function (e) {
                     _this.serverErrorDialog();
@@ -8685,7 +8685,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     return;
                 }
                 if (!event.target.matches('#pb-toolbar-user')) {
-                    var dropdowns = document.getElementsByClassName("dropdown-content");
+                    var dropdowns = document.getElementsByClassName("pb-dropdown-content");
                     var i;
                     for (i = 0; i < dropdowns.length; i++) {
                         $(dropdowns[i]).hide();
@@ -9146,7 +9146,7 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_9, Toolbar_5, Api_5, Dialog_5) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_5, Api_5, Dialog_5, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
@@ -9169,15 +9169,32 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 });
                 dialog.show();
             }
-            Api_5.Api.getUserProjects(userId, function (projects) {
-                _this.renderUser(dom, userId);
+            Api_5.Api.getUserProjects(userId, true, function (projects) {
+                _this.renderUser(dom, userId, projects);
             }, function (error) {
             });
         }
-        UserPage.prototype.renderUser = function (dom, userId) {
-            dom.append($("\n\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t<h1>" + userId + "<h1>\n\t\t\t</div>\n\t\t"));
-        };
-        UserPage.prototype.renderProjectList = function (dom, projects) {
+        UserPage.prototype.renderUser = function (dom, userId, projects) {
+            dom.append($("\n\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t<h1>" + userId + "'s projects</h1>\n\t\t\t\t<div class=\"pb-project-list\">\n\t\t\t\t\t<div class=\"pb-project-list-sort\">\n\t\t\t\t\t\t<span>Sort by:</span>\n\t\t\t\t\t\t<select>\n\t\t\t\t\t\t\t<option value=\"lastmodified\">Last modified</option>\n\t\t\t\t\t\t\t<option value=\"newest\">Newest</option>\n\t\t\t\t\t\t\t<option value=\"oldest\">Oldest</option>\n\t\t\t\t\t\t</select>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t"));
+            var projectsDom = dom.find(".pb-project-list");
+            projects.forEach(function (project) {
+                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t</div>\n\t\t\t");
+                try {
+                    project.contentObject = JSON.parse(project.content);
+                    var preview = new Player_3.Player(project, false, false).render();
+                    projectDom.append(preview);
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_5.Api.getUserName()) {
+                        projectDom.append("\n\t\t\t\t\t\t<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>\n\t\t\t\t\t");
+                        projectDom.find(".pb-project-list-item-delete").click(function () {
+                        });
+                    }
+                    projectDom.appendTo(projectsDom);
+                }
+                catch (e) {
+                    console.log("Couldn't load world data for project " + project.code + ".");
+                }
+            });
         };
         UserPage.prototype.onEvent = function (event) {
         };

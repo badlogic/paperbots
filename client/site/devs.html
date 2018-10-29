@@ -106,8 +106,98 @@
 
 			<h2>A quick IDE tour</h2>
 			<img src="/img/devs/ide.png">
+			<h3>Toolbar</h3>
 			<p>
+				At the top of the IDE, you find the buttons to create a new program, or save the current one. Next
+				to these buttons, you can see the <code>program's title</code>, which you can edit. If the program
+				belongs to another user, the toolbar will state the user name.
 			</p>
+			<p>
+				When you click "Save", the program's title, code, and the micro world setup will be saved, overwritting
+				the last saved version of the program.
+			</p>
+			<h3>Code editor</h3>
+			<p>
+				The source code of your program is entered in the code editor (the panel labeled
+				with <code>PROGRAM</code>). It will display errors detected by the compiler at the bottom
+				of the code editor, and highlight the errornous part of the program.
+			</p>
+			<p>
+				The <code>eye icon</code> in the top right lets you enable and disable embedding of image and YouTube URLs
+				inside the code editor.
+			</p>
+			<p>
+				You can click to the left of a line number to set a <code>breakpoint</code> for that line.
+			</p>
+			<h3>Help</h3>
+			<p>
+				The <code>HELP</code> panel shows all available functions and language syntax. You can collapse
+				the panel by clicking on its header (the gray part saying "HELP"), to make more room for the code
+				editor.
+			</p>
+			<p>
+				The micro world may provide additional functions on top of the built-in functions of the
+				programming language. These will be shown at the top of the help panel.
+			</p>
+			<h3>Debugger</h3>
+			<p>
+				To the left of the code editor and help panel, you can see the collapsed debugger panel. Clicking
+				on the <code>green play button</code> will run the program. Clicking the <code>red bug button</code>
+				will start the program and pause it at the first statement that is going to be executed.
+			</p>
+			<p>
+				You can stop the program at any time by clicking the <code>stop button</code>.
+			</p>
+			<p>
+				You can pause the program at any time by clicking the <code>pause button</code>. The program will
+				halt on the line that it will execute next.
+			</p>
+			<p>
+				When a program is paused, you can resume it by clicking the <code>resume button</code>.
+			</p>
+			<p>
+				When a program is paused, you can use the <code>step over</code> and <code>step in</code>
+				buttons to step over the next statement, or, if the next statement calls a function, step
+				into that function.
+			</p>
+			<p>
+				Finally, the debugger shows you all <code>variables</code> currently in scope, as well
+				as the <code>callstack</code>. Clicking on a variable will highlight it in the code
+				editor. Clicking on a frame in the callstack will highlight the statement the frame will
+				execute next, and show the variables in scope.
+			</p>
+			<p>
+				You can not edit or save your program while it is running or paused. Only a stopped
+				program can be saved.
+			</p>
+			<h3>Micro world - Robot land</h3>
+			<p>
+				To the right of the code editor, you find the micro world for which we write the
+				program. Currently, only one micro world is supported: robot land. The program you
+				write is actually a program for the robot that lives in this micro world. The robot
+				provides functions to our program that we can use to control the robot. The functions
+				are listed and documented in the help panel.
+			</p>
+			<p>
+				The toolbar at the top of the micro world lets you select a tool to modify the world.
+				To use a tool, click it, then "draw" on the grid.
+				<ul>
+					<li>Robot: positions the robot on the grid. Clicking the robot itself will turn it.</li>
+					<li>Floor: deletes any walls, numbers or letters.</li>
+					<li>Wall: places walls.</li>
+					<li>Number: places a number between 0-99 on the grid.</li>
+					<li>Letter: places a letter on the grid.</li>
+				</ul>
+			</p>
+			<p>
+				You can use these tools to setup the world for your robot to execute
+				its program in. While your program runs, it may modify the world. However,
+				once the program has stopped, the world gets reset to the state it was in
+				before the program was run.
+			</p>
+
+			<h1>The Wee programming language</h1>
+			<p></p>
 		</div>
 	</div>
 

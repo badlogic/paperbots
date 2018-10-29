@@ -460,6 +460,7 @@ export class RobotWorld extends Widget {
 			});
 			this.worldData = JSON.parse(JSON.stringify(this.world.data));
 			this.isRunning = true;
+			this.lastFrameTime = -1;
 			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.ProjectLoaded) {
 			this.world = new World(event.project.contentObject.world);

@@ -1,6 +1,6 @@
 import { EventBus, EventListener, Event } from "./widgets/Events"
 import { Toolbar, ToolbarMode } from "./widgets/Toolbar";
-import { Api } from "./Api";
+import { Api, Project } from "./Api";
 import { Dialog } from "./widgets/Dialog";
 
 export class UserPage implements EventListener {
@@ -12,12 +12,14 @@ export class UserPage implements EventListener {
 		this.eventBus.addListener(this);
 		this.eventBus.addListener(this.toolbar);
 
+		// Add the toolbar at the top of the page
+		parent.append(this.toolbar.render());
+
 		// Render the components
 		let dom = $(/*html*/ `
 			<div id="pb-user-page">
 			</div>
 		`);
-		dom.append(this.toolbar.render());
 		$(parent).append(dom);
 
 		// Check if we got a user id, and if so, load that users
@@ -33,11 +35,23 @@ export class UserPage implements EventListener {
 		}
 		Api.getUserProjects(userId,
 			(projects) => {
-				dom.append(`<h1>${userId}<h1>`)
+				this.renderUser(dom, userId);
 			}, (error) => {
 
 			}
 		);
+	}
+
+	renderUser(dom: JQuery, userId: string) {
+		dom.append($(/*html*/`
+			<div class="pb-page-section">
+				<h1>${userId}<h1>
+			</div>
+		`));
+	}
+
+	renderProjectList(dom: JQuery, projects: Project[]) {
+
 	}
 
 	onEvent(event: Event) {

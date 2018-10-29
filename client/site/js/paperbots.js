@@ -7762,6 +7762,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
+                this.lastFrameTime = -1;
                 requestAnimationFrame(function () { _this.draw(0); });
             }
             else if (event instanceof events.ProjectLoaded) {
@@ -9150,12 +9151,13 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
+            var _this = this;
             this.eventBus = new Events_9.EventBus();
             this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
+            parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
-            dom.append(this.toolbar.render());
             $(parent).append(dom);
             var userId = Api_5.Api.getUserId();
             if (!userId)
@@ -9168,10 +9170,15 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 dialog.show();
             }
             Api_5.Api.getUserProjects(userId, function (projects) {
-                dom.append("<h1>" + userId + "<h1>");
+                _this.renderUser(dom, userId);
             }, function (error) {
             });
         }
+        UserPage.prototype.renderUser = function (dom, userId) {
+            dom.append($("\n\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t<h1>" + userId + "<h1>\n\t\t\t</div>\n\t\t"));
+        };
+        UserPage.prototype.renderProjectList = function (dom, projects) {
+        };
         UserPage.prototype.onEvent = function (event) {
         };
         return UserPage;

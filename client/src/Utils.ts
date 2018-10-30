@@ -260,3 +260,12 @@ export function setElementEnabled(el: JQuery, enabled: boolean) {
 export function assertNever(x: never): never {
 	throw new Error("This should never happen");
 }
+
+export function escapeHtml(unsafe: string) {
+	return unsafe
+		 .replace(/&/g, "&amp;")
+		 .replace(/</g, "&lt;")
+		 .replace(/>/g, "&gt;")
+		 .replace(/"/g, "&quot;")
+		 .replace(/'/g, "&#039;");
+ }

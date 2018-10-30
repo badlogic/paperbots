@@ -11,141 +11,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-define("Api", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Api = (function () {
-        function Api() {
-        }
-        Api.request = function (endpoint, data, success, error) {
-            $.ajax({
-                url: endpoint,
-                method: "POST",
-                contentType: "application/json; charset=utf-8",
-                processData: false,
-                data: JSON.stringify(data)
-            })
-                .done(function (response) {
-                success(response);
-            }).fail(function (e) {
-                console.log(e);
-                if (e.responseJSON)
-                    error(e.responseJSON);
-                else
-                    error({ error: "ServerError" });
-            });
-        };
-        Api.signup = function (email, name, success, error) {
-            this.request("api/signup", { email: email, name: name }, function (r) {
-                success();
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.login = function (emailOrUser, success, error) {
-            this.request("api/login", { email: emailOrUser }, function (r) {
-                success();
-            }, function (e) {
-                error(e.error == "UserDoesNotExist");
-            });
-        };
-        Api.verify = function (code, success, error) {
-            this.request("api/verify", { code: code }, function () {
-                success();
-            }, function (e) {
-                error(e.error == "CouldNotVerifyCode");
-            });
-        };
-        Api.logout = function (success, error) {
-            this.request("api/logout", {}, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.loadProject = function (projectId, success, error) {
-            this.request("api/getproject", { projectId: projectId }, function (project) {
-                try {
-                    project.contentObject = JSON.parse(project.content);
-                }
-                catch (e) {
-                    console.log(e);
-                    error({ error: "ServerError" });
-                }
-                success(project);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.saveProject = function (project, success, error) {
-            this.request("api/saveproject", project, function (r) {
-                success(r.projectId);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.deleteProject = function (projectId, success, error) {
-            this.request("api/deleteproject", { projectId: projectId }, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.getUserProjects = function (userName, worldData, success, error) {
-            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getFeaturedProjects = function (success, error) {
-            this.request("api/getfeaturedprojects", {}, function (projects) {
-                projects.forEach(function (project) {
-                    try {
-                        project.contentObject = JSON.parse(project.content);
-                    }
-                    catch (e) {
-                        console.log(e);
-                        error({ error: "ServerError" });
-                    }
-                });
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getUserName = function () {
-            return this.getCookie("name");
-        };
-        Api.getProjectId = function () {
-            return this.getUrlParameter("id");
-        };
-        Api.getUserId = function () {
-            return this.getUrlParameter("id");
-        };
-        Api.getUrlParameter = function (name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            var results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        };
-        ;
-        Api.getCookie = function (key) {
-            if (!key) {
-                return null;
-            }
-            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
-        };
-        Api.getUserUrl = function (name) {
-            return "/user.html?id=" + name;
-        };
-        Api.getProjectUrl = function (name) {
-            return "/project.html?id=" + name;
-        };
-        return Api;
-    }());
-    exports.Api = Api;
-});
 define("Utils", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -393,6 +258,150 @@ define("Utils", ["require", "exports"], function (require, exports) {
         throw new Error("This should never happen");
     }
     exports.assertNever = assertNever;
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    exports.escapeHtml = escapeHtml;
+});
+define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_1) {
+    "use strict";
+    exports.__esModule = true;
+    var Api = (function () {
+        function Api() {
+        }
+        Api.request = function (endpoint, data, success, error) {
+            $.ajax({
+                url: endpoint,
+                method: "POST",
+                contentType: "application/json; charset=utf-8",
+                processData: false,
+                data: JSON.stringify(data)
+            })
+                .done(function (response) {
+                success(response);
+            }).fail(function (e) {
+                console.log(e);
+                if (e.responseJSON)
+                    error(e.responseJSON);
+                else
+                    error({ error: "ServerError" });
+            });
+        };
+        Api.signup = function (email, name, success, error) {
+            this.request("api/signup", { email: email, name: name }, function (r) {
+                success();
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.login = function (emailOrUser, success, error) {
+            this.request("api/login", { email: emailOrUser }, function (r) {
+                success();
+            }, function (e) {
+                error(e.error == "UserDoesNotExist");
+            });
+        };
+        Api.verify = function (code, success, error) {
+            this.request("api/verify", { code: code }, function () {
+                success();
+            }, function (e) {
+                error(e.error == "CouldNotVerifyCode");
+            });
+        };
+        Api.logout = function (success, error) {
+            this.request("api/logout", {}, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.loadProject = function (projectId, success, error) {
+            this.request("api/getproject", { projectId: projectId }, function (project) {
+                try {
+                    project.contentObject = JSON.parse(project.content);
+                }
+                catch (e) {
+                    console.log(e);
+                    error({ error: "ServerError" });
+                }
+                success(project);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.saveProject = function (project, success, error) {
+            this.request("api/saveproject", project, function (r) {
+                success(r.projectId);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.deleteProject = function (projectId, success, error) {
+            this.request("api/deleteproject", { projectId: projectId }, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.getUserProjects = function (userName, worldData, success, error) {
+            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getFeaturedProjects = function (success, error) {
+            this.request("api/getfeaturedprojects", {}, function (projects) {
+                projects.forEach(function (project) {
+                    try {
+                        project.contentObject = JSON.parse(project.content);
+                    }
+                    catch (e) {
+                        console.log(e);
+                        error({ error: "ServerError" });
+                    }
+                });
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getUserName = function () {
+            return Utils_1.escapeHtml(this.getCookie("name"));
+        };
+        Api.getProjectId = function () {
+            return Utils_1.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getUserId = function () {
+            return Utils_1.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getUserUrl = function (name) {
+            return Utils_1.escapeHtml("/user.html?id=" + name);
+        };
+        Api.getProjectUrl = function (name) {
+            return Utils_1.escapeHtml("/project.html?id=" + name);
+        };
+        Api.getUrlParameter = function (name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return Utils_1.escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
+        };
+        ;
+        Api.getCookie = function (key) {
+            if (!key) {
+                return null;
+            }
+            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+        };
+        return Api;
+    }());
+    exports.Api = Api;
 });
 define("widgets/Events", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -545,7 +554,7 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
     }());
     exports.Widget = Widget;
 });
-define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_1) {
+define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_2) {
     "use strict";
     exports.__esModule = true;
     var Slot = (function () {
@@ -856,14 +865,14 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
                 }
                 default:
-                    Utils_1.assertNever(ins);
+                    Utils_2.assertNever(ins);
             }
         };
         return VirtualMachine;
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, vm) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_3, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -1052,13 +1061,13 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             if (event instanceof events.SourceChanged) {
                 if (event.module) {
                     this.lastModule = event.module;
-                    Utils_2.setElementEnabled(this.run, true);
-                    Utils_2.setElementEnabled(this.debug, true);
+                    Utils_3.setElementEnabled(this.run, true);
+                    Utils_3.setElementEnabled(this.debug, true);
                 }
                 else {
                     this.lastModule = null;
-                    Utils_2.setElementEnabled(this.run, false);
-                    Utils_2.setElementEnabled(this.debug, false);
+                    Utils_3.setElementEnabled(this.run, false);
+                    Utils_3.setElementEnabled(this.debug, false);
                 }
             }
             else if (event instanceof events.Run) {
@@ -1067,11 +1076,11 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.pause.show();
                 this.stop.show();
                 this.stepOver.show();
-                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_3.setElementEnabled(this.stepOver, false);
                 this.stepInto.show();
-                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_3.setElementEnabled(this.stepInto, false);
                 this.stepOut.show();
-                Utils_2.setElementEnabled(this.stepOut, false);
+                Utils_3.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Debug) {
@@ -1082,26 +1091,26 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.show();
                 this.stepInto.show();
                 this.stepOut.show();
-                Utils_2.setElementEnabled(this.stepOver, true);
-                Utils_2.setElementEnabled(this.stepInto, true);
-                Utils_2.setElementEnabled(this.stepOut, true);
+                Utils_3.setElementEnabled(this.stepOver, true);
+                Utils_3.setElementEnabled(this.stepInto, true);
+                Utils_3.setElementEnabled(this.stepOut, true);
                 this.setBreakpoints();
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Pause) {
                 this.resume.show();
                 this.pause.hide();
-                Utils_2.setElementEnabled(this.stepOver, true);
-                Utils_2.setElementEnabled(this.stepInto, true);
-                Utils_2.setElementEnabled(this.stepOut, true);
+                Utils_3.setElementEnabled(this.stepOver, true);
+                Utils_3.setElementEnabled(this.stepInto, true);
+                Utils_3.setElementEnabled(this.stepOut, true);
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Resume) {
                 this.pause.show();
                 this.resume.hide();
-                Utils_2.setElementEnabled(this.stepOver, false);
-                Utils_2.setElementEnabled(this.stepInto, false);
-                Utils_2.setElementEnabled(this.stepOut, false);
+                Utils_3.setElementEnabled(this.stepOver, false);
+                Utils_3.setElementEnabled(this.stepInto, false);
+                Utils_3.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Stop) {
@@ -1113,9 +1122,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.hide();
                 this.stepInto.hide();
                 this.stepOut.hide();
-                Utils_2.setElementEnabled(this.stepOver, false);
-                Utils_2.setElementEnabled(this.stepInto, false);
-                Utils_2.setElementEnabled(this.stepOut, false);
+                Utils_3.setElementEnabled(this.stepOver, false);
+                Utils_3.setElementEnabled(this.stepInto, false);
+                Utils_3.setElementEnabled(this.stepOut, false);
                 this.locals.empty();
                 this.callstack.empty();
                 this.vmState.empty();
@@ -1204,7 +1213,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 });
                 output += "\n";
             });
-            this.vmState.html(output);
+            this.vmState.text(output);
         };
         return Debugger;
     }(Widget_1.Widget));
@@ -5907,7 +5916,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_3, Parser_1) {
+define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_4, Parser_1) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
@@ -6507,7 +6516,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access not implemented yet.", node.location);
             default:
-                Utils_3.assertNever(node);
+                Utils_4.assertNever(node);
         }
     }
     var EmitterContext = (function () {
@@ -6620,7 +6629,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 case "comment":
                     break;
                 default:
-                    Utils_3.assertNever(stmt);
+                    Utils_4.assertNever(stmt);
             }
         });
     }
@@ -6837,7 +6846,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access emission not implemented yet.", node.location);
             default:
-                Utils_3.assertNever(node);
+                Utils_4.assertNever(node);
         }
         if (isStatement)
             context.lineInfoIndex++;
@@ -6882,7 +6891,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                         alert("Error in " + title + ": " + e.message);
                         return;
                     }
-                    dom.find(".pb-benchmark-vm-code").html(Compiler_2.moduleToString(module));
+                    dom.find(".pb-benchmark-vm-code").text(Compiler_2.moduleToString(module));
                 });
                 editor.setValue(source);
             }, 400);
@@ -6915,7 +6924,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
     }());
     exports.BenchmarkPage = BenchmarkPage;
 });
-define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler"], function (require, exports, Widget_2, events, compiler) {
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_2, events, compiler, Utils_5) {
     "use strict";
     exports.__esModule = true;
     var CodeMirrorBreakpoint = (function () {
@@ -7071,7 +7080,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                 }
                 else {
                     var err = e;
-                    this.error.html(err.message + (err.stack ? err.stack : ""));
+                    this.error.html(Utils_5.escapeHtml(err.message + (err.stack ? err.stack : "")));
                 }
                 return null;
             }
@@ -7324,7 +7333,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_4, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7335,12 +7344,12 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         function RobotWorld(bus, noTools) {
             if (noTools === void 0) { noTools = false; }
             var _this = _super.call(this, bus) || this;
-            _this.assets = new Utils_4.AssetManager();
+            _this.assets = new Utils_6.AssetManager();
             _this.selectedTool = "Robot";
             _this.lastWidth = 0;
             _this.cellSize = 0;
             _this.drawingSize = 0;
-            _this.time = new Utils_4.TimeKeeper();
+            _this.time = new Utils_6.TimeKeeper();
             _this.isRunning = false;
             _this.noTools = false;
             _this.lastFrameTime = -1;
@@ -7372,7 +7381,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.selectedTool = value;
                 });
             }
-            this.input = new Utils_4.Input(this.canvas);
+            this.input = new Utils_6.Input(this.canvas);
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
@@ -7756,7 +7765,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_4.setElementEnabled($(element), true);
+                    Utils_6.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
@@ -7765,7 +7774,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_4.setElementEnabled($(element), false);
+                    Utils_6.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
@@ -8627,7 +8636,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_5) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_7) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -8645,7 +8654,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         }
         Toolbar.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\"><span id=\"pb-toolbar-logo-long\">Paperbots</span><span id=\"pb-toolbar-logo-short\">PB</span></a>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i><span>New</span></div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i><span>Save</span></div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i><span>Log in</span></div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i><span>Sign up</span></div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button pb-dropdown\">\n\t\t\t\t\t<div><i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span></div>\n\t\t\t\t\t<div class=\"pb-dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-projects\"><i class=\"fas fa-project-diagram\"></i> Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-info-circle\"></i> Profile</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-toolbar\">\n\t\t\t\t<a href=\"/\" id=\"pb-toolbar-logo\" class=\"pb-toolbar-button\"><span id=\"pb-toolbar-logo-long\">Paperbots</span><span id=\"pb-toolbar-logo-short\">PB</span></a>\n\t\t\t\t<div id=\"pb-toolbar-new\" class=\"pb-toolbar-button\"><i class=\"far fa-file\"></i><span>New</span></div>\n\t\t\t\t<div id=\"pb-toolbar-save\" class=\"pb-toolbar-button\"><i class=\"far fa-save\"></i><span>Save</span></div>\n\t\t\t\t<input id=\"pb-toolbar-title\" type=\"text\" value=\"Untitled project\">\n\t\t\t\t<div id=\"pb-toolbar-by\" class=\"pb-toolbar-button\"></div>\n\t\t\t\t<div style=\"flex: 1;\"></div>\n\t\t\t\t<div id=\"pb-toolbar-login\" class=\"pb-toolbar-button\"><i class=\"far fa-user-circle\"></i><span>Log in</span></div>\n\t\t\t\t<div id=\"pb-toolbar-signup\" class=\"pb-toolbar-button\"><i class=\"fas fa-user-plus\"></i><span>Sign up</span></div>\n\t\t\t\t<div id=\"pb-toolbar-user\" class=\"pb-toolbar-button pb-dropdown\">\n\t\t\t\t\t<div><i class=\"fas fa-user-circle\"></i><span id=\"pb-user-name\"></span></div>\n\t\t\t\t\t<div class=\"pb-dropdown-content\">\n\t\t\t\t\t\t<a id=\"pb-toolbar-profile\"><i class=\"fas fa-project-diagram\"></i>My Projects</a>\n\t\t\t\t\t\t<a id=\"pb-toolbar-logout\"><i class=\"fas fa-sign-out-alt\"></i> Log out</a>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
@@ -8675,13 +8684,6 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 $(".pb-dropdown-content").toggle();
             });
             this.profile = dom.find("#pb-toolbar-profile");
-            dom.find("#pb-toolbar-projects").click(function () {
-                Api_2.Api.getUserProjects(Api_2.Api.getUserName(), false, function (projects) {
-                    _this.projectsDialog(projects);
-                }, function (e) {
-                    _this.serverErrorDialog();
-                });
-            });
             dom.find("#pb-toolbar-logout").click(function () {
                 Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
@@ -8863,17 +8865,6 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         Toolbar.prototype.serverErrorDialog = function () {
             Dialog_2.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
-        Toolbar.prototype.projectsDialog = function (projects) {
-            var content = $("\n\t\t<div style=\"height: 200px; overflow: auto;\">\n\t\t\t<table style=\"height: 160px; width: 100%; overflow: auto;\">\n\t\t\t</table>\n\t\t</div>");
-            var table = content.find("table");
-            projects.forEach(function (project) {
-                var entry = $("\n\t\t\t\t<tr><td><a href=\"" + Api_2.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></td><td style=\"text-align: right;\">" + project.lastModified + "</td>\n\t\t\t");
-                table.append(entry);
-            });
-            var dialog = new Dialog_2.Dialog(Api_2.Api.getUserName() + "'s projects", content[0], ["Close"]);
-            dialog.buttons[0].click(function () { return dialog.hide(); });
-            dialog.show();
-        };
         Toolbar.prototype.saveProject = function () {
             var _this = this;
             if (!Api_2.Api.getUserName()) {
@@ -8885,7 +8876,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 return;
             }
             var internalSave = function () {
-                var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + _this.title.val() + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
+                var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + Utils_7.escapeHtml(_this.title.val()) + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
@@ -8938,14 +8929,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.setupLoginAndUser();
             }
             else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
-                Utils_5.setElementEnabled(this.save, false);
-                Utils_5.setElementEnabled(this["new"], false);
-                Utils_5.setElementEnabled(this.title, false);
+                Utils_7.setElementEnabled(this.save, false);
+                Utils_7.setElementEnabled(this["new"], false);
+                Utils_7.setElementEnabled(this.title, false);
             }
             else if (event instanceof Events_3.Stop) {
-                Utils_5.setElementEnabled(this.save, true);
-                Utils_5.setElementEnabled(this["new"], true);
-                Utils_5.setElementEnabled(this.title, true);
+                Utils_7.setElementEnabled(this.save, true);
+                Utils_7.setElementEnabled(this["new"], true);
+                Utils_7.setElementEnabled(this.title, true);
             }
             else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;

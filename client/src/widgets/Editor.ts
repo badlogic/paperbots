@@ -2,7 +2,7 @@ import { TextMarker, LineWidget, LineHandle } from "codemirror";
 import { Widget } from "./Widget"
 import * as events from "./Events"
 import * as compiler from "../language/Compiler"
-import { Map } from "../Utils"
+import { Map, escapeHtml } from "../Utils"
 import { Breakpoint } from "./Debugger"
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
@@ -204,7 +204,7 @@ export class Editor extends Widget {
 				this.error.html("Error in line " + loc.start.line + ": " + err.message);
 			} else {
 				let err = e as Error;
-				this.error.html(err.message + (err.stack ? err.stack : ""));
+				this.error.html(escapeHtml(err.message + (err.stack ? err.stack : "")));
 			}
 			return null;
 		}

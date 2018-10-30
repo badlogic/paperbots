@@ -417,7 +417,7 @@ export class Debugger extends Widget {
 			});
 			output += "\n";
 		});
-		this.vmState.html(output);
+		this.vmState.text(output);
 
 		/*let valueStack = $("#pb-debugger-valuestack")[0];
 		output = "stack:\n"

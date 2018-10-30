@@ -2,7 +2,7 @@ import { Widget } from "./Widget"
 import { EventBus, Event, LoggedIn, LoggedOut, Debug, Run, Stop, ProjectLoaded, BeforeSaveProject, ProjectSaved, ProjectChanged } from "./Events";
 import { Dialog } from "./Dialog";
 import { Api, Project } from "../Api";
-import { setElementEnabled } from "../Utils";
+import { setElementEnabled, escapeHtml } from "../Utils";
 import { ProjectPage } from "../ProjectPage";
 
 export enum ToolbarMode {
@@ -44,8 +44,7 @@ export class Toolbar extends Widget {
 				<div id="pb-toolbar-user" class="pb-toolbar-button pb-dropdown">
 					<div><i class="fas fa-user-circle"></i><span id="pb-user-name"></span></div>
 					<div class="pb-dropdown-content">
-						<a id="pb-toolbar-projects"><i class="fas fa-project-diagram"></i> Projects</a>
-						<a id="pb-toolbar-profile"><i class="fas fa-info-circle"></i> Profile</a>
+						<a id="pb-toolbar-profile"><i class="fas fa-project-diagram"></i>My Projects</a>
 						<a id="pb-toolbar-logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
 					</div>
 				</div>
@@ -86,14 +85,6 @@ export class Toolbar extends Widget {
 			$(".pb-dropdown-content").toggle();
 		});
 		this.profile = dom.find("#pb-toolbar-profile");
-
-		dom.find("#pb-toolbar-projects").click(() => {
-			Api.getUserProjects(Api.getUserName(), false, (projects) => {
-				this.projectsDialog(projects);
-			}, (e) => {
-				this.serverErrorDialog();
-			});
-		});
 
 		dom.find("#pb-toolbar-logout").click(() => {
 			Api.logout(() => { this.bus.event(new LoggedOut()) }, () => { this.serverErrorDialog() });
@@ -327,26 +318,6 @@ export class Toolbar extends Widget {
 		Dialog.alert("Sorry!", $(/*html*/`<p>We couldn't reach the server. If the problem persists, let us know at <a href="mailto:contact@paperbots.com">contact@paperbots.io</a></p>`));
 	}
 
-	projectsDialog (projects: Array<Project>) {
-		let content = $(/*html*/`
-		<div style="height: 200px; overflow: auto;">
-			<table style="height: 160px; width: 100%; overflow: auto;">
-			</table>
-		</div>`
-		);
-		let table = content.find("table");
-		projects.forEach(project => {
-			let entry = $(/*html*/`
-				<tr><td><a href="${Api.getProjectUrl(project.code)}">${project.title}</a></td><td style="text-align: right;">${project.lastModified}</td>
-			`)
-			table.append(entry);
-		});
-
-		let dialog = new Dialog(`${Api.getUserName()}'s projects`, content[0], ["Close"]);
-		dialog.buttons[0].click(() => dialog.hide());
-		dialog.show();
-	}
-
 	saveProject () {
 		if (!Api.getUserName()) {
 			Dialog.alert("Sorry", $(`<p>You need to be logged in to save a project.<p>`)).show();
@@ -361,7 +332,7 @@ export class Toolbar extends Widget {
 		let internalSave = () => {
 			let content = $(/*html*/`
 			<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
-				<p>Saving project '${this.title.val()}', just a second!</p>
+				<p>Saving project '${escapeHtml(this.title.val() as string)}', just a second!</p>
 				<div id="pb-spinner" class="fa-3x" style="text-align: center; margin: 0.5em"><i class="fas fa-spinner fa-pulse"></i></div>
 			</div>`
 			);

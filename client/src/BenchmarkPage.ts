@@ -49,7 +49,7 @@ fib(30)
 					alert("Error in " + title + ": " + (e as CompilerError).message);
 					return;
 				}
-				dom.find(".pb-benchmark-vm-code").html(moduleToString(module));
+				dom.find(".pb-benchmark-vm-code").text(moduleToString(module));
 			});
 			editor.setValue(source);
 		}, 400);

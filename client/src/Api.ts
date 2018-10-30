@@ -1,3 +1,5 @@
+import { escapeHtml } from "./Utils"
+
 export type ErrorType = "InvalidArgument" | "InvalidEmailAddress" | "InvalidUserName" | "ServerError" | "UserDoesNotExist" | "ProjectDoesNotExist" | "UserExists" | "EmailExists" | "CouldNotCreateUser" | "CouldNotSendEmail" | "CouldNotCreateCode" | "CouldNotVerifyCode" | "CouldNotSaveProject";
 
 export interface RequestError {
@@ -135,35 +137,39 @@ export class Api {
 		});
 	}
 
+	/**
+	 * Everything below returns client side, user provided strings. They
+	 * need to be HTML escaped for insertion into the DOM.
+	 */
 	public static getUserName() {
-		return this.getCookie("name");
+		return escapeHtml(this.getCookie("name"));
 	}
 
 	public static getProjectId() {
-		return this.getUrlParameter("id");
+		return escapeHtml(this.getUrlParameter("id"));
 	}
 
 	public static getUserId() {
-		return this.getUrlParameter("id");
+		return escapeHtml(this.getUrlParameter("id"));
+	}
+
+	public static getUserUrl(name: string) {
+		return escapeHtml("/user.html?id=" + name);
+	}
+
+	public static getProjectUrl(name: string) {
+		return escapeHtml("/project.html?id=" + name);
 	}
 
 	public static getUrlParameter(name) {
 		name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
 		var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
 		var results = regex.exec(location.search);
-		return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+		return escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
 	};
 
-	static getCookie (key) {
+	private static getCookie (key) {
 		if (!key) { return null; }
 		return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
-	}
-
-	static getUserUrl(name: string) {
-		return "/user.html?id=" + name;
-	}
-
-	static getProjectUrl(name: string) {
-		return "/project.html?id=" + name;
 	}
 }

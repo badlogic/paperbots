@@ -137,6 +137,10 @@ public class Server {
 			paperbots.deleteProject(ctx.cookie("token"), request.projectId);
 		});
 
+		app.post("/api/getfeaturedprojects", ctx -> {
+			ctx.json(paperbots.getFeaturedProjects());
+		});
+
 		// Error handling
 		app.error(404, ctx -> {
 			ctx.redirect("/404.html");

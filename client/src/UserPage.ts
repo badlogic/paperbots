@@ -27,25 +27,25 @@ export class UserPage implements EventListener {
 		// Check if we got a user id, and if so, load that users
 		// projects. The id is the user name.
 		var userId = Api.getUserId();
-		if (!userId) userId = Api.getUserName();
 		if (!userId) {
 			let dialog = Dialog.alert("Sorry", $(`<p>This user doesn't exist.</p>`));
 			dialog.buttons[0].click(() => {
 				(window.location as any) = "/";
 			})
 			dialog.show();
-		}
-		Api.getUserProjects(userId, true,
-			(projects) => {
-				this.renderUser(dom, userId, projects);
-			}, (error) => {
+		} else {
+			Api.getUserProjects(userId, true,
+				(projects) => {
+					this.renderUser(dom, userId, projects);
+				}, (error) => {
 
-			}
-		);
+				}
+			);
+		}
 	}
 
 	renderUser(dom: JQuery, userId: string, projects: Project[]) {
-		dom.append($(/*html*/`
+		let projectsDom = ($(/*html*/`
 			<div class="pb-page-section">
 				<h1>${userId}'s projects</h1>
 				<div class="pb-project-list">
@@ -61,7 +61,6 @@ export class UserPage implements EventListener {
 			</div>
 		`));
 
-		let projectsDom = dom.find(".pb-project-list");
 		projects.forEach(project => {
 			let projectDom = $(/*html*/`
 				<div class="pb-project-list-item">
@@ -94,10 +93,37 @@ export class UserPage implements EventListener {
 					});
 				}
 				projectDom.appendTo(projectsDom);
+				(projectDom[0] as any).project = project;
 			} catch (e) {
 				console.log("Couldn't load world data for project " + project.code + ".");
 			}
 		})
+
+		projectsDom.find(".pb-project-list-sort > select").on("change", function() {
+			let sort;
+			let selected = $(this).val();
+			let projects = projectsDom.find(".pb-project-list-item")
+			projects.detach();
+			projects.toArray().sort((a, b) => {
+				let projectA = (a as any).project as Project;
+				let projectB = (b as any).project as Project;
+
+				if (selected == "newest") {
+					return projectA.created > projectB.created ? -1 : 1;
+				} else if  (selected == "oldest") {
+					return projectA.created < projectB.created ? -1 : -1;
+				} else if (selected == "lastmodified") {
+					return projectA.lastModified > projectB.lastModified ? -1 : 1;
+				} else {
+					return 0;
+				}
+			}).forEach(project => {
+				projectsDom.append(project);
+			});
+
+		});
+
+		dom.append(projectsDom);
 	}
 
 	onEvent(event: Event) {

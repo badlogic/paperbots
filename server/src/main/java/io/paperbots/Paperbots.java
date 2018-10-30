@@ -322,8 +322,8 @@ public class Paperbots {
 						"SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE userName=:userName ORDER BY lastModified DESC")
 					.bind("userName", userName).mapToBean(Project.class).list();
 
-			if (!userName.equals(user.getName())) {
-				return (Project[])projects.stream().filter(p -> p.isPublic()).toArray();
+			if (user == null || !userName.equals(user.getName())) {
+				return projects.stream().filter(p -> p.isPublic()).toArray(size -> new Project[size]);
 			} else {
 				return projects.toArray(new Project[projects.size()]);
 			}

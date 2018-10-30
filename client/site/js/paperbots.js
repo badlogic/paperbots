@@ -92,7 +92,7 @@ define("Api", ["require", "exports"], function (require, exports) {
             });
         };
         Api.getUserProjects = function (userName, worldData, success, error) {
-            this.request("api/getprojects", { userName: Api.getUserName(), worldData: worldData }, function (projects) {
+            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
                 success(projects);
             }, function (e) {
                 error(e);
@@ -9167,8 +9167,6 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
             var userId = Api_5.Api.getUserId();
-            if (!userId)
-                userId = Api_5.Api.getUserName();
             if (!userId) {
                 var dialog = Dialog_5.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
@@ -9176,14 +9174,15 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 });
                 dialog.show();
             }
-            Api_5.Api.getUserProjects(userId, true, function (projects) {
-                _this.renderUser(dom, userId, projects);
-            }, function (error) {
-            });
+            else {
+                Api_5.Api.getUserProjects(userId, true, function (projects) {
+                    _this.renderUser(dom, userId, projects);
+                }, function (error) {
+                });
+            }
         }
         UserPage.prototype.renderUser = function (dom, userId, projects) {
-            dom.append($("\n\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t<h1>" + userId + "'s projects</h1>\n\t\t\t\t<div class=\"pb-project-list\">\n\t\t\t\t\t<div class=\"pb-project-list-sort\">\n\t\t\t\t\t\t<span>Sort by:</span>\n\t\t\t\t\t\t<select>\n\t\t\t\t\t\t\t<option value=\"lastmodified\">Last modified</option>\n\t\t\t\t\t\t\t<option value=\"newest\">Newest</option>\n\t\t\t\t\t\t\t<option value=\"oldest\">Oldest</option>\n\t\t\t\t\t\t</select>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t"));
-            var projectsDom = dom.find(".pb-project-list");
+            var projectsDom = ($("\n\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t<h1>" + userId + "'s projects</h1>\n\t\t\t\t<div class=\"pb-project-list\">\n\t\t\t\t\t<div class=\"pb-project-list-sort\">\n\t\t\t\t\t\t<span>Sort by:</span>\n\t\t\t\t\t\t<select>\n\t\t\t\t\t\t\t<option value=\"lastmodified\">Last modified</option>\n\t\t\t\t\t\t\t<option value=\"newest\">Newest</option>\n\t\t\t\t\t\t\t<option value=\"oldest\">Oldest</option>\n\t\t\t\t\t\t</select>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t"));
             projects.forEach(function (project) {
                 var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t</div>\n\t\t\t");
                 try {
@@ -9205,11 +9204,37 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                         });
                     }
                     projectDom.appendTo(projectsDom);
+                    projectDom[0].project = project;
                 }
                 catch (e) {
                     console.log("Couldn't load world data for project " + project.code + ".");
                 }
             });
+            projectsDom.find(".pb-project-list-sort > select").on("change", function () {
+                var sort;
+                var selected = $(this).val();
+                var projects = projectsDom.find(".pb-project-list-item");
+                projects.detach();
+                projects.toArray().sort(function (a, b) {
+                    var projectA = a.project;
+                    var projectB = b.project;
+                    if (selected == "newest") {
+                        return projectA.created > projectB.created ? -1 : 1;
+                    }
+                    else if (selected == "oldest") {
+                        return projectA.created < projectB.created ? -1 : -1;
+                    }
+                    else if (selected == "lastmodified") {
+                        return projectA.lastModified > projectB.lastModified ? -1 : 1;
+                    }
+                    else {
+                        return 0;
+                    }
+                }).forEach(function (project) {
+                    projectsDom.append(project);
+                });
+            });
+            dom.append(projectsDom);
         };
         UserPage.prototype.onEvent = function (event) {
         };

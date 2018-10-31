@@ -410,6 +410,8 @@ export class Toolbar extends Widget {
 			} else {
 				this.by.html("");
 			}
+		} else if (event instanceof ProjectSaved) {
+			this.by.hide();
 		}
 	}
 }

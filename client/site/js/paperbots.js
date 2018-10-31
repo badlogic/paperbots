@@ -8966,6 +8966,9 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     this.by.html("");
                 }
             }
+            else if (event instanceof Events_3.ProjectSaved) {
+                this.by.hide();
+            }
         };
         return Toolbar;
     }(Widget_7.Widget));

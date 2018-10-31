@@ -8,6 +8,7 @@ import java.util.List;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.owasp.encoder.Encode;
 
 import com.esotericsoftware.minlog.Log;
 
@@ -89,8 +90,8 @@ public class Paperbots {
 		if (email == null) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Email must not be null.");
 		if (email.trim().length() == 0) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Email must not be empty.");
 
-		final String verifiedEmail = email.trim();
-		final String verifiedName = name.trim();
+		final String verifiedEmail = Encode.forHtml(email.trim());
+		final String verifiedName = Encode.forHtml(name.trim());
 
 		// Validate email so we don't create a db entry or send an email in vain.
 		if (!EmailValidator.getInstance().isValid(verifiedEmail)) {
@@ -247,8 +248,8 @@ public class Paperbots {
 						.bind("userId", user.getId())
 						.bind("userName", user.getName())
 						.bind("code", projectCode)
-						.bind("title", title)
-						.bind("description", description)
+						.bind("title", Encode.forHtml(title))
+						.bind("description", Encode.forHtml(description))
 						.bind("content", content)
 						.bind("isPublic", isPublic)
 						.bind("type", type)
@@ -260,8 +261,8 @@ public class Paperbots {
 					//@off
 					handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
 					handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code")
-						.bind("title", title)
-						.bind("description", description)
+						.bind("title", Encode.forHtml(title))
+						.bind("description", Encode.forHtml(description))
 						.bind("content", content)
 						.bind("isPublic", isPublic)
 						.bind("code", code)

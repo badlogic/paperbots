@@ -266,6 +266,21 @@ export function escapeHtml(unsafe: string) {
 		 .replace(/&/g, "&amp;")
 		 .replace(/</g, "&lt;")
 		 .replace(/>/g, "&gt;")
-		 .replace(/"/g, "&quot;")
-		 .replace(/'/g, "&#039;");
+		 .replace(/"/g, "&#34;")
+		 .replace(/'/g, "&#39;");
  }
+
+ export function unescapeHtml(str: string) {
+	return (str as any)
+		 .replaceAll("&amp;", "&")
+		 .replaceAll("&lt;", "<")
+		 .replaceAll("&gt;", ">")
+		 .replaceAll("&quot;", '"')
+		 .replaceAll("&#34;", '"')
+		 .replaceAll("&#39;", "'");
+ }
+
+ (String.prototype as any).replaceAll = function(search, replacement) {
+    var target = this;
+    return target.replace(new RegExp(search, 'g'), replacement);
+};

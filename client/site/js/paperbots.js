@@ -263,10 +263,24 @@ define("Utils", ["require", "exports"], function (require, exports) {
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/"/g, "&#34;")
+            .replace(/'/g, "&#39;");
     }
     exports.escapeHtml = escapeHtml;
+    function unescapeHtml(str) {
+        return str
+            .replaceAll("&amp;", "&")
+            .replaceAll("&lt;", "<")
+            .replaceAll("&gt;", ">")
+            .replaceAll("&quot;", '"')
+            .replaceAll("&#34;", '"')
+            .replaceAll("&#39;", "'");
+    }
+    exports.unescapeHtml = unescapeHtml;
+    String.prototype.replaceAll = function (search, replacement) {
+        var target = this;
+        return target.replace(new RegExp(search, 'g'), replacement);
+    };
 });
 define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_1) {
     "use strict";
@@ -8940,7 +8954,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
             else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
-                this.title.val(event.project.title);
+                this.title.val(Utils_7.unescapeHtml(event.project.title));
                 if (this.loadedProject.userName != Api_2.Api.getUserName()) {
                     this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
                 }

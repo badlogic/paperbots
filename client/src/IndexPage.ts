@@ -21,7 +21,7 @@ export class IndexPage implements EventListener {
 		// Render the components
 		let dom = $(/*html*/ `
 			<div id="pb-index-page">
-				<img style="display: inline-block; margin-top: 2em;" height="200px" src="img/paperbots.svg">
+				<img style="display: inline-block; margin-top: 2em;" width="390px" height="200px" src="img/paperbots.svg">
 				<h1 style="text-align: center">Want to learn how to code?</h1>
 				<div style="margin-bottom: 2em;">
 					<a class="pb-button" href="/learn.html">Teach me how to code</a>

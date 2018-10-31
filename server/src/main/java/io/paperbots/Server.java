@@ -165,9 +165,9 @@ public class Server {
 		// CSFR headers
 		app.before(ctx -> {
 			ctx.header("Content-Security-Policy", "script-src 'self' 'unsafe-inline';");
-			ctx.header("X-Frame-Options", "\"SAMEORIGIN\"");
+			ctx.header("X-Frame-Options", "SAMEORIGIN");
 			ctx.header("X-Xss-Protection", "1; mode=block");
-			ctx.header("X-Content-Type-Options", "\"nosniff\"");
+			ctx.header("X-Content-Type-Options", "nosniff");
 			ctx.header("Referrer-Policy", "no-referrer-when-downgrade");
 			ctx.header("Feature-Policy",
 				"geolocation 'self'; midi 'self'; sync-xhr 'self'; microphone 'self'; camera 'self'; magnetometer 'self'; gyroscope 'self'; speaker 'self'; fullscreen *; payment 'self';");

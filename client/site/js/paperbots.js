@@ -5941,6 +5941,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         function CompilerError(message, location) {
             this.message = message;
             this.location = location;
+            message = Utils_4.escapeHtml(message);
         }
         return CompilerError;
     }());

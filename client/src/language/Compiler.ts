@@ -1,10 +1,12 @@
-import { assertNever, Map } from "../Utils";
+import { assertNever, Map, escapeHtml } from "../Utils";
 import { Breakpoint } from "../widgets/Debugger";
 import { IFileRange, parse, SyntaxError } from "./Parser";
 import { AsyncPromise, FunctionCode, Instruction, JumpIns, LineInfo, ScopeInfo } from "./VirtualMachine";
 
 export class CompilerError {
-	constructor (public message: string, public location: IFileRange) { }
+	constructor (public message: string, public location: IFileRange) {
+		message = escapeHtml(message);
+	 }
 }
 
 export interface Identifier {

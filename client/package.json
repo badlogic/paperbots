@@ -7,7 +7,7 @@
     "dev-without-java": "concurrently \"./node_modules/lite-server/bin/lite-server -c lite-server.json\" \"tsc -w\" \"nodemon -e pegjs --exec ./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs\"",
     "server": "./node_modules/lite-server/bin/lite-server -c lite-server.json",
     "build": "./node_modules/pegjs/bin/pegjs --plugin ./node_modules/ts-pegjs/src/tspegjs -o src/language/Parser.ts src/language/grammar.pegjs && tsc",
-    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register tests/**/*.ts"
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' mocha -r ts-node/register test/**/*.ts"
   },
   "dependencies": {
     "monaco-editor": "0.14.3"

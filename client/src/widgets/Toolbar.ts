@@ -402,7 +402,7 @@ export class Toolbar extends Widget {
 			setElementEnabled(this.title, true);
 		} else if (event instanceof ProjectLoaded) {
 			this.loadedProject = event.project;
-			this.title.val(unescapeHtml(event.project.title);
+			this.title.val(unescapeHtml(event.project.title));
 			if (this.loadedProject.userName != Api.getUserName()) {
 				this.by.html(/*html*/`
 					<span>by </span><a href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>

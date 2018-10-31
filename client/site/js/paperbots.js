@@ -258,8 +258,10 @@ define("Utils", ["require", "exports"], function (require, exports) {
         throw new Error("This should never happen");
     }
     exports.assertNever = assertNever;
-    function escapeHtml(unsafe) {
-        return unsafe
+    function escapeHtml(str) {
+        if (!str)
+            return "";
+        return str
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -268,6 +270,8 @@ define("Utils", ["require", "exports"], function (require, exports) {
     }
     exports.escapeHtml = escapeHtml;
     function unescapeHtml(str) {
+        if (!str)
+            return "";
         return str
             .replaceAll("&amp;", "&")
             .replaceAll("&lt;", "<")

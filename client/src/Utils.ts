@@ -261,8 +261,9 @@ export function assertNever(x: never): never {
 	throw new Error("This should never happen");
 }
 
-export function escapeHtml(unsafe: string) {
-	return unsafe
+export function escapeHtml(str: string) {
+	if (!str) return "";
+	return str
 		 .replace(/&/g, "&amp;")
 		 .replace(/</g, "&lt;")
 		 .replace(/>/g, "&gt;")
@@ -271,6 +272,7 @@ export function escapeHtml(unsafe: string) {
  }
 
  export function unescapeHtml(str: string) {
+	if (!str) return "";
 	return (str as any)
 		 .replaceAll("&amp;", "&")
 		 .replaceAll("&lt;", "<")

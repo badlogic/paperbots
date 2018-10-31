@@ -162,7 +162,16 @@ public class Server {
 			ctx.status(500);
 		});
 
-		// TODO setup handler for non PaperbotsException
+		// CSFR headers
+		app.before(ctx -> {
+			ctx.header("Content-Security-Policy", "script-src 'self' 'unsafe-inline';");
+			ctx.header("X-Frame-Options", "\"SAMEORIGIN\" always;");
+			ctx.header("X-Xss-Protection", "1; mode=block");
+			ctx.header("X-Content-Type-Options", "\"nosniff\" always;");
+			ctx.header("Referrer-Policy", "no-referrer-when-downgrade");
+			ctx.header("Feature-Policy",
+				"geolocation 'self'; midi 'self'; sync-xhr 'self'; microphone 'self'; camera 'self'; magnetometer 'self'; gyroscope 'self'; speaker 'self'; fullscreen *; payment 'self';");
+		});
 
 		app.port(8001).start();
 		this.isRunning = true;

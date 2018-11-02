@@ -19,6 +19,8 @@ import io.paperbots.data.Project;
 import io.paperbots.data.ProjectType;
 import io.paperbots.data.UserType;
 
+import javax.servlet.http.Cookie;
+
 public class Server {
 	private boolean isRunning = false;
 	private final Javalin app;
@@ -103,7 +105,14 @@ public class Server {
 			VerifyRequest request = ctx.bodyAsClass(VerifyRequest.class);
 			TokenAndName tokenAndName = paperbots.verifyCode(request.code);
 			ctx.cookie("name", tokenAndName.name, Integer.MAX_VALUE);
-			ctx.cookie("token", tokenAndName.token, Integer.MAX_VALUE);
+			final Cookie token = new Cookie("token", tokenAndName.token);
+			token.setMaxAge(Integer.MAX_VALUE);
+			if(!reload) {
+				token.setSecure(true);
+				token.setHttpOnly(true);
+				// TODO: no way to set same site restriction for CSRF DiD?
+			}
+			ctx.cookie(token);
 		});
 
 		app.post("/api/logout", ctx -> {

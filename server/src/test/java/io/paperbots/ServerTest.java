@@ -1,11 +1,14 @@
 
 package io.paperbots;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.paperbots.Emails.TestEmails;
+import io.paperbots.PaperbotsException.PaperbotsError;
+import io.paperbots.Server.ErrorResponse;
+import io.paperbots.Server.SignupRequest;
+import io.paperbots.Server.VerifyRequest;
 import org.apache.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -15,34 +18,35 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.testcontainers.containers.MySQLContainer;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.io.IOException;
 
-import io.paperbots.Emails.TestEmails;
-import io.paperbots.PaperbotsException.PaperbotsError;
-import io.paperbots.Server.ErrorResponse;
-import io.paperbots.Server.SignupRequest;
-import io.paperbots.Server.VerifyRequest;
+import static org.junit.Assert.assertEquals;
 
 public class ServerTest {
 	private static Server server;
 	private static TestEmails emails = new TestEmails();
 
+	@ClassRule
+	public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
+
 	@BeforeClass
-	public static void setup () {
-		server = new Server(new Paperbots(Database.setupDatabase(true), emails), false, new File("../client"));
+	public static void setup() {
+		final Config.Db config = new Config.Db(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+		server = new Server(new Paperbots(Database.setupDatabase(config, true), emails), false, new File("../client"));
 	}
 
 	@AfterClass
-	public static void tearDown () {
+	public static void tearDown() {
 		server.stop();
 	}
 
 	@Test
-	public void testSignup () throws JsonParseException, JsonMappingException, ParseException, IOException {
+	public void testSignup() throws JsonParseException, JsonMappingException, ParseException, IOException {
 		// Sign up
 		post("http://localhost:8001/api/signup", new SignupRequest("badlogic", "badlogicgames@gmail.com"), Void.class);
 
@@ -67,7 +71,7 @@ public class ServerTest {
 		}
 	}
 
-	public static <REQ, RES> RES post (String url, REQ request, Class<RES> clazz) throws JsonParseException, JsonMappingException, ParseException, IOException {
+	public static <REQ, RES> RES post(String url, REQ request, Class<RES> clazz) throws JsonParseException, JsonMappingException, ParseException, IOException {
 		CloseableHttpClient client = HttpClients.createDefault();
 		HttpPost httpPost = new HttpPost(url);
 

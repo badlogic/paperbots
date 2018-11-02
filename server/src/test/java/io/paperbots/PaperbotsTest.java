@@ -1,24 +1,29 @@
 
 package io.paperbots;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import io.paperbots.Emails.TestEmails;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.testcontainers.containers.MySQLContainer;
+
+import static org.junit.Assert.assertEquals;
 
 public class PaperbotsTest {
 	private static Paperbots paperbots;
 	private static TestEmails emails = new TestEmails();
 
+	@ClassRule
+	public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
+
 	@BeforeClass
-	public static void setup () {
-		paperbots = new Paperbots(Database.setupDatabase(true), emails);
+	public static void setup() {
+		final Config.Db config = new Config.Db(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+		paperbots = new Paperbots(Database.setupDatabase(config, true), emails);
 	}
 
 	@Test

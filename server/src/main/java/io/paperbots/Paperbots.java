@@ -34,24 +34,7 @@ import io.paperbots.data.UserType;
  * </ul>
  */
 public class Paperbots {
-	public static final String PAPERBOTS_RELOAD_PWD;
-	public static final String PAPERBOTS_DB_HOST;
-	public static final String PAPERBOTS_DB_PWD;
-	public static final String PAPERBOTS_EMAIL_PWD;
-
-	static {
-		PAPERBOTS_RELOAD_PWD = System.getenv("PAPERBOTS_RELOAD_PWD");
-		if (PAPERBOTS_RELOAD_PWD == null) throw new IllegalStateException("PAPERBOTS_RELOAD_PWD environment variable does not exist.");
-		PAPERBOTS_DB_PWD = System.getenv("PAPERBOTS_DB_PWD");
-		if (PAPERBOTS_DB_PWD == null) throw new IllegalStateException("PAPERBOTS_DB_PWD environment variable  does not exist.");
-		PAPERBOTS_EMAIL_PWD = System.getenv("PAPERBOTS_EMAIL_PWD");
-		if (PAPERBOTS_EMAIL_PWD == null) throw new IllegalStateException("PAPERBOTS_EMAIL_PWD environment variable does not exist.");
-
-		if (System.getenv("PAPERBOTS_DB_HOST") == null)
-			PAPERBOTS_DB_HOST = "127.0.0.1";
-		else
-			PAPERBOTS_DB_HOST = System.getenv("PAPERBOTS_DB_HOST");
-	}
+	public static final Config config = Config.EnvConfigurer.create();
 
 	public static void main (String[] cliArgs) {
 		Arguments args = new Arguments();
@@ -63,8 +46,8 @@ public class Paperbots {
 			ParsedArguments parsed = args.parse(cliArgs);
 			File staticFiles = new File(parsed.getValue(staticFilesArg));
 
-			Jdbi jdbi = Database.setupDatabase(false);
-			Emails emails = new Emails.JavaxEmails(PAPERBOTS_EMAIL_PWD);
+			Jdbi jdbi = Database.setupDatabase(config.getDb(), false);
+			Emails emails = new Emails.JavaxEmails(config.getEmailPwd());
 			Paperbots paperbots = new Paperbots(jdbi, emails);
 			new Server(paperbots, parsed.has(reloadArg), staticFiles);
 		} catch (Throwable e) {

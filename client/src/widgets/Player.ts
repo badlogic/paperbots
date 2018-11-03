@@ -68,10 +68,15 @@ export class Player extends Widget {
 			run.show();
 		});
 
-		let module = compile((this.project.contentObject as any).code, this.extFuncs);
-		this.vm = new VirtualMachine(module.functions, module.externalFunctions);
-		this.bus.event(new ProjectLoaded(this.project));
-		if (this.autoplay) run.click();
+		try {
+			let module = compile((this.project.contentObject as any).code, this.extFuncs);
+			this.vm = new VirtualMachine(module.functions, module.externalFunctions);
+			this.bus.event(new ProjectLoaded(this.project));
+			if (this.autoplay) run.click();
+		} catch(e) {
+			run.hide();
+			stop.hide();
+		}
 
 		return dom[0];
 	}

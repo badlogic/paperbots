@@ -9034,11 +9034,17 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                 stop.hide();
                 run.show();
             });
-            var module = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
-            this.vm = new VirtualMachine_2.VirtualMachine(module.functions, module.externalFunctions);
-            this.bus.event(new Events_4.ProjectLoaded(this.project));
-            if (this.autoplay)
-                run.click();
+            try {
+                var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
+                this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
+                this.bus.event(new Events_4.ProjectLoaded(this.project));
+                if (this.autoplay)
+                    run.click();
+            }
+            catch (e) {
+                run.hide();
+                stop.hide();
+            }
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {

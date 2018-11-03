@@ -3,6 +3,13 @@ sudo: required
 services:
   - docker
 
-language: java
+matrix:
+include:
+  - language: java
+    script: cd server && mvn clean test
 
-script: cd server && mvn clean test
+  - language: nodejs
+    before_script:
+      - cd client && npm install
+    script:
+      - cd client && npm run test

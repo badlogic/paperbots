@@ -23,21 +23,24 @@ import io.paperbots.data.ProjectType;
 import io.paperbots.data.User;
 import io.paperbots.data.UserType;
 
-/**
- * <p>
- * For this to run, you need to set 3 environment variables.
+/** To run this locally:
  *
  * <ul>
- * <li>PAPERBOTS_RELOAD_PWD: the password used when requesting a static file or server reload.</li>
- * <li>PAPERBOTS_DB_PWD: the password of the MySQL database running on localhost:3306.</li>
- * <li>PAPERBOTS_EMAIL_PWD: the password used to send verification emails via contact@paperbots.io.</li>
+ * <li>Enter a valid email configuration in the dev-config.json file.</li>
+ * <li>Run the <code>mysql-dev.sh</code> script to start a Docker MySQL instance locally.</li>
+ * <li>Start this class with the arguments <code>-c dev-config.json -r -s ../client/site</code></li>
  * </ul>
  */
 public class Paperbots {
-	public static final Config config = Config.EnvConfigurer.create();
+	private static Config config;
+
+	public static Config getConfig () {
+		return config;
+	}
 
 	public static void main (String[] cliArgs) {
 		Arguments args = new Arguments();
+		StringArgument configFileArg = args.addArgument(new StringArgument("-c", "Config file.", "<file>", false));
 		StringArgument staticFilesArg = args.addArgument(new StringArgument("-s", "Static files directory.", "<dir>", false));
 		Argument reloadArg = args
 			.addArgument(new Argument("-r", "Whether to tell any browser websocket clients to\nreload the site when the output was\nre-generated", true));
@@ -45,14 +48,16 @@ public class Paperbots {
 		try {
 			ParsedArguments parsed = args.parse(cliArgs);
 			File staticFiles = new File(parsed.getValue(staticFilesArg));
+			File configFile = new File(parsed.getValue(configFileArg));
 
-			Jdbi jdbi = Database.setupDatabase(config.getDb(), false);
-			Emails emails = new Emails.JavaxEmails(config.getEmailPwd());
+			Paperbots.config = Config.fromFile(configFile);
+
+			Jdbi jdbi = Database.setupDatabase(config.getDatabaseConfig(), false);
+			Emails emails = new Emails.JavaxEmails(config.getEmailConfig());
 			Paperbots paperbots = new Paperbots(jdbi, emails);
 			new Server(paperbots, parsed.has(reloadArg), staticFiles);
 		} catch (Throwable e) {
-			Log.error(e.getMessage());
-			Log.debug("Exception", e);
+			Log.error(e.getMessage(), e);
 			args.printHelp(System.out);
 			System.exit(-1);
 			return; // never reached
@@ -197,7 +202,13 @@ public class Paperbots {
 			throw new PaperbotsException(PaperbotsError.CouldNotCreateCode);
 		}
 		String message = Templates.SIGNUP.render(new TemplateContext().set("name", name).set("code", code));
-		emails.send(email, "Paperbots magic code", message);
+
+		try {
+			emails.send(email, "Paperbots magic code", message);
+		} catch (Throwable t) {
+			handle.createUpdate("delete from userCodes where userId=:userId").bind("code", code).bind("userId", userId).execute();
+			throw t;
+		}
 	}
 
 	public User getUserForToken (String token) {
@@ -243,14 +254,16 @@ public class Paperbots {
 				} else {
 					//@off
 					handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
-					handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code")
+					int rows = handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code and userId=:userId")
 						.bind("title", Encode.forHtml(title))
 						.bind("description", Encode.forHtml(description))
 						.bind("content", content)
 						.bind("isPublic", isPublic)
 						.bind("code", code)
+						.bind("userId", user.getId())
 						.execute();
 					//@on
+					if (rows == 0) throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 					return code;
 				}
 			} catch (IllegalStateException t) {

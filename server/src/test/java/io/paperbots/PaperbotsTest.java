@@ -1,28 +1,27 @@
 
 package io.paperbots;
 
-import io.paperbots.Emails.TestEmails;
-import io.paperbots.Paperbots.TokenAndName;
-import io.paperbots.PaperbotsException.PaperbotsError;
-import io.paperbots.data.User;
-import io.paperbots.data.UserType;
+import static org.junit.Assert.assertEquals;
+
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.MySQLContainer;
 
-import static org.junit.Assert.assertEquals;
+import io.paperbots.Paperbots.TokenAndName;
+import io.paperbots.PaperbotsException.PaperbotsError;
+import io.paperbots.data.User;
+import io.paperbots.data.UserType;
 
 public class PaperbotsTest {
 	private static Paperbots paperbots;
 	private static TestEmails emails = new TestEmails();
 
-	@ClassRule
-	public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
+	@ClassRule public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
 
 	@BeforeClass
-	public static void setup() {
-		final Config.Db config = new Config.Db(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+	public static void setup () {
+		final Config.DatabaseConfig config = new Config.DatabaseConfig(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
 		paperbots = new Paperbots(Database.setupDatabase(config, true), emails);
 	}
 
@@ -50,5 +49,10 @@ public class PaperbotsTest {
 		User user = paperbots.getUserForToken(tokenAndName.token);
 		assertEquals(user.getName(), "badlogic");
 		assertEquals(user.getType(), user.getType());
+	}
+
+	@Test
+	public void testSaveProject () {
+
 	}
 }

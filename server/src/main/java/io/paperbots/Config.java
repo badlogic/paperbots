@@ -1,7 +1,9 @@
+
 package io.paperbots;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
@@ -10,76 +12,93 @@ import java.util.Optional;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Config {
-    private final String reloadPwd;
-    private final String emailPwd;
-    private final Db db;
+	private final String reloadPassword;
+	private final EmailConfig emailConfig;
+	private final DatabaseConfig databaseConfig;
 
-    @JsonCreator
-    public Config(String reloadPwd, String emailPwd, Db db) {
-        this.reloadPwd = Optional.ofNullable(reloadPwd).orElseThrow(() -> new AssertionError("reload password configuration missing"));
-        this.emailPwd = Optional.ofNullable(emailPwd).orElseThrow(() -> new AssertionError("email password configuration missing"));
-        this.db = db;
-    }
+	@JsonCreator
+	public Config (@JsonProperty("reloadPassword") String reloadPassword, @JsonProperty("emailConfig") EmailConfig emailConfig,
+		@JsonProperty("databaseConfig") DatabaseConfig databaseConfig) {
+		this.reloadPassword = Optional.ofNullable(reloadPassword).orElseThrow( () -> new AssertionError("Reload password configuration missing"));
+		this.emailConfig = emailConfig;
+		this.databaseConfig = databaseConfig;
+	}
 
-    public Db getDb() {
-        return db;
-    }
+	public EmailConfig getEmailConfig () {
+		return emailConfig;
+	}
 
-    public String getReloadPwd() {
-        return reloadPwd;
-    }
+	public DatabaseConfig getDatabaseConfig () {
+		return databaseConfig;
+	}
 
-    public String getEmailPwd() {
-        return emailPwd;
-    }
+	public String getReloadPassword () {
+		return reloadPassword;
+	}
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Db {
-        private final String url;
-        private final String user;
-        private final String password;
+	public static Config fromFile (File configFile) {
+		try {
+			return new ObjectMapper().readValue(configFile, Config.class);
+		} catch (IOException e) {
+			throw new IllegalStateException("Could not configure from file: " + configFile.getAbsolutePath(), e);
+		}
+	}
 
-        @JsonCreator
-        public Db(final String url, final String user, final String password) {
-            this.url = Optional.ofNullable(url).orElse("jdbc:mysql://127.0.0.1/paperbots");
-            this.user = Optional.ofNullable(user).orElseThrow(() -> new AssertionError("db user configuration missing"));
-            this.password = Optional.ofNullable(password).orElseThrow(() -> new AssertionError("db password configuration missing"));
-        }
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class EmailConfig {
+		private final String host;
+		private final int port;
+		private final String email;
+		private final String password;
 
-        public String getUrl() {
-            return url;
-        }
+		public EmailConfig (@JsonProperty("host") String host, @JsonProperty("port") Integer port, @JsonProperty("email") String email,
+			@JsonProperty("password") String password) {
+			this.host = Optional.ofNullable(host).orElseThrow( () -> new IllegalArgumentException("SMTP host is missing."));
+			this.port = Optional.ofNullable(port).orElseThrow( () -> new IllegalArgumentException("SMTP port is missing."));
+			this.email = Optional.ofNullable(email).orElseThrow( () -> new IllegalArgumentException("Email address is missing."));
+			this.password = Optional.ofNullable(password).orElseThrow( () -> new IllegalArgumentException("Email password is missing."));
+		}
 
-        public String getUser() {
-            return user;
-        }
+		public String getHost () {
+			return host;
+		}
 
-        public String getPassword() {
-            return password;
-        }
-    }
+		public int getPort () {
+			return port;
+		}
 
-    public static final class EnvConfigurer {
-        private EnvConfigurer() {
-        }
+		public String getEmail () {
+			return email;
+		}
 
-        public static Config create() {
-            return new Config(
-                    System.getenv("PAPERBOTS_RELOAD_PWD"), System.getenv("PAPERBOTS_EMAIL_PWD"),
-                    new Db(System.getenv("PAPERBOTS_DB_HOST"), "root", System.getenv("PAPERBOTS_DB_PWD")));
-        }
-    }
+		public String getPassword () {
+			return password;
+		}
+	}
 
-    public static final class FileConfigurer {
-        private FileConfigurer() {
-        }
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class DatabaseConfig {
+		private final String jdbcUrl;
+		private final String user;
+		private final String password;
 
-        public static Config load(final File configFile) {
-            try {
-                return new ObjectMapper().readValue(configFile, Config.class);
-            } catch (IOException e) {
-                throw new IllegalStateException("Could not configure from file: " + configFile.getAbsolutePath(), e);
-            }
-        }
-    }
+		@JsonCreator
+		public DatabaseConfig (@JsonProperty("jdbcUrl") String jdbcUrl, @JsonProperty("user") String user, @JsonProperty("password") final String password) {
+			this.jdbcUrl = Optional.ofNullable(jdbcUrl).orElseThrow( () -> new IllegalArgumentException("Database JDBC URL is missing."));
+			this.user = Optional.ofNullable(user).orElseThrow( () -> new IllegalArgumentException("Database user is missing."));
+			this.password = Optional.ofNullable(password).orElseThrow( () -> new IllegalArgumentException("Database password is missing."));
+		}
+
+		public String getJdbcUrl () {
+			return jdbcUrl;
+		}
+
+		public String getUser () {
+			return user;
+		}
+
+		public String getPassword () {
+			return password;
+		}
+	}
 }

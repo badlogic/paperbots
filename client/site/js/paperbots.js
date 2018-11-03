@@ -1350,7 +1350,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         var peg$c4 = peg$literalExpectation("\n", false);
         var peg$c5 = peg$anyExpectation();
         var peg$c6 = function () {
-            return { kind: "comment", value: text() };
+            return { kind: "comment", value: text(), location: location() };
         };
         var peg$c7 = function (id) {
             return { id: id };

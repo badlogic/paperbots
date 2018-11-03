@@ -185,7 +185,7 @@ function peg$parse(input: string, options?: IParseOptions) {
   const peg$c4 = peg$literalExpectation("\n", false);
   const peg$c5 = peg$anyExpectation();
   const peg$c6 = function() {
-      return { kind: "comment", value: text() }
+      return { kind: "comment", value: text(), location: location() }
     };
   const peg$c7 = function(id: any) {
       return { id: id };

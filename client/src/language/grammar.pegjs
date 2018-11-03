@@ -11,7 +11,7 @@ Program
 Comment
   = "#" (!"\n" .)* ( "\n" / !.)
   {
-    return { kind: "comment", value: text() }
+    return { kind: "comment", value: text(), location: location() }
   }
 
 Type

@@ -7113,6 +7113,8 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         Editor.prototype.setLine = function (line) {
             if (this.lastLine != -1)
                 this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+            if (line < 0)
+                return;
             this.editor.addLineClass(line, "background", "pb-debugged-line");
             var rect = this.editor.getWrapperElement().getBoundingClientRect();
             var topVisibleLine = this.editor.lineAtHeight(rect.top, "window");

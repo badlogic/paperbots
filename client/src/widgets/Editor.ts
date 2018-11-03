@@ -224,6 +224,7 @@ export class Editor extends Widget {
 	private lastLine = -1;
 	setLine(line: number) {
 		if (this.lastLine != -1) this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+		if (line < 0) return;
 		this.editor.addLineClass(line, "background", "pb-debugged-line");
 		let rect = this.editor.getWrapperElement().getBoundingClientRect();
     	let topVisibleLine = this.editor.lineAtHeight(rect.top, "window");

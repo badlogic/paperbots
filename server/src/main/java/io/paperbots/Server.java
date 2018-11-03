@@ -107,7 +107,7 @@ public class Server {
 			ctx.cookie("name", tokenAndName.name, Integer.MAX_VALUE);
 			final Cookie token = new Cookie("token", tokenAndName.token);
 			token.setMaxAge(Integer.MAX_VALUE);
-			if(!reload) {
+			if (!reload) {
 				token.setSecure(true);
 				token.setHttpOnly(true);
 				// TODO: no way to set same site restriction for CSRF DiD?

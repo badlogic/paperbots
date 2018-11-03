@@ -9255,4 +9255,31 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
     }());
     exports.UserPage = UserPage;
 });
+define("tests/TreeWidgetTest", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var TreeWidgetTest = (function () {
+        function TreeWidgetTest(parent) {
+            $(parent).append();
+        }
+        return TreeWidgetTest;
+    }());
+    exports.TreeWidgetTest = TreeWidgetTest;
+});
+define("widgets/TreeWidget", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var TreeWidgetNode = (function () {
+        function TreeWidgetNode() {
+        }
+        return TreeWidgetNode;
+    }());
+    exports.TreeWidgetNode = TreeWidgetNode;
+    var TreeWidget = (function () {
+        function TreeWidget() {
+        }
+        return TreeWidget;
+    }());
+    exports.TreeWidget = TreeWidget;
+});
 //# sourceMappingURL=paperbots.js.map

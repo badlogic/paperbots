@@ -73,7 +73,7 @@ public class Server {
 		// Reload API
 		app.post("/api/reloadstatic", ctx -> {
 			String pwd = ctx.formParam("password");
-			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.PAPERBOTS_RELOAD_PWD.getBytes())) {
+			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.config.getReloadPwd().getBytes())) {
 				new ProcessBuilder().command("git", "pull").start();
 				Log.info("Got new static content.");
 				ctx.result("OK");
@@ -82,7 +82,7 @@ public class Server {
 
 		app.post("/api/reload", ctx -> {
 			String pwd = ctx.formParam("password");
-			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.PAPERBOTS_RELOAD_PWD.getBytes())) {
+			if (MessageDigest.isEqual(pwd.getBytes(), Paperbots.config.getReloadPwd().getBytes())) {
 				ctx.result("OK.");
 				ctx.res.flushBuffer();
 				Log.info("Got an update. Shutting down.");

@@ -539,6 +539,10 @@ export function compile(input: string, externalFunctions: ExternalFunctions): Mo
 			},
 			type: null
 		}
+		if (mainStatements.length > 0) {
+			mainFunction.location.start = mainStatements[0].location.start;
+			mainFunction.location.end = mainStatements[mainStatements.length - 1].location.end;
+		}
 		functions.unshift(mainFunction);
 
 		// Create a defensive copy of the external functions as the compiler
@@ -959,10 +963,10 @@ function emitFunction(context: EmitterContext) {
 
 	// if there's no return instruction at the end of the function, add one.
 	if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return") {
-		let lineInfo = fun.instructions.length > 0 ? context.fun.lineInfos[context.fun.instructions.length - 1] : null;
 		context.fun.instructions.push({kind: "return"});
-		if (lineInfo) context.fun.lineInfos.push(lineInfo);
-		else emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
+		let line = context.fun.ast.location.end.line == 0 ? 0 : context.fun.ast.location.end.line;
+		let infoIndex = fun.lineInfos.length > 0? fun.lineInfos[fun.lineInfos.length - 1].index + 1 : 0;
+		emitLineInfo(context.fun.lineInfos, infoIndex, line, 1);
 	}
 
 	// All parameters have scope from the beginning of the function to the end.

@@ -1,8 +1,3 @@
-sudo: required
-
-services:
-  - docker
-
 cache:
   directories:
   - $HOME/.m2
@@ -11,10 +6,13 @@ cache:
 matrix:
   include:
   - language: java
+    sudo: required
+    services:
+      - docker
     script: cd server && mvn clean test
 
   - language: nodejs
     before_script:
       - cd client && npm install
     script:
-      - cd client && npm run test
+      - npm run test

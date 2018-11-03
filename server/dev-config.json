@@ -1,0 +1,14 @@
+{
+	"reloadPassword": "123",
+	"emailConfig": {
+		"host": "smtp.gmail.com",
+		"port": 587,
+		"email": "",
+		"password": ""
+	},
+	"databaseConfig": {
+		"jdbcUrl": "jdbc:mysql://127.0.0.1/paperbots",
+		"user": "root",
+		"password": "123"
+	}	
+}

@@ -12,6 +12,7 @@ import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import io.paperbots.Config.EmailConfig;
 import io.paperbots.PaperbotsException.PaperbotsError;
 
 public interface Emails {
@@ -19,18 +20,20 @@ public interface Emails {
 
 	public static class JavaxEmails implements Emails {
 		private final Session session;
+		private final EmailConfig config;
 
-		public JavaxEmails (String emailPassword) {
+		public JavaxEmails (EmailConfig config) {
+			this.config = config;
 			Properties props = new Properties();
 			props.put("mail.smtp.host", "true");
 			props.put("mail.smtp.starttls.enable", "true");
-			props.put("mail.smtp.host", "smtp.gmail.com");
-			props.put("mail.smtp.port", "587");
 			props.put("mail.smtp.auth", "true");
+			props.put("mail.smtp.host", config.getHost()); // "smtp.gmail.com");
+			props.put("mail.smtp.port", config.getPort()); // "587");
 			this.session = Session.getInstance(props, new javax.mail.Authenticator() {
 				@Override
 				protected PasswordAuthentication getPasswordAuthentication () {
-					return new PasswordAuthentication("contact@paperbots.io", emailPassword);
+					return new PasswordAuthentication(config.getEmail(), config.getPassword());
 				}
 			});
 		}
@@ -40,7 +43,7 @@ public interface Emails {
 			try {
 				MimeMessage msg = new MimeMessage(session);
 				InternetAddress[] address = InternetAddress.parse(to, true);
-				msg.setFrom(InternetAddress.parse("contact@paperbots.io")[0]);
+				msg.setFrom(InternetAddress.parse(config.getEmail())[0]);
 				msg.setRecipients(Message.RecipientType.TO, address);
 				msg.setSubject(subject);
 				msg.setSentDate(new Date());
@@ -50,31 +53,6 @@ public interface Emails {
 			} catch (MessagingException e) {
 				throw new PaperbotsException(PaperbotsError.CouldNotSendEmail, e);
 			}
-		}
-	}
-
-	public static class TestEmails implements Emails {
-		private String to;
-		private String subject;
-		private String message;
-
-		@Override
-		public void send (String to, String subject, String message) {
-			this.to = to;
-			this.subject = subject;
-			this.message = message;
-		}
-
-		public String getTo () {
-			return to;
-		}
-
-		public String getSubject () {
-			return subject;
-		}
-
-		public String getMessage () {
-			return message;
 		}
 	}
 }

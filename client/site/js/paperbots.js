@@ -6186,6 +6186,10 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 },
                 type: null
             };
+            if (mainStatements.length > 0) {
+                mainFunction.location.start = mainStatements[0].location.start;
+                mainFunction.location.end = mainStatements[mainStatements.length - 1].location.end;
+            }
             functions.unshift(mainFunction);
             externalFunctions = externalFunctions.copy();
             var types = typeCheck(functions, records, externalFunctions);
@@ -6579,12 +6583,10 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         });
         emitStatementList(statements, context);
         if (fun.instructions.length == 0 || fun.instructions[fun.instructions.length - 1].kind != "return") {
-            var lineInfo = fun.instructions.length > 0 ? context.fun.lineInfos[context.fun.instructions.length - 1] : null;
             context.fun.instructions.push({ kind: "return" });
-            if (lineInfo)
-                context.fun.lineInfos.push(lineInfo);
-            else
-                emitLineInfo(context.fun.lineInfos, 0, context.fun.ast.location.start.line, 1);
+            var line = context.fun.ast.location.end.line == 0 ? 0 : context.fun.ast.location.end.line;
+            var infoIndex = fun.lineInfos.length > 0 ? fun.lineInfos[fun.lineInfos.length - 1].index + 1 : 0;
+            emitLineInfo(context.fun.lineInfos, infoIndex, line, 1);
         }
         funDecl.params.forEach(function (param) {
             param.scope = { startPc: 0, endPc: fun.instructions.length - 1 };

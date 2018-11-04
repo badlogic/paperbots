@@ -40,7 +40,7 @@ public class Paperbots {
 
 	public static void main (String[] cliArgs) {
 		Arguments args = new Arguments();
-		StringArgument configFileArg = args.addArgument(new StringArgument("-c", "Config file.", "<file>", false));
+		StringArgument configFileArg = args.addArgument(new StringArgument("-c", "Config file.", "<file>", true));
 		StringArgument staticFilesArg = args.addArgument(new StringArgument("-s", "Static files directory.", "<dir>", false));
 		Argument reloadArg = args
 			.addArgument(new Argument("-r", "Whether to tell any browser websocket clients to\nreload the site when the output was\nre-generated", true));
@@ -48,9 +48,13 @@ public class Paperbots {
 		try {
 			ParsedArguments parsed = args.parse(cliArgs);
 			File staticFiles = new File(parsed.getValue(staticFilesArg));
-			File configFile = new File(parsed.getValue(configFileArg));
 
-			Paperbots.config = Config.fromFile(configFile);
+			if (parsed.has(configFileArg)) {
+				File configFile = new File(parsed.getValue(configFileArg));
+				Paperbots.config = Config.fromFile(configFile);
+			} else {
+				Paperbots.config = Config.fromEnv();
+			}
 
 			Jdbi jdbi = Database.setupDatabase(config.getDatabaseConfig(), false);
 			Emails emails = new Emails.JavaxEmails(config.getEmailConfig());

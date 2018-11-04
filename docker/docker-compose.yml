@@ -1,0 +1,43 @@
+version: "3"
+services:
+    web:
+        image: nginx:1.13.12
+        container_name: paperbots_nginx
+        restart: always
+        volumes:
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf
+            - ./data/web:/www
+            - ./data/logs:/logs
+        environment:
+            VIRTUAL_HOST: paperbots.io,www.paperbots.io
+            LETSENCRYPT_HOST: paperbots.io,www.paperbots.io
+            LETSENCRYPT_EMAIL: "badlogicgames@gmail.com"
+    site:
+        build:
+            dockerfile: Dockerfile.site
+            context: .
+        container_name: paperbots_site
+        restart: always
+        environment:
+            - PAPERBOTS_RELOAD_PWD=${PAPERBOTS_RELOAD_PWD}
+            - PAPERBOTS_EMAIL_HOST=${PAPERBOTS_EMAIL_HOST}
+            - PAPERBOTS_EMAIL_PORT=${PAPERBOTS_EMAIL_PORT}
+            - PAPERBOTS_EMAIL_ADDRESS=${PAPERBOTS_EMAIL_ADDRESS}
+            - PAPERBOTS_EMAIL_PWD=${PAPERBOTS_EMAIL_PWD}
+            - PAPERBOTS_DB_JDBC_URL=${PAPERBOTS_DB_JDBC_URL}
+            - PAPERBOTS_DB_USER=${PAPERBOTS_DB_USER}
+            - PAPERBOTS_DB_PWD=${PAPERBOTS_DB_PWD}
+    mysql:
+        image: mysql:5.7.22
+        container_name: paperbots_mysql
+        restart: always
+        environment:
+            - MYSQL_
+            - MYSQL_ROOT_PASSWORD=${PAPERBOTS_DB_PWD}
+            - MYSQL_DATABASE=paperbots
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+networks:
+    default:
+        external:
+            name: nginx-proxy

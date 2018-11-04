@@ -12,6 +12,10 @@ services:
             VIRTUAL_HOST: paperbots.io,www.paperbots.io
             LETSENCRYPT_HOST: paperbots.io,www.paperbots.io
             LETSENCRYPT_EMAIL: "badlogicgames@gmail.com"
+        # Uncomment the below to expose the server on
+        # the local port 9002
+        # ports:
+        #    - "9002:80"
     site:
         build:
             dockerfile: Dockerfile.site
@@ -32,7 +36,6 @@ services:
         container_name: paperbots_mysql
         restart: always
         environment:
-            - MYSQL_
             - MYSQL_ROOT_PASSWORD=${PAPERBOTS_DB_PWD}
             - MYSQL_DATABASE=paperbots
         volumes:

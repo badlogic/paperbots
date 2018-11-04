@@ -10,21 +10,23 @@ The `docker-compose.yml` defines all containers necessary for an instance:
 Before you can run Paperbots via Docker, do the following:
 
 * Add the missing values for email settings and database user to the `.env` file.
-* Create a network called `nginx-proxy`
+* Create a network called `nginx-proxy` via `docker network create nginx-proxy`
 
-You can then start all containers via
+Optionally, you can expose the Nginx instance on another port in `docker-compose.yml`, line 18.
+
+To start all containers:
 
 ```
 docker-compose up -d
 ```
 
-To stop the containers run
+To stop the containers:
 
 ```
 docker-compose down
 ```
 
-To view the logs run
+To view the logs:
 
 ```
 docker-compose logs -f

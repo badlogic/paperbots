@@ -70,7 +70,7 @@ public class Config {
 		}
 		return new Config(System.getenv("PAPERBOTS_RELOAD_PWD"),
 			new EmailConfig(System.getenv("PAPERBOTS_EMAIL_HOST"), Integer.parseInt(System.getenv("PAPERBOTS_EMAIL_PORT")),
-				System.getenv("PAPERBOTS_EMAIL_ADDRESS"), System.getenv("PAPERBOTS_EMAIL_PWD")),
+				System.getenv("PAPERBOTS_EMAIL_ADDRESS"), System.getenv("PAPERBOTS_EMAIL_PWD"), Boolean.parseBoolean(System.getenv("PAPERBOTS_EMAIL_SSL"))),
 			new DatabaseConfig(System.getenv("PAPERBOTS_DB_JDBC_URL"), System.getenv("PAPERBOTS_DB_USER"), System.getenv("PAPERBOTS_DB_PWD")));
 	}
 
@@ -80,13 +80,15 @@ public class Config {
 		private final int port;
 		private final String email;
 		private final String password;
+		private final Boolean sslEnabled;
 
 		public EmailConfig (@JsonProperty("host") String host, @JsonProperty("port") Integer port, @JsonProperty("email") String email,
-			@JsonProperty("password") String password) {
+			@JsonProperty("password") String password, @JsonProperty("sslEnabled") Boolean sslEnabled) {
 			this.host = Optional.ofNullable(host).orElseThrow( () -> new IllegalArgumentException("SMTP host is missing."));
 			this.port = Optional.ofNullable(port).orElseThrow( () -> new IllegalArgumentException("SMTP port is missing."));
 			this.email = Optional.ofNullable(email).orElseThrow( () -> new IllegalArgumentException("Email address is missing."));
 			this.password = Optional.ofNullable(password).orElseThrow( () -> new IllegalArgumentException("Email password is missing."));
+			this.sslEnabled = sslEnabled;
 		}
 
 		public String getHost () {
@@ -103,6 +105,10 @@ public class Config {
 
 		public String getPassword () {
 			return password;
+		}
+
+		public Boolean getSslEnabled() {
+			return sslEnabled!=null?sslEnabled:false;
 		}
 	}
 

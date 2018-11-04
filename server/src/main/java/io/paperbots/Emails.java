@@ -12,6 +12,7 @@ import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import com.esotericsoftware.minlog.Log;
 import io.paperbots.Config.EmailConfig;
 import io.paperbots.PaperbotsException.PaperbotsError;
 
@@ -30,6 +31,8 @@ public interface Emails {
 			props.put("mail.smtp.auth", "true");
 			props.put("mail.smtp.host", config.getHost()); // "smtp.gmail.com");
 			props.put("mail.smtp.port", config.getPort()); // "587");
+			props.put("mail.smtp.ssl.enable", config.getSslEnabled()); // off by default
+			props.put("mail.smtp.timeout", 10000);
 			this.session = Session.getInstance(props, new javax.mail.Authenticator() {
 				@Override
 				protected PasswordAuthentication getPasswordAuthentication () {
@@ -51,6 +54,7 @@ public interface Emails {
 				msg.setHeader("XPriority", "1");
 				Transport.send(msg);
 			} catch (MessagingException e) {
+				Log.error("Could not send email", e);
 				throw new PaperbotsException(PaperbotsError.CouldNotSendEmail, e);
 			}
 		}

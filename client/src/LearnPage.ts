@@ -34,7 +34,7 @@ export class LearnPage implements EventListener {
 						will teach you all you need to know.</p>
 
 					<p>Are you a seasoned programmer? Great! Create interesting programs
-						so others can learn and remix them. <code>ests</code></p>
+						so others can learn and remix them.</p>
 				</div>
 			</div>
 		`);

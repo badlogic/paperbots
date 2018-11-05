@@ -222,6 +222,29 @@ export class CanvasWorld extends Widget {
 			return mouseButtonDown;
 		})
 
+		functionsAndTypes.addFunction("rgb", [
+			{name: "red", type: NumberType},
+			{name: "green", type: NumberType},
+			{name: "blue", type: NumberType}
+		], StringType, false, (red: number, green: number, blue: number) => {
+			red = Math.max(0, Math.min(255, red));
+			green = Math.max(0, Math.min(255, green))
+			blue = Math.max(0, Math.min(255, blue))
+			return `rgb(${red}, ${green}, ${blue})`;
+		});
+
+		functionsAndTypes.addFunction("rgba", [
+			{name: "red", type: NumberType},
+			{name: "green", type: NumberType},
+			{name: "blue", type: NumberType},
+			{name: "alpha", type: NumberType}
+		], StringType, false, (red: number, green: number, blue: number, alpha) => {
+			red = Math.max(0, Math.min(255, red));
+			green = Math.max(0, Math.min(255, green))
+			blue = Math.max(0, Math.min(255, blue)) / 255;
+			return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+		});
+
 		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 	}
 

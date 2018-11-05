@@ -7393,6 +7393,27 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
                 return mouseButtonDown;
             });
+            functionsAndTypes.addFunction("rgb", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue));
+                return "rgb(" + red + ", " + green + ", " + blue + ")";
+            });
+            functionsAndTypes.addFunction("rgba", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType },
+                { name: "alpha", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue)) / 255;
+                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
+            });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
         };
         CanvasWorld.prototype.onEvent = function (event) {
@@ -8871,7 +8892,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
-                window.location = "/project.html";
+                _this.newDialog();
             });
             this.save = dom.find("#pb-toolbar-save");
             this.save.click(function () {
@@ -8948,6 +8969,20 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.signup.show();
                 this.user.hide();
             }
+        };
+        Toolbar.prototype.newDialog = function () {
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Pick the typ of program you want to write!</p>\n\t\t\t<div style=\"display: flex; flex-direction: row; width: 100%;\">\n\t\t\t\t<div id=\"pb-new-robot-program\" style=\"cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; margin-right: 0.5em; position: relative\">\n\t\t\t\t\t<img src=\"/img/new-robot-world.png\">\n\t\t\t\t\t<span style=\"position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);\">Robot program</span>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-new-canvas-program\" style=\"cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; position: relative\">\n\t\t\t\t\t<img style=\"width: 100%;\" src=\"/img/new-canvas-world.png\">\n\t\t\t\t\t<span style=\"position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);\">Canvas program</span>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t</div>");
+            content.find("#pb-new-robot-program").click(function () {
+                window.location = "/project.html";
+            });
+            content.find("#pb-new-canvas-program").click(function () {
+                window.location = "/project.html?type=canvas";
+            });
+            var dialog = new Dialog_2.Dialog("New Project", content[0], ["Cancel"]);
+            dialog.buttons[0].click(function () {
+                dialog.hide();
+            });
+            dialog.show();
         };
         Toolbar.prototype.loginDialog = function (email) {
             var _this = this;

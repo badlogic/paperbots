@@ -111,7 +111,7 @@ SHARED COMPONENT STYLES
 .pb-dialog-content {
 	position: relative;
 	margin: auto;
-	width: 30%;
+	width: fit-content;
 	min-width: 400px;
 	padding: 20px;
 	background-color: #252526;

@@ -147,22 +147,31 @@ While
 If
   = "if" _ cond:Expression _ "then"
   		_ trueBlock:(_ Statement _)* _
-    elseIfs:("elseif" _ Expression _ "then"
-        _ (_ Statement _)*)* _
+    elseIfs:ElseIf* _
     falseBlock:("else"
     	_ (_ Statement _)*)? _
     "end"
   {
-    if (elseIfs.length > 0) {
-    	elseIfs[0] = 0
-    }
-
     return {
     	kind: "if",
       condition: cond,
       trueBlock: trueBlock.map(function(element) { return element[1]; }),
       elseIfs: elseIfs,
       falseBlock: falseBlock ? falseBlock[2].map(function(element) { return element[1]; }) : [],
+      location: location()
+	  }
+  }
+
+ElseIf
+  = "elseif" _ cond:Expression _ "then"
+        _ trueBlock:(_ Statement _)*
+  {
+    return {
+    	kind: "if",
+      condition: cond,
+      trueBlock: trueBlock.map(function(element) { return element[1]; }),
+      elseIfs: [],
+      falseBlock: []
       location: location()
 	  }
   }

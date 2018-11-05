@@ -79,6 +79,7 @@ export interface If extends BaseNode {
 	kind: "if",
 	condition: Expression
 	trueBlock: Array<AstNode>,
+	elseIfs: Array<If>,
 	falseBlock: Array<AstNode>
 }
 
@@ -852,6 +853,13 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			scopes.push();
 			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
+			node.elseIfs.forEach(elseIf => {
+				typeCheckRec(elseIf.condition as AstNode, types, scopes, enclosingFun, enclosingLoop);
+				if (elseIf.condition.type != BooleanType) throw new CompilerError(`Condition of elseif statement must be a 'boolean', but is a '${elseIf.condition.type.signature}`, elseIf.condition.location);
+				scopes.push();
+				elseIf.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
+				scopes.pop();
+			})
 			scopes.push();
 			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
@@ -955,7 +963,6 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			typeCheckRec(node.record as AstNode, types, scopes, enclosingFun, enclosingLoop)
 			if (node.record.type.kind != "record") throw new CompilerError(`Can only access fields on record types, but got a ${node.record.type.signature}.`, node.location);
 			let recordType = node.record.type;
-			// TODO wtf is going on here
 			for (var i = 0; i < recordType.fields.length; i++) {
 				let field = recordType.fields[i];
 				if (field.name == node.name.value) {
@@ -1215,27 +1222,41 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "if":
-			emitAstNode(node.condition as AstNode, context, false);
+			// Setup the jump past the if statement
+			let jumpPastIf: Instruction = { kind: "jump", offset: 0 };
 
-			// Setup jumps. There's a boolean value on the top of the stack
-			// for the conditional which will be consumed by jumpIfFalse
-			let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
-			let jumpPastFalse: Instruction = { kind: "jump", offset: 0 };
-			instructions.push(jumpToFalse);
-			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
-			context.lineInfoIndex++;
+			// The initial if condition then, and all elseifs can be
+			// handled the same in a loop.
+			let ifChecks: If[] = [];
+			ifChecks.push(node);
+			node.elseIfs.forEach(elseIf => ifChecks.push(elseIf));
 
-			// Emit the true block and a jump to after the false block
-			scopes.push();
-			emitStatementList(node.trueBlock, context);
-			scopes.pop()
-			assignScopeInfoEndPc(node.trueBlock, instructions.length - 1);
-			instructions.push(jumpPastFalse);
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
-			context.lineInfoIndex++;
+			// 1. Emit condition
+			// 2. Check if top of stack is false, and jump past statements
+			// 3. Emit statements
+			// 4. Patch up jump past statements.
+			ifChecks.forEach(ifCheck => {
+				// Emit the condition, which puts a boolean on the stack. Then
+				// check if it is true, and if not, go to the next elseif block
+				emitAstNode(ifCheck.condition as AstNode, context, false);
+				let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
+				instructions.push(jumpToFalse);
+				emitLineInfo(lineInfos, context.lineInfoIndex, ifCheck.location.start.line, instructions.length - lastInsIndex);
+				context.lineInfoIndex++;
 
-			// Patch in the address of the first instruction of the false block
-			jumpToFalse.offset = instructions.length;
+				// Emit the true block and a jump to after the false block
+				scopes.push();
+				emitStatementList(ifCheck.trueBlock, context);
+				scopes.pop()
+				assignScopeInfoEndPc(ifCheck.trueBlock, instructions.length - 1);
+				instructions.push(jumpPastIf);
+				lineInfos.push(lineInfos[lineInfos.length - 1]);
+				context.lineInfoIndex++;
+
+				// Patch in the address of the first instruction of the false block
+				jumpToFalse.offset = instructions.length;
+				lastInsIndex = instructions.length;
+			})
 
 			// Emit the false block
 			scopes.push();
@@ -1244,7 +1265,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			assignScopeInfoEndPc(node.falseBlock, instructions.length - 1);
 
 			// Patch in the address of the first instruction after the false block
-			jumpPastFalse.offset = instructions.length;
+			jumpPastIf.offset = instructions.length;
 			break;
 		case "while":
 			// save the index of the start of the condition code

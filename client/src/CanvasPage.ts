@@ -40,7 +40,21 @@ while true do
 	clear("black")
 	var x = getMouseX()
 	var y = getMouseY()
-	drawImage(img, x, y, img.width, img.height)
+
+	var start = time()
+
+	repeat 1000 times
+		drawImage(img, random() * 960, random() * 510, img.width, img.height)
+	end
+
+	if isMouseButtonDown() then
+		drawRectangle(x, y, img.width, img.height, "red")
+	else
+		drawRectangle(x, y, img.width, img.height, "green")
+	end
+
+	drawText(toString(truncate((time() - start) * 1000)) .. "ms", 100, 100, 43, "Arial", "red")
+
 	show()
 end
 			`));

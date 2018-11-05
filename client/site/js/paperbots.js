@@ -6122,7 +6122,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 { name: "index", type: exports.NumberType }
             ], exports.StringType, false, function (value, index) { return value.charAt(index); });
             externals.addFunction("random", [], exports.NumberType, false, function () { return Math.random(); });
-            externals.addFunction("time", [], exports.NumberType, false, function () { return performance.now(); });
+            externals.addFunction("truncate", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return value | 0; });
+            externals.addFunction("time", [], exports.NumberType, false, function () { return performance.now() / 1000; });
             externals.addFunction("pause", [{ name: "milliSeconds", type: exports.NumberType }], exports.NumberType, true, function (milliSeconds) {
                 var promise = {
                     completed: false,
@@ -7427,7 +7428,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             var _this = this;
             if (event instanceof Events_1.SourceChanged) {
                 if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\tdrawImage(img, x, y, img.width, img.height)\n\tshow()\nend\n\t\t\t"); });
+                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
                 this.sentSource = true;
             }
         };
@@ -9209,8 +9210,8 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                 run.show();
             });
             try {
-                var module = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
-                this.vm = new VirtualMachine_2.VirtualMachine(module.functions, module.externalFunctions);
+                var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
+                this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
                 this.bus.event(new Events_4.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();

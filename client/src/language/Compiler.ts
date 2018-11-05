@@ -478,11 +478,19 @@ export class ExternalFunctionsTypesConstants {
 		)
 
 		externals.addFunction(
+			"truncate",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return value | 0; }
+		)
+
+		externals.addFunction(
 			"time",
 			[],
 			NumberType,
 			false,
-			() => { return performance.now(); }
+			() => { return performance.now() / 1000; }
 		)
 
 		externals.addFunction(

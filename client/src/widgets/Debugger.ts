@@ -98,7 +98,7 @@ export class Debugger extends Widget {
 
 		this.advanceVm = () => {
 			if (this.state != DebuggerState.Running) return;
-			this.vm.run(1000);
+			this.vm.run(100000);
 			this.checkVmStopped();
 			requestAnimationFrame(this.advanceVm);
 		};

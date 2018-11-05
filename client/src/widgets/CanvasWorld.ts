@@ -33,17 +33,61 @@ export class CanvasWorld extends Widget {
 				return;
 			}
 			canvas.height(height);
+			let el = canvas[0] as HTMLCanvasElement
+			if (el.width != 960) {
+				el.width = 960;
+				el.height = 510;
+			}
 			requestAnimationFrame(canvasResize)
 		}
-		requestAnimationFrame(canvasResize);
+		canvasResize();
 
-		let functions = new compiler.ExternalFunctions();
-		functions.addFunction("line", [
+		let functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
+
+		let imageType = functionsAndTypes.addType("image", [
+			{name: "width", type: NumberType},
+			{name: "height", type: NumberType},
+			{name: "url", type: StringType}
+		], false);
+
+		functionsAndTypes.addFunction("clear", [
+			{name: "color", type: StringType}
+		], NothingType, false, (color) => {
+			let ctx = this.context;
+			ctx.fillStyle = color;
+			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		});
+
+		functionsAndTypes.addFunction("show", [], NothingType, true, () => {
+			let asyncResult: vm.AsyncPromise<void> = {
+				completed: false,
+				value: null
+			}
+			requestAnimationFrame(() => { asyncResult.completed = true });
+			return asyncResult;
+		});
+
+		functionsAndTypes.addFunction("drawCircle",[
+		{name: "x", type: NumberType},
+		{name: "y", type: NumberType},
+		{name: "radius", type: NumberType},
+		{name: "color", type: StringType}
+		], NothingType, false, (x, y, radius, color) =>{
+
+			let ctx = this.context;
+			ctx.beginPath();
+			ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+     	 	ctx.fillStyle = color;
+      		ctx.fill();
+
+		});
+
+		functionsAndTypes.addFunction("drawLine", [
 			{name: "x1", type: NumberType},
 			{name: "y1", type: NumberType},
 			{name: "x2", type: NumberType},
 			{name: "y2", type: NumberType},
-			{name: "color", type: StringType}
+			{name: "color", type: StringType},
 		], NothingType, true, (x1, y1, x2, y2, color) => {
 			let ctx = this.context;
 			ctx.strokeStyle = color;
@@ -53,26 +97,114 @@ export class CanvasWorld extends Widget {
 			ctx.stroke();
 		});
 
-		functions.addFunction("clear", [
+		functionsAndTypes.addFunction("drawRectangle",[
+			{name: "x", type: NumberType },
+			{name: "y", type: NumberType },
+			{name: "width", type: NumberType},
+			{name: "height", type: NumberType },
 			{name: "color", type: StringType}
-		], NothingType, false, (color) => {
+		], NothingType,false,(x,y,width,hegiht,color) =>{
 			let ctx = this.context;
 			ctx.fillStyle = color;
-			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+			ctx.fillRect(x, y, width, hegiht);
 		});
 
-		functions.addFunction("show", [], NothingType, true, () => {
-			let asyncResult: vm.AsyncPromise<void> = {
+		functionsAndTypes.addFunction("drawEllipse",[
+			{name: "x", type: NumberType},
+			{name: "y", type: NumberType},
+			{name: "radiusX", type: NumberType},
+			{name: "radiusY", type: NumberType},
+			{name: "color", type: StringType}
+		], NothingType,false,(x, y, radiusX, radiusY, color) =>{
+			let ctx = this.context;
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.ellipse(x,y,radiusX,radiusY,0 * Math.PI/180, 0, 2 * Math.PI);
+			ctx.fill();
+		});
+
+		functionsAndTypes.addFunction("drawText",[
+			{name: "text", type: StringType},
+			{name: "x", type: NumberType},
+			{name: "y", type: NumberType},
+			{name: "fontSize", type: NumberType},
+			{name: "fontFamily", type: StringType},
+			{name: "color", type: StringType}
+		], NothingType, false, (text,x,y,fontSize,fontFamily,color) =>{
+			let ctx = this.context;
+			ctx.font = fontSize.toString()+"px "+fontFamily;
+			ctx.fillStyle = color;
+			ctx.fillText(text,x,y);
+		});
+		functionsAndTypes.addFunction("loadImage",[
+			{name: "url", type: StringType}
+		], imageType, true, (url) => {
+			var image = new Image();
+			let asyncResult: vm.AsyncPromise<Array<any>> = {
 				completed: false,
 				value: null
 			}
-			requestAnimationFrame(() => { asyncResult.completed = true });
+			image.onload = () => {
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = image.width;
+				record[1] = image.height;
+				record[2] = url;
+				record[3] = image;
+				asyncResult.value = record;
+			};
+			image.onerror = () => {
+				alert("Couldn't load image " + url);
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = image.width;
+				record[1] = image.height;
+				record[2] = url;
+				record[3] = new Image();
+				asyncResult.value = record;
+			}
+			image.src = url;
 			return asyncResult;
 		});
-		this.bus.event(new events.AnnounceExternalFunctions(functions));
+		functionsAndTypes.addFunction("drawImage",[
+			{name: "image", type: imageType},
+			{name: "x", type: NumberType},
+			{name: "y", type: NumberType},
+			{name: "width", type: NumberType},
+			{name: "height", type: NumberType}
+		], NothingType, false, (image,x,y,width,height) =>{
+			let ctx = this.context;
+			if (!image[3]) return;
+			ctx.drawImage(image[3],x,y,width,height);
+		});
+		functionsAndTypes.addFunction("loadSound",[
+			{name: "url", type: StringType}
+		], StringType,false,(url)=>{
+			var sound = new Audio();
+			sound.src = url;
+
+			return sound;
+		});
+		functionsAndTypes.addFunction("playSound",[
+			{name: "sound", type: StringType}
+		], NothingType, false, (sound)=>{
+			sound.play();
+		});
+		functionsAndTypes.addFunction("stopSound",[
+			{name: "sound", type: StringType}
+		], NothingType, false, (sound)=>{
+			sound.stopSound();
+		})
+		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 
 		return dom[0];
 	}
+
 	onEvent(event: events.Event) {
+		if (event instanceof events.Run) {
+			let ctx = this.context;
+			ctx.fillStyle = "black";
+			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		}
 	}
 }

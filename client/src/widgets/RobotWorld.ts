@@ -171,7 +171,7 @@ export class RobotWorld extends Widget {
 	}
 
 	announceExternals() {
-		let ext = new compiler.ExternalFunctions();
+		let ext = new compiler.ExternalFunctionsTypesConstants();
 
 		ext.addFunction("forward", [], NothingType, true, () => {
 			this.world.robot.setAction(this.world, RobotAction.Forward);

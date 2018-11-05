@@ -11,7 +11,7 @@ export class Stop { }
 export class Step { constructor(public line: number) {} }
 export class LineChange { constructor(public line: number) {} }
 export class Select { constructor(public startLine: number, public startColumn: number, public endLine: number, public endColumn: number) {} }
-export class AnnounceExternalFunctions { constructor(public functions: compiler.ExternalFunctions) {} }
+export class AnnounceExternalFunctions { constructor(public functions: compiler.ExternalFunctionsTypesConstants) {} }
 export class BreakpointAdded { constructor(public breakpoint: Breakpoint) {} }
 export class BreakpointRemoved { constructor(public breakpoint: Breakpoint) {} }
 

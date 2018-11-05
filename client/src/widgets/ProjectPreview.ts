@@ -2,7 +2,7 @@ import { Widget } from "./Widget";
 import { Event, EventBus, ProjectLoaded, AnnounceExternalFunctions, Run, Stop } from "./Events";
 import { RobotWorld } from "./RobotWorld";
 import { Api, Project } from "../Api";
-import { compile, ExternalFunctions } from "../language/Compiler";
+import { compile, ExternalFunctionsTypesConstants } from "../language/Compiler";
 import { VirtualMachine, VirtualMachineState } from "../language/VirtualMachine";
 
 export class ProjectPreview extends Widget {

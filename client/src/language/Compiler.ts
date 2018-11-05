@@ -215,6 +215,7 @@ export interface RecordType extends BaseType {
 	signature: string
 	fields: Array<Field>
 
+	generateConstructor: boolean
 	declarationNode?: RecordDecl
 }
 
@@ -330,7 +331,7 @@ export interface Module {
 	types: Types,
 	ast: Array<AstNode>,
 	functions: Array<FunctionCode>,
-	externalFunctions: ExternalFunctions
+	externalFunctions: ExternalFunctionsTypesConstants
 }
 
 export function moduleToString (module: Module): string {
@@ -408,9 +409,11 @@ export function moduleToJson(module: Module): string {
 	}, 2);
 }
 
-export class ExternalFunctions {
+export class ExternalFunctionsTypesConstants {
 	functions = new Array<ExternalFunction>();
-	lookup: Map<ExternalFunction> = {};
+	functionLookup: Map<ExternalFunction> = {};
+	records = new Array<RecordType>();
+	recordLookup: Map<RecordType> = {};
 
 	constructor() {
 		let externals = this;
@@ -466,6 +469,21 @@ export class ExternalFunctions {
 			false,
 			(value: string, index: number) => { return value.charAt(index); }
 		)
+		externals.addFunction(
+			"random",
+			[],
+			NumberType,
+			false,
+			() => { return Math.random(); }
+		)
+
+		externals.addFunction(
+			"time",
+			[],
+			NumberType,
+			false,
+			() => { return performance.now(); }
+		)
 
 		externals.addFunction(
 			"pause",
@@ -490,14 +508,32 @@ export class ExternalFunctions {
 		let index = this.functions.length;
 		let extFun = new ExternalFunction(name, args, returnType, async, fun, index)
 		this.functions.push(extFun);
-		this.lookup[extFun.signature] = extFun;
+		this.functionLookup[extFun.signature] = extFun;
+	}
+
+	addType(name: string, fields: Array<Field>, addConstructor: boolean = true): RecordType {
+		let record: RecordType = {
+			kind: "record",
+			declarationNode: null,
+			generateConstructor: addConstructor,
+			fields: fields,
+			signature: name
+		};
+		this.records.push(record);
+		this.recordLookup[name] = record;
+
+		return record;
 	}
 
 	copy () {
-		let copy = new ExternalFunctions();
+		let copy = new ExternalFunctionsTypesConstants();
 		for(var i = 0; i < this.functions.length; i++) {
-			var f = this.functions[i];
+			let f = this.functions[i];
 			copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
+		}
+		for (var i = 0; i < this.records.length; i++) {
+			let r = this.records[i];
+			copy.addType(r.signature, r.fields);
 		}
 		return copy;
 	}
@@ -510,7 +546,7 @@ export class ExternalFunction {
 	}
 }
 
-export function compile(input: string, externalFunctions: ExternalFunctions): Module {
+export function compile(input: string, externalFunctions: ExternalFunctionsTypesConstants): Module {
 	try {
 		// parse source to an AST
 		let ast = (parse(input));
@@ -582,7 +618,7 @@ function nullLocation(): IFileRange {
 	}
 }
 
-function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, externalFunctions: ExternalFunctions): Types {
+function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, externalFunctions: ExternalFunctionsTypesConstants): Types {
 	let types = new Types()
 
 	// register built-in types
@@ -591,6 +627,9 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 	types.add(NumberType);
 	types.add(StringType);
 
+	// Add external types
+	externalFunctions.records.forEach(r => types.add(r));
+
 	// gather all record and do basic duplicate testing
 	// We do not resolve field types here yet, as
 	// we have not seen all record types at this point.
@@ -598,14 +637,19 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		let type: Type = {
 			kind: "record",
 			fields: [],
+			generateConstructor: false,
 			declarationNode: rec,
 			signature: rec.name.value
 		}
 
 		let other = types.getRecord(type.signature);
 		if (other) {
-			let otherLoc = other.declarationNode.location.start;
-			throw new CompilerError(`Record '${other.signature}' already defined in line ${otherLoc.line}.`, rec.name.location);
+			if (other.declarationNode) {
+				let otherLoc = other.declarationNode.location.start;
+				throw new CompilerError(`Record '${other.signature}' already defined in line ${otherLoc.line}.`, rec.name.location);
+			} else {
+				throw new CompilerError(`Record '${other.signature}' already defined externally.`, rec.name.location);
+			}
 		}
 
 		rec.type = type;
@@ -641,6 +685,7 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 	// Create constructor functions for all records
 	// TODO check for recursive types
 	records.forEach(rec => {
+		if (!rec.type.generateConstructor) return;
 		let params: Array<Parameter> = [];
 		rec.fields.forEach(field =>
 			params.push({name: field.name.value, type: field.type})
@@ -929,7 +974,7 @@ class EmitterContext {
 	constructor(public fun: FunctionCode, public functionLookup: Map<FunctionCode>, public externalFunctionLookup: Map<ExternalFunction>) { }
 }
 
-function emitProgram (functions: Array<FunctionDecl>, externalFunctions: ExternalFunctions): Array<FunctionCode> {
+function emitProgram (functions: Array<FunctionDecl>, externalFunctions: ExternalFunctionsTypesConstants): Array<FunctionCode> {
 	let functionCodes = Array<FunctionCode>()
 	let functionLookup: Map<FunctionCode> = {};
 
@@ -947,7 +992,7 @@ function emitProgram (functions: Array<FunctionDecl>, externalFunctions: Externa
 		functionLookup[fun.type.signature] = funCode;
 	});
 
-	functionCodes.forEach(fun => emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)));
+	functionCodes.forEach(fun => emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.functionLookup)));
 	return functionCodes;
 }
 

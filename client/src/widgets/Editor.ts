@@ -47,7 +47,7 @@ export class Editor extends Widget {
 	private editor: CodeMirror.Editor;
 	private error: JQuery;
 	private markers = Array<TextMarker>();
-	private ext = new compiler.ExternalFunctions();
+	private ext = new compiler.ExternalFunctionsTypesConstants();
 	private justLoaded = false;
 	private isEmbedUrls = true;
 

@@ -1,4 +1,4 @@
-import { compile, ExternalFunctions, CompilerError, Module, Types, FunctionDecl, moduleToString } from "./language/Compiler";
+import { compile, ExternalFunctionsTypesConstants, CompilerError, Module, Types, FunctionDecl, moduleToString } from "./language/Compiler";
 import { VirtualMachine, VirtualMachineState } from "./language/VirtualMachine";
 
 declare function CodeMirror(host: HTMLElement, options?: CodeMirror.EditorConfiguration): CodeMirror.Editor;
@@ -44,7 +44,7 @@ fib(30)
 			editor.on("change", () => {
 				var module: Module = null;
 				try {
-					module = compile(editor.getValue(), new ExternalFunctions());
+					module = compile(editor.getValue(), new ExternalFunctionsTypesConstants());
 				} catch (e) {
 					alert("Error in " + title + ": " + (e as CompilerError).message);
 					return;
@@ -57,7 +57,7 @@ fib(30)
 		dom.find("#pb-benchmark-run").click(() => {
 			var module: Module = null;
 			try {
-				module = compile(this.editor.getValue(), new ExternalFunctions());
+				module = compile(this.editor.getValue(), new ExternalFunctionsTypesConstants());
 			} catch (e) {
 				alert("Error in " + title + ": " + (e as CompilerError).message);
 				return;

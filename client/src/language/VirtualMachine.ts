@@ -1,4 +1,4 @@
-import { VariableDecl, ParameterDecl, FunctionDecl, ExternalFunction, ExternalFunctions, NothingType } from "./Compiler";
+import { VariableDecl, ParameterDecl, FunctionDecl, ExternalFunction, ExternalFunctionsTypesConstants, NothingType } from "./Compiler";
 import { assertNever } from "../Utils";
 import { Breakpoint } from "../widgets/Debugger";
 
@@ -162,7 +162,7 @@ export class VirtualMachine {
 	asyncFun: ExternalFunction;
 	asyncPromise: AsyncPromise<any>;
 
-	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctions) {
+	constructor(public functions: Array<FunctionCode>, public externalFunctions: ExternalFunctionsTypesConstants) {
 		this.restart();
 	}
 

@@ -942,7 +942,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.advanceVm = function () {
                 if (_this.state != DebuggerState.Running)
                     return;
-                _this.vm.run(1000);
+                _this.vm.run(100000);
                 _this.checkVmStopped();
                 requestAnimationFrame(_this.advanceVm);
             };
@@ -6104,10 +6104,12 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         }, 2);
     }
     exports.moduleToJson = moduleToJson;
-    var ExternalFunctions = (function () {
-        function ExternalFunctions() {
+    var ExternalFunctionsTypesConstants = (function () {
+        function ExternalFunctionsTypesConstants() {
             this.functions = new Array();
-            this.lookup = {};
+            this.functionLookup = {};
+            this.records = new Array();
+            this.recordLookup = {};
             var externals = this;
             externals.addFunction("alert", [{ name: "message", type: exports.StringType }], exports.NothingType, false, function (message) { alert(message); });
             externals.addFunction("alert", [{ name: "value", type: exports.NumberType }], exports.NothingType, false, function (value) { alert(value); });
@@ -6119,6 +6121,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 { name: "value", type: exports.StringType },
                 { name: "index", type: exports.NumberType }
             ], exports.StringType, false, function (value, index) { return value.charAt(index); });
+            externals.addFunction("random", [], exports.NumberType, false, function () { return Math.random(); });
+            externals.addFunction("time", [], exports.NumberType, false, function () { return performance.now(); });
             externals.addFunction("pause", [{ name: "milliSeconds", type: exports.NumberType }], exports.NumberType, true, function (milliSeconds) {
                 var promise = {
                     completed: false,
@@ -6131,23 +6135,40 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 return promise;
             });
         }
-        ExternalFunctions.prototype.addFunction = function (name, args, returnType, async, fun) {
+        ExternalFunctionsTypesConstants.prototype.addFunction = function (name, args, returnType, async, fun) {
             var index = this.functions.length;
             var extFun = new ExternalFunction(name, args, returnType, async, fun, index);
             this.functions.push(extFun);
-            this.lookup[extFun.signature] = extFun;
+            this.functionLookup[extFun.signature] = extFun;
         };
-        ExternalFunctions.prototype.copy = function () {
-            var copy = new ExternalFunctions();
+        ExternalFunctionsTypesConstants.prototype.addType = function (name, fields, addConstructor) {
+            if (addConstructor === void 0) { addConstructor = true; }
+            var record = {
+                kind: "record",
+                declarationNode: null,
+                generateConstructor: addConstructor,
+                fields: fields,
+                signature: name
+            };
+            this.records.push(record);
+            this.recordLookup[name] = record;
+            return record;
+        };
+        ExternalFunctionsTypesConstants.prototype.copy = function () {
+            var copy = new ExternalFunctionsTypesConstants();
             for (var i = 0; i < this.functions.length; i++) {
                 var f = this.functions[i];
                 copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
             }
+            for (var i = 0; i < this.records.length; i++) {
+                var r = this.records[i];
+                copy.addType(r.signature, r.fields);
+            }
             return copy;
         };
-        return ExternalFunctions;
+        return ExternalFunctionsTypesConstants;
     }());
-    exports.ExternalFunctions = ExternalFunctions;
+    exports.ExternalFunctionsTypesConstants = ExternalFunctionsTypesConstants;
     var ExternalFunction = (function () {
         function ExternalFunction(name, parameters, returnType, async, fun, index) {
             this.name = name;
@@ -6230,17 +6251,24 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         types.add(exports.BooleanType);
         types.add(exports.NumberType);
         types.add(exports.StringType);
+        externalFunctions.records.forEach(function (r) { return types.add(r); });
         records.forEach(function (rec) {
             var type = {
                 kind: "record",
                 fields: [],
+                generateConstructor: false,
                 declarationNode: rec,
                 signature: rec.name.value
             };
             var other = types.getRecord(type.signature);
             if (other) {
-                var otherLoc = other.declarationNode.location.start;
-                throw new CompilerError("Record '" + other.signature + "' already defined in line " + otherLoc.line + ".", rec.name.location);
+                if (other.declarationNode) {
+                    var otherLoc = other.declarationNode.location.start;
+                    throw new CompilerError("Record '" + other.signature + "' already defined in line " + otherLoc.line + ".", rec.name.location);
+                }
+                else {
+                    throw new CompilerError("Record '" + other.signature + "' already defined externally.", rec.name.location);
+                }
             }
             rec.type = type;
             types.add(type);
@@ -6265,6 +6293,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             });
         });
         records.forEach(function (rec) {
+            if (!rec.type.generateConstructor)
+                return;
             var params = [];
             rec.fields.forEach(function (field) {
                 return params.push({ name: field.name.value, type: field.type });
@@ -6570,7 +6600,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             functionCodes.push(funCode);
             functionLookup[fun.type.signature] = funCode;
         });
-        functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.lookup)); });
+        functionCodes.forEach(function (fun) { return emitFunction(new EmitterContext(fun, functionLookup, externalFunctions.functionLookup)); });
         return functionCodes;
     }
     function emitFunction(context) {
@@ -6906,7 +6936,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
                 editor.on("change", function () {
                     var module = null;
                     try {
-                        module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctions());
+                        module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
                     }
                     catch (e) {
                         alert("Error in " + title + ": " + e.message);
@@ -6919,7 +6949,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
             dom.find("#pb-benchmark-run").click(function () {
                 var module = null;
                 try {
-                    module = Compiler_2.compile(_this.editor.getValue(), new Compiler_2.ExternalFunctions());
+                    module = Compiler_2.compile(_this.editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
                 }
                 catch (e) {
                     alert("Error in " + title + ": " + e.message);
@@ -6964,7 +6994,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         function Editor() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
             _this.markers = Array();
-            _this.ext = new compiler.ExternalFunctions();
+            _this.ext = new compiler.ExternalFunctionsTypesConstants();
             _this.justLoaded = false;
             _this.isEmbedUrls = true;
             _this.urlRegex = new RegExp(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
@@ -7191,16 +7221,53 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                     return;
                 }
                 canvas.height(height);
+                var el = canvas[0];
+                if (el.width != 960) {
+                    el.width = 960;
+                    el.height = 510;
+                }
                 requestAnimationFrame(canvasResize);
             };
-            requestAnimationFrame(canvasResize);
-            var functions = new compiler.ExternalFunctions();
-            functions.addFunction("line", [
+            canvasResize();
+            var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
+            var imageType = functionsAndTypes.addType("image", [
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "url", type: Compiler_3.StringType }
+            ], false);
+            functionsAndTypes.addFunction("clear", [
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
+            });
+            functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                requestAnimationFrame(function () { asyncResult.completed = true; });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("drawCircle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radius", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radius, color) {
+                var ctx = _this.context;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = color;
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawLine", [
                 { name: "x1", type: Compiler_3.NumberType },
                 { name: "y1", type: Compiler_3.NumberType },
                 { name: "x2", type: Compiler_3.NumberType },
                 { name: "y2", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
+                { name: "color", type: Compiler_3.StringType },
             ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
                 var ctx = _this.context;
                 ctx.strokeStyle = color;
@@ -7209,25 +7276,111 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ctx.lineTo(x2, y2);
                 ctx.stroke();
             });
-            functions.addFunction("clear", [
+            functionsAndTypes.addFunction("drawRectangle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
                 { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (color) {
+            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
                 var ctx = _this.context;
                 ctx.fillStyle = color;
-                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
+                ctx.fillRect(x, y, width, hegiht);
             });
-            functions.addFunction("show", [], Compiler_3.NothingType, true, function () {
+            functionsAndTypes.addFunction("drawEllipse", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radiusX", type: Compiler_3.NumberType },
+                { name: "radiusY", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.ellipse(x, y, radiusX, radiusY, 0 * Math.PI / 180, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawText", [
+                { name: "text", type: Compiler_3.StringType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "fontSize", type: Compiler_3.NumberType },
+                { name: "fontFamily", type: Compiler_3.StringType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
+                var ctx = _this.context;
+                ctx.font = fontSize.toString() + "px " + fontFamily;
+                ctx.fillStyle = color;
+                ctx.fillText(text, x, y);
+            });
+            functionsAndTypes.addFunction("loadImage", [
+                { name: "url", type: Compiler_3.StringType }
+            ], imageType, true, function (url) {
+                var image = new Image();
                 var asyncResult = {
                     completed: false,
                     value: null
                 };
-                requestAnimationFrame(function () { asyncResult.completed = true; });
+                image.onload = function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = image;
+                    asyncResult.value = record;
+                };
+                image.onerror = function () {
+                    alert("Couldn't load image " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = new Image();
+                    asyncResult.value = record;
+                };
+                image.src = url;
                 return asyncResult;
             });
-            this.bus.event(new events.AnnounceExternalFunctions(functions));
+            functionsAndTypes.addFunction("drawImage", [
+                { name: "image", type: imageType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
+                var ctx = _this.context;
+                if (!image[3])
+                    return;
+                ctx.drawImage(image[3], x, y, width, height);
+            });
+            functionsAndTypes.addFunction("loadSound", [
+                { name: "url", type: Compiler_3.StringType }
+            ], Compiler_3.StringType, false, function (url) {
+                var sound = new Audio();
+                sound.src = url;
+                return sound;
+            });
+            functionsAndTypes.addFunction("playSound", [
+                { name: "sound", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (sound) {
+                sound.play();
+            });
+            functionsAndTypes.addFunction("stopSound", [
+                { name: "sound", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (sound) {
+                sound.stopSound();
+            });
+            this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
             return dom[0];
         };
         CanvasWorld.prototype.onEvent = function (event) {
+            if (event instanceof events.Run) {
+                var ctx = this.context;
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
         };
         return CanvasWorld;
     }(Widget_3.Widget));
@@ -7251,13 +7404,14 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             dom.append(this["debugger"].render());
             dom.append(this.editor.render());
             dom.append(this.canvas.render());
+            this.editor.setEmbedURls(false);
             parent.append(dom);
         }
         CanvasPage.prototype.onEvent = function (event) {
             var _this = this;
             if (event instanceof Events_1.SourceChanged) {
                 if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar x = 0\nwhile true do\n\tclear(\"black\")\n\tline(x, 0, x, 100, \"red\")\n\tx = x + 1\n\tshow()\nend\n\t\t\t"); });
+                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://pbs.twimg.com/profile_images/996073929000341504/2KsTl4Tj_400x400.jpg\")\nwhile true do\n\tclear(\"black\")\n\tvar start = time()\n\trepeat 200 times\n\t\tdrawLine(random() * 960, random() * 510, random() * 960, random() * 510, \"blue\")\n\t\t# drawImage(img, 100, 100, img.width, img.height)\n\tend\n\tvar took = (time() - start) / 1000\n\tdrawText(\"took: \" .. toString(took), 100, 100, 32, \"Arial\", \"red\")\n\tshow()\nend\n\t\t\t"); });
                 this.sentSource = true;
             }
         };
@@ -7515,7 +7669,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         };
         RobotWorld.prototype.announceExternals = function () {
             var _this = this;
-            var ext = new compiler.ExternalFunctions();
+            var ext = new compiler.ExternalFunctionsTypesConstants();
             ext.addFunction("forward", [], Compiler_4.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
                 var asyncResult = {

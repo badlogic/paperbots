@@ -2,12 +2,12 @@ import { Widget } from "./Widget";
 import { Event, EventBus, ProjectLoaded, AnnounceExternalFunctions, Run, Stop } from "./Events";
 import { RobotWorld } from "./RobotWorld";
 import { Api, Project } from "../Api";
-import { compile, ExternalFunctions } from "../language/Compiler";
+import { compile, ExternalFunctionsTypesConstants } from "../language/Compiler";
 import { VirtualMachine, VirtualMachineState } from "../language/VirtualMachine";
 
 export class Player extends Widget {
 	private world: RobotWorld;
-	private extFuncs: ExternalFunctions;
+	private extFuncs: ExternalFunctionsTypesConstants;
 	private vm: VirtualMachine = null;
 
 	constructor(private project: Project, private autoplay = false, private showSourceLink = false, bus: EventBus = new EventBus()) {

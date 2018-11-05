@@ -9039,8 +9039,8 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                 run.show();
             });
             try {
-                var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
-                this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
+                var module = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
+                this.vm = new VirtualMachine_2.VirtualMachine(module.functions, module.externalFunctions);
                 this.bus.event(new Events_4.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
@@ -9167,7 +9167,7 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
-            var dom = $("\n\t\t\t<div id=\"pb-learn-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share them with your friends, and they can share\n\t\t\t\t\t\ttheir programs with you!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the Paperbots course\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Create interesting programs\n\t\t\t\t\t\tso others can learn and remix them. <code>ests</code></p>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-learn-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share them with your friends, and they can share\n\t\t\t\t\t\ttheir programs with you!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the Paperbots course\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Create interesting programs\n\t\t\t\t\t\tso others can learn and remix them.</p>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
         }
         LearnPage.prototype.onEvent = function (event) {

@@ -7646,7 +7646,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                     },
                     {
                         name: "Loading and drawing images",
-                        desc: "These functions let load images from the Web and draw them onto the canvas.",
+                        desc: "These functions and records let load images from the Web and draw them onto the canvas.",
                         entries: [
                             {
                                 anchor: "canvas-load-image",
@@ -7657,6 +7657,11 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                                 anchor: "canvas-draw-image",
                                 name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
                                 desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
+                            },
+                            {
+                                anchor: "canvas-image",
+                                name: "<code>record image</code>",
+                                desc: "\n\t\t\t\t\t\t\t\t<p>\n\t\t\t\t\t\t\t\t\tThis record type stores the data for an image loaded via <code>loadImage(url: string): image</code>. It has the following fields:\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t<ul>\n\t\t\t\t\t\t\t\t\t<li><em>width</em>: the width of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>height</em>: the height of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>url</em>: the url from which the image was loaded.</li>\n\t\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t\t"
                             }
                         ],
                         subCategories: []

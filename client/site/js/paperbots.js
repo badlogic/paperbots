@@ -7198,7 +7198,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_3, compiler, Compiler_3) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_3, Utils_6, compiler, Compiler_3) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -7207,7 +7207,6 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             return _super.call(this, bus) || this;
         }
         CanvasWorld.prototype.render = function () {
-            var _this = this;
             var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
             var canvas = dom.find("canvas");
             this.canvas = canvas[0];
@@ -7229,12 +7228,12 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 requestAnimationFrame(canvasResize);
             };
             canvasResize();
+            this.announceExternalFunctions();
+            return dom[0];
+        };
+        CanvasWorld.prototype.announceExternalFunctions = function () {
+            var _this = this;
             var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
-            var imageType = functionsAndTypes.addType("image", [
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType },
-                { name: "url", type: Compiler_3.StringType }
-            ], false);
             functionsAndTypes.addFunction("clear", [
                 { name: "color", type: Compiler_3.StringType }
             ], Compiler_3.NothingType, false, function (color) {
@@ -7313,6 +7312,11 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ctx.fillStyle = color;
                 ctx.fillText(text, x, y);
             });
+            var imageType = functionsAndTypes.addType("image", [
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "url", type: Compiler_3.StringType }
+            ], false);
             functionsAndTypes.addFunction("loadImage", [
                 { name: "url", type: Compiler_3.StringType }
             ], imageType, true, function (url) {
@@ -7355,25 +7359,37 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                     return;
                 ctx.drawImage(image[3], x, y, width, height);
             });
-            functionsAndTypes.addFunction("loadSound", [
-                { name: "url", type: Compiler_3.StringType }
-            ], Compiler_3.StringType, false, function (url) {
-                var sound = new Audio();
-                sound.src = url;
-                return sound;
+            var mouseX = 0;
+            var mouseY = 0;
+            var mouseButtonDown = false;
+            var input = new Utils_6.Input(this.canvas);
+            var canvas = this.canvas;
+            input.addListener({
+                down: function (x, y) {
+                    mouseButtonDown = true;
+                },
+                up: function (x, y) {
+                    mouseButtonDown = false;
+                },
+                moved: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                dragged: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                }
             });
-            functionsAndTypes.addFunction("playSound", [
-                { name: "sound", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (sound) {
-                sound.play();
+            functionsAndTypes.addFunction("getMouseX", [], Compiler_3.NumberType, false, function () {
+                return mouseX;
             });
-            functionsAndTypes.addFunction("stopSound", [
-                { name: "sound", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (sound) {
-                sound.stopSound();
+            functionsAndTypes.addFunction("getMouseY", [], Compiler_3.NumberType, false, function () {
+                return mouseY;
+            });
+            functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
+                return mouseButtonDown;
             });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
-            return dom[0];
         };
         CanvasWorld.prototype.onEvent = function (event) {
             if (event instanceof events.Run) {
@@ -7411,7 +7427,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             var _this = this;
             if (event instanceof Events_1.SourceChanged) {
                 if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://pbs.twimg.com/profile_images/996073929000341504/2KsTl4Tj_400x400.jpg\")\nwhile true do\n\tclear(\"black\")\n\tvar start = time()\n\trepeat 200 times\n\t\tdrawLine(random() * 960, random() * 510, random() * 960, random() * 510, \"blue\")\n\t\t# drawImage(img, 100, 100, img.width, img.height)\n\tend\n\tvar took = (time() - start) / 1000\n\tdrawText(\"took: \" .. toString(took), 100, 100, 32, \"Arial\", \"red\")\n\tshow()\nend\n\t\t\t"); });
+                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\tdrawImage(img, x, y, img.width, img.height)\n\tshow()\nend\n\t\t\t"); });
                 this.sentSource = true;
             }
         };
@@ -7510,7 +7526,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_7, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7521,12 +7537,12 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         function RobotWorld(bus, noTools) {
             if (noTools === void 0) { noTools = false; }
             var _this = _super.call(this, bus) || this;
-            _this.assets = new Utils_6.AssetManager();
+            _this.assets = new Utils_7.AssetManager();
             _this.selectedTool = "Robot";
             _this.lastWidth = 0;
             _this.cellSize = 0;
             _this.drawingSize = 0;
-            _this.time = new Utils_6.TimeKeeper();
+            _this.time = new Utils_7.TimeKeeper();
             _this.isRunning = false;
             _this.noTools = false;
             _this.lastFrameTime = -1;
@@ -7558,7 +7574,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.selectedTool = value;
                 });
             }
-            this.input = new Utils_6.Input(this.canvas);
+            this.input = new Utils_7.Input(this.canvas);
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
@@ -7942,7 +7958,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_6.setElementEnabled($(element), true);
+                    Utils_7.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
@@ -7951,7 +7967,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_6.setElementEnabled($(element), false);
+                    Utils_7.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
@@ -8813,7 +8829,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_7) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_8) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -9053,7 +9069,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 return;
             }
             var internalSave = function () {
-                var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + Utils_7.escapeHtml(_this.title.val()) + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
+                var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + Utils_8.escapeHtml(_this.title.val()) + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
@@ -9106,18 +9122,18 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.setupLoginAndUser();
             }
             else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
-                Utils_7.setElementEnabled(this.save, false);
-                Utils_7.setElementEnabled(this["new"], false);
-                Utils_7.setElementEnabled(this.title, false);
+                Utils_8.setElementEnabled(this.save, false);
+                Utils_8.setElementEnabled(this["new"], false);
+                Utils_8.setElementEnabled(this.title, false);
             }
             else if (event instanceof Events_3.Stop) {
-                Utils_7.setElementEnabled(this.save, true);
-                Utils_7.setElementEnabled(this["new"], true);
-                Utils_7.setElementEnabled(this.title, true);
+                Utils_8.setElementEnabled(this.save, true);
+                Utils_8.setElementEnabled(this["new"], true);
+                Utils_8.setElementEnabled(this.title, true);
             }
             else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
-                this.title.val(Utils_7.unescapeHtml(event.project.title));
+                this.title.val(Utils_8.unescapeHtml(event.project.title));
                 if (this.loadedProject.userName != Api_2.Api.getUserName()) {
                     this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
                 }

@@ -34,16 +34,13 @@ export class CanvasPage implements EventListener {
 	onEvent(event: Event) {
 		if (event instanceof SourceChanged) {
 			if (!this.sentSource) requestAnimationFrame(() => this.editor.setSource(`
-var img = loadImage("https://pbs.twimg.com/profile_images/996073929000341504/2KsTl4Tj_400x400.jpg")
+var img = loadImage("https://avatars1.githubusercontent.com/u/514052?s=88&v=4")
+
 while true do
 	clear("black")
-	var start = time()
-	repeat 200 times
-		drawLine(random() * 960, random() * 510, random() * 960, random() * 510, "blue")
-		# drawImage(img, 100, 100, img.width, img.height)
-	end
-	var took = (time() - start) / 1000
-	drawText("took: " .. toString(took), 100, 100, 32, "Arial", "red")
+	var x = getMouseX()
+	var y = getMouseY()
+	drawImage(img, x, y, img.width, img.height)
 	show()
 end
 			`));

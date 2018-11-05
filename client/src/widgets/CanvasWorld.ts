@@ -41,14 +41,13 @@ export class CanvasWorld extends Widget {
 			requestAnimationFrame(canvasResize)
 		}
 		canvasResize();
+		this.announceExternalFunctions();
 
+		return dom[0];
+	}
+
+	announceExternalFunctions () {
 		let functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
-
-		let imageType = functionsAndTypes.addType("image", [
-			{name: "width", type: NumberType},
-			{name: "height", type: NumberType},
-			{name: "url", type: StringType}
-		], false);
 
 		functionsAndTypes.addFunction("clear", [
 			{name: "color", type: StringType}
@@ -136,6 +135,13 @@ export class CanvasWorld extends Widget {
 			ctx.fillStyle = color;
 			ctx.fillText(text,x,y);
 		});
+
+		let imageType = functionsAndTypes.addType("image", [
+			{name: "width", type: NumberType},
+			{name: "height", type: NumberType},
+			{name: "url", type: StringType}
+		], false);
+
 		functionsAndTypes.addFunction("loadImage",[
 			{name: "url", type: StringType}
 		], imageType, true, (url) => {
@@ -177,27 +183,46 @@ export class CanvasWorld extends Widget {
 			if (!image[3]) return;
 			ctx.drawImage(image[3],x,y,width,height);
 		});
-		functionsAndTypes.addFunction("loadSound",[
-			{name: "url", type: StringType}
-		], StringType,false,(url)=>{
-			var sound = new Audio();
-			sound.src = url;
 
-			return sound;
+
+		var mouseX = 0;
+		var mouseY = 0;
+		var mouseButtonDown = false;
+		// getMouseX(), getMouseY()
+		// getMouseButtonDown(): boolean
+
+		let input = new Input(this.canvas);
+		let canvas = this.canvas;
+		input.addListener({
+			down: (x, y) => {
+				mouseButtonDown = true;
+			},
+			up:  (x, y) => {
+				mouseButtonDown = false;
+
+
+			},
+			moved: (x, y) => {
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
+			},
+			dragged: (x, y) => {
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
+			}
 		});
-		functionsAndTypes.addFunction("playSound",[
-			{name: "sound", type: StringType}
-		], NothingType, false, (sound)=>{
-			sound.play();
+		functionsAndTypes.addFunction("getMouseX",[],NumberType,false,()=>{
+			return mouseX;
 		});
-		functionsAndTypes.addFunction("stopSound",[
-			{name: "sound", type: StringType}
-		], NothingType, false, (sound)=>{
-			sound.stopSound();
+		functionsAndTypes.addFunction("getMouseY",[],NumberType,false,()=>{
+			return mouseY;
+		});
+
+		functionsAndTypes.addFunction("isMouseButtonDown",[],compiler.BooleanType,false,()=>{
+			return mouseButtonDown;
 		})
-		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 
-		return dom[0];
+		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 	}
 
 	onEvent(event: events.Event) {

@@ -424,6 +424,147 @@ define("Api", ["require", "exports", "Utils"], function (require, exports, Utils
     }());
     exports.Api = Api;
 });
+define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"], function (require, exports, Widget_1, Events_1) {
+    "use strict";
+    exports.__esModule = true;
+    var DOCS = [
+        {
+            name: "Built-in functions",
+            desc: "These functions are built into the programming language and available to programs of any type.",
+            entries: [
+                {
+                    name: "<code>alert(message: string)</code>",
+                    anchor: "lang-alert-string",
+                    desc: "Opens a dialog that displays the text given in <code>message</code>."
+                },
+                {
+                    name: "<code>alert(value: number)</code>",
+                    anchor: "lang-alert-number",
+                    desc: "Opens a dialog that displays the number given in <code>value</code>."
+                },
+                {
+                    name: "<code>alert(value: boolean)</code>",
+                    anchor: "lang-alert-boolean",
+                    desc: "Opens a dialog that displays the boolean given in <code>value</code>."
+                },
+                {
+                    name: "<code>toString(value: number): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
+                },
+                {
+                    name: "<code>toString(value: boolean): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
+                },
+                {
+                    name: "<code>length(text: string): number</code>",
+                    anchor: "lang-length-string",
+                    desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
+                },
+                {
+                    name: "<code>charAt(text: string, index: number): string</code>",
+                    anchor: "lang-char-at-string-number",
+                    desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
+                },
+                {
+                    name: "<code>pause(milliSeconds: number)</code>",
+                    anchor: "lang-wait",
+                    desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
+                },
+            ],
+            subCategories: []
+        },
+        {
+            name: "Statements",
+            desc: "",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Variables",
+                    desc: "Variables are really cool.",
+                    entries: [
+                        {
+                            name: "<code>var name = value</code>",
+                            anchor: "statement-var-decl",
+                            desc: "Foo bar."
+                        },
+                        {
+                            name: "<code>name = value</code>",
+                            anchor: "statement-assignment",
+                            desc: "Foo bar."
+                        }
+                    ],
+                    subCategories: []
+                },
+            ]
+        }
+    ];
+    var Docs = (function (_super) {
+        __extends(Docs, _super);
+        function Docs(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Docs.prototype.render = function () {
+            this.dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            return this.dom[0];
+        };
+        Docs.prototype.onEvent = function (event) {
+            if (event instanceof Events_1.AnnounceDocumentation) {
+                DOCS.unshift(event.docs);
+                this.generateDocs(this.dom);
+            }
+        };
+        Docs.prototype.generateDocs = function (container) {
+            var _this = this;
+            this.dom.empty();
+            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
+            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
+            container.append(toc);
+            container.append(content);
+            DOCS.forEach(function (cat) {
+                _this.generateCategory(cat, container, toc, content, 2);
+            });
+        };
+        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
+            var _this = this;
+            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
+            cat.entries.forEach(function (entry) {
+                var link = $("<a>" + entry.name + "</a>");
+                link.click(function () {
+                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
+                    container[0].scrollTop = target.offsetTop;
+                });
+                var li = $("<li></li>");
+                li.append(link);
+                entries.append(li);
+            });
+            toc.append(entries);
+            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            content.append($(this.block(cat.desc)));
+            cat.entries.forEach(function (entry) {
+                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
+            });
+            cat.subCategories.forEach(function (childCat) {
+                _this.generateCategory(childCat, container, toc, content, depth + 1);
+            });
+        };
+        Docs.prototype.block = function (desc) {
+            if (desc.trim() == "")
+                return "";
+            try {
+                $(desc);
+                return desc;
+            }
+            catch (e) {
+                return "<p>" + desc + "</p>";
+            }
+        };
+        return Docs;
+    }(Widget_1.Widget));
+    exports.Docs = Docs;
+});
 define("widgets/Events", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -496,6 +637,13 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
         return AnnounceExternalFunctions;
     }());
     exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var AnnounceDocumentation = (function () {
+        function AnnounceDocumentation(docs) {
+            this.docs = docs;
+        }
+        return AnnounceDocumentation;
+    }());
+    exports.AnnounceDocumentation = AnnounceDocumentation;
     var BreakpointAdded = (function () {
         function BreakpointAdded(breakpoint) {
             this.breakpoint = breakpoint;
@@ -893,7 +1041,7 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_3, vm) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_2, events, Utils_3, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -1237,7 +1385,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.vmState.text(output);
         };
         return Debugger;
-    }(Widget_1.Widget));
+    }(Widget_2.Widget));
     exports.Debugger = Debugger;
 });
 define("language/Parser", ["require", "exports"], function (require, exports) {
@@ -6979,7 +7127,7 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
     }());
     exports.BenchmarkPage = BenchmarkPage;
 });
-define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_2, events, compiler, Utils_5) {
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_3, events, compiler, Utils_5) {
     "use strict";
     exports.__esModule = true;
     var CodeMirrorBreakpoint = (function () {
@@ -7199,10 +7347,10 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             this.embedUrls();
         };
         return Editor;
-    }(Widget_2.Widget));
+    }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_3, Utils_6, compiler, Compiler_3) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_3) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -7233,6 +7381,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             };
             canvasResize();
             this.announceExternalFunctions();
+            this.announceDocs();
             return dom[0];
         };
         CanvasWorld.prototype.announceExternalFunctions = function () {
@@ -7416,6 +7565,128 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
         };
+        CanvasWorld.prototype.announceDocs = function () {
+            var docs = {
+                name: "Canvas program functions & types",
+                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
+                entries: [],
+                subCategories: [
+                    {
+                        name: "Clearing and showing the canvas",
+                        desc: "These functions let you clear the canvas and show it.",
+                        entries: [
+                            {
+                                anchor: "canvas-clear",
+                                name: "<code>clear(color: string)</code>",
+                                desc: "Erases the entire canvas with the <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-show",
+                                name: "<code>show()</code>",
+                                desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing shapes",
+                        desc: "This functions let draw shapes.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-line",
+                                name: "<code>drawLine(x1: number, y1: number, x2: number, y2: number, color: string)</code>",
+                                desc: "Draws a line from <code>(x1, y1)</code> to <code>(x2, y2)</code> with the given <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-draw-rect",
+                                name: "<code>drawRectangle(x: number, y: number, width: number, height: number, color: string)</code>",
+                                desc: "Draws a filled rectangle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the rectangle. The <code>width</code> and <code>height</code> specify the size of the rectangle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-circle",
+                                name: "<code>drawCircle(x: number, y: number, radius: number, color: string)</code>",
+                                desc: "Draws a filled circle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the circle. The <code>radius</code> specifies the radius of the circle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-ellipse",
+                                name: "<code>drawEllipse(x: number, y: number, radiusX: number, radiusY: number, color: string)</code>",
+                                desc: "Draws a filled ellipse with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the ellipse. The <code>radiusX</code> and <code>radiusY</code> parameters specify the radius of the circle in pixels on the x- and y-axis respectively."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing text",
+                        desc: "This functions let draw text.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-text",
+                                name: "<code>drawText(text: string, x: number, y: number, fontSize: number, fontName: String, color: string)</code>",
+                                desc: "Draws the text with the given color, size, and font. The <code>(x, y)</code> coordinate specifies the position of the bottom left corner of the text. The <code>fontSize</code> parameter specifies the height of the text in pixels. The <code>fontName</code> specifies the name of the font, e.g. \"Arial\", or \"Helvetica\". See the <a target=\"_blank\" href=\"https://www.w3schools.com/cssref/css_websafe_fonts.asp\">safe web font list</a> for available font names. Note that this function will ignore new lines in the text!"
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Colors",
+                        desc: "These functions let create color strings from red, green, and blue color values.",
+                        entries: [
+                            {
+                                anchor: "canvas-rgb",
+                                name: "<code>rgb(red: number, green: number, blue: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>."
+                            },
+                            {
+                                anchor: "canvas-rgba",
+                                name: "<code>rgba(red: number, green: number, blue: number, alpha: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>. The <code>alpha</code> parameter specifies the opacity of the color, with <code>0</code> meaning fully transparent, and <code>255</code> meaning fully opaque."
+                            },
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Loading and drawing images",
+                        desc: "These functions let load images from the Web and draw them onto the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-load-image",
+                                name: "<code>loadImage(url: string): image</code>",
+                                desc: "Loads the image from the given <code>url</code> and returns it as an <code>image</code> record value. If loading the image failed, a dialog will be shown displaying an error."
+                            },
+                            {
+                                anchor: "canvas-draw-image",
+                                name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
+                                desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Mouse and touch input",
+                        desc: "These functions let check where the mouse cursor or finger is on the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-get-mouse-x",
+                                name: "<code>getMouseX(): number</code>",
+                                desc: "Returns the x-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-get-mouse-y",
+                                name: "<code>getMouseY(): number</code>",
+                                desc: "Returns the y-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-is-mouse-button-down",
+                                name: "<code>isMouseButtonDown(): boolean</code>",
+                                desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
+                            },
+                        ],
+                        subCategories: []
+                    }
+                ]
+            };
+            this.bus.event(new events.AnnounceDocumentation(docs));
+        };
         CanvasWorld.prototype.onEvent = function (event) {
             if (event instanceof events.Run) {
                 var ctx = this.context;
@@ -7427,15 +7698,15 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             }
         };
         return CanvasWorld;
-    }(Widget_3.Widget));
+    }(Widget_4.Widget));
     exports.CanvasWorld = CanvasWorld;
 });
-define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_1, Editor_1, Debugger_1, CanvasWorld_1) {
+define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_2, Editor_1, Debugger_1, CanvasWorld_1) {
     "use strict";
     exports.__esModule = true;
     var CanvasPage = (function () {
         function CanvasPage(parent) {
-            this.eventBus = new Events_1.EventBus();
+            this.eventBus = new Events_2.EventBus();
             this.editor = new Editor_1.Editor(this.eventBus);
             this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.canvas = new CanvasWorld_1.CanvasWorld(this.eventBus);
@@ -7453,7 +7724,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
         }
         CanvasPage.prototype.onEvent = function (event) {
             var _this = this;
-            if (event instanceof Events_1.SourceChanged) {
+            if (event instanceof Events_2.SourceChanged) {
                 if (!this.sentSource)
                     requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
                 this.sentSource = true;
@@ -7554,7 +7825,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_7, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_5, Utils_7, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7708,6 +7979,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (!this.noTools)
                 this.input.addListener(this.toolsHandler);
             this.announceExternals();
+            this.announceDocs();
             requestAnimationFrame(function () { _this.draw(0); });
             return this.container[0];
         };
@@ -7981,6 +8253,149 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             });
             this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
+        RobotWorld.prototype.announceDocs = function () {
+            var docs = {
+                name: "Robot program functions",
+                desc: "Use the below functions to create the program for your robot.",
+                entries: [],
+                subCategories: [
+                    {
+                        name: "Robot movement",
+                        desc: "Make the robot move with these functions.",
+                        entries: [
+                            {
+                                name: "<code>forward()</code>",
+                                anchor: "robot-forward",
+                                desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                            },
+                            {
+                                name: "<code>backward()</code>",
+                                anchor: "robot-backward",
+                                desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                            },
+                            {
+                                name: "<code>turnLeft()</code>",
+                                anchor: "robot-turn-left",
+                                desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
+                            },
+                            {
+                                name: "<code>turnRight()</code>",
+                                anchor: "robot-turn-right",
+                                desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot input",
+                        desc: "Let the robot read information from its environment.",
+                        entries: [
+                            {
+                                name: "<code>scanNumber(): number</code>",
+                                anchor: "robot-scan-number",
+                                desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+                            },
+                            {
+                                name: "<code>scanLetter(): string</code>",
+                                anchor: "robot-scan-letter",
+                                desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
+                            },
+                            {
+                                name: "<code>isWallAhead(): boolean</code>",
+                                anchor: "robot-is-wall-ahead",
+                                desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>isNumberAhead(): boolean</code>",
+                                anchor: "robot-is-number-ahead",
+                                desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>isLetterAhead(): boolean</code>",
+                                anchor: "robot-is-letter-ahead",
+                                desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>distanceToWall(): number</code>",
+                                anchor: "robot-distance-to-wall",
+                                desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot output",
+                        desc: "Have the robot build and print stuff on the grid.",
+                        entries: [
+                            {
+                                name: "<code>print(value: number)</code>",
+                                anchor: "robot-print-number",
+                                desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
+                            },
+                            {
+                                name: "<code>print(letter: string)</code>",
+                                anchor: "robot-print-letter",
+                                desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+                            },
+                            {
+                                name: "<code>buildWall()</code>",
+                                anchor: "robot-build-wall",
+                                desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+                            },
+                            {
+                                name: "<code>destroyWall()</code>",
+                                anchor: "robot-destroy-wall",
+                                desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot status",
+                        desc: "Check the status of the robot.",
+                        entries: [
+                            {
+                                name: "<code>getDirection(): number</code>",
+                                anchor: "robot-get-direction",
+                                desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+                            },
+                            {
+                                name: "<code>getX(): number</code>",
+                                anchor: "robot-get-x",
+                                desc: "Returns the robot's x coordinate on the grid."
+                            },
+                            {
+                                name: "<code>getY(): number</code>",
+                                anchor: "robot-get-y",
+                                desc: "Returns the robot's y coordinate on the grid."
+                            },
+                            {
+                                name: "<code>getSpeed(): number</code>",
+                                anchor: "robot-get-speed",
+                                desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                            },
+                            {
+                                name: "<code>setSpeed(cellsPerSecond: number)</code>",
+                                anchor: "robot-set-speed",
+                                desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                            },
+                            {
+                                name: "<code>getTurningSpeed(): number</code>",
+                                anchor: "robot-get-turning-speed",
+                                desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
+                            },
+                            {
+                                name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
+                                anchor: "robot-set-turning-speed",
+                                desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
+                            }
+                        ],
+                        subCategories: []
+                    }
+                ]
+            };
+            this.bus.event(new events.AnnounceDocumentation(docs));
+        };
         RobotWorld.prototype.onEvent = function (event) {
             var _this = this;
             if (event instanceof events.Stop) {
@@ -8143,7 +8558,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             ctx.restore();
         };
         return RobotWorld;
-    }(Widget_4.Widget));
+    }(Widget_5.Widget));
     exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
@@ -8450,283 +8865,6 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
-    "use strict";
-    exports.__esModule = true;
-    var DOCS = [
-        {
-            name: "Functions",
-            desc: "Use the below functions to create your program.",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Robot movement",
-                    desc: "Make the robot move with these functions.",
-                    entries: [
-                        {
-                            name: "<code>forward()</code>",
-                            anchor: "robot-forward",
-                            desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>backward()</code>",
-                            anchor: "robot-backward",
-                            desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>turnLeft()</code>",
-                            anchor: "robot-turn-left",
-                            desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
-                        },
-                        {
-                            name: "<code>turnRight()</code>",
-                            anchor: "robot-turn-right",
-                            desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot input",
-                    desc: "Let the robot read information from its environment.",
-                    entries: [
-                        {
-                            name: "<code>scanNumber(): number</code>",
-                            anchor: "robot-scan-number",
-                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
-                        },
-                        {
-                            name: "<code>scanLetter(): string</code>",
-                            anchor: "robot-scan-letter",
-                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
-                        },
-                        {
-                            name: "<code>isWallAhead(): boolean</code>",
-                            anchor: "robot-is-wall-ahead",
-                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isNumberAhead(): boolean</code>",
-                            anchor: "robot-is-number-ahead",
-                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isLetterAhead(): boolean</code>",
-                            anchor: "robot-is-letter-ahead",
-                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>distanceToWall(): number</code>",
-                            anchor: "robot-distance-to-wall",
-                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot output",
-                    desc: "Have the robot build and print stuff on the grid.",
-                    entries: [
-                        {
-                            name: "<code>print(value: number)</code>",
-                            anchor: "robot-print-number",
-                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
-                        },
-                        {
-                            name: "<code>print(letter: string)</code>",
-                            anchor: "robot-print-letter",
-                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
-                        },
-                        {
-                            name: "<code>buildWall()</code>",
-                            anchor: "robot-build-wall",
-                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
-                        },
-                        {
-                            name: "<code>destroyWall()</code>",
-                            anchor: "robot-destroy-wall",
-                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot status",
-                    desc: "Check the status of the robot.",
-                    entries: [
-                        {
-                            name: "<code>getDirection(): number</code>",
-                            anchor: "robot-get-direction",
-                            desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
-                        },
-                        {
-                            name: "<code>getX(): number</code>",
-                            anchor: "robot-get-x",
-                            desc: "Returns the robot's x coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getY(): number</code>",
-                            anchor: "robot-get-y",
-                            desc: "Returns the robot's y coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getSpeed(): number</code>",
-                            anchor: "robot-get-speed",
-                            desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>setSpeed(cellsPerSecond: number)</code>",
-                            anchor: "robot-set-speed",
-                            desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>getTurningSpeed(): number</code>",
-                            anchor: "robot-get-turning-speed",
-                            desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
-                        },
-                        {
-                            name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
-                            anchor: "robot-set-turning-speed",
-                            desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Built-in",
-                    desc: "Functions to work with different data and for communicating with the user.",
-                    entries: [
-                        {
-                            name: "<code>alert(message: string)</code>",
-                            anchor: "lang-alert-string",
-                            desc: "Opens a dialog that displays the text given in <code>message</code>."
-                        },
-                        {
-                            name: "<code>alert(value: number)</code>",
-                            anchor: "lang-alert-number",
-                            desc: "Opens a dialog that displays the number given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>alert(value: boolean)</code>",
-                            anchor: "lang-alert-boolean",
-                            desc: "Opens a dialog that displays the boolean given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>toString(value: number): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
-                        },
-                        {
-                            name: "<code>toString(value: boolean): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
-                        },
-                        {
-                            name: "<code>length(text: string): number</code>",
-                            anchor: "lang-length-string",
-                            desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
-                        },
-                        {
-                            name: "<code>charAt(text: string, index: number): string</code>",
-                            anchor: "lang-char-at-string-number",
-                            desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
-                        },
-                        {
-                            name: "<code>pause(milliSeconds: number)</code>",
-                            anchor: "lang-wait",
-                            desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
-                        },
-                    ],
-                    subCategories: []
-                }
-            ]
-        },
-        {
-            name: "Statements",
-            desc: "",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Variables",
-                    desc: "Variables are really cool.",
-                    entries: [
-                        {
-                            name: "<code>var name = value</code>",
-                            anchor: "statement-var-decl",
-                            desc: "Foo bar."
-                        },
-                        {
-                            name: "<code>name = value</code>",
-                            anchor: "statement-assignment",
-                            desc: "Foo bar."
-                        }
-                    ],
-                    subCategories: []
-                },
-            ]
-        }
-    ];
-    var Docs = (function (_super) {
-        __extends(Docs, _super);
-        function Docs(bus) {
-            return _super.call(this, bus) || this;
-        }
-        Docs.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
-            this.generateDocs(dom);
-            return dom[0];
-        };
-        Docs.prototype.onEvent = function (event) {
-        };
-        Docs.prototype.generateDocs = function (container) {
-            var _this = this;
-            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
-            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
-            container.append(toc);
-            container.append(content);
-            DOCS.forEach(function (cat) {
-                _this.generateCategory(cat, container, toc, content, 2);
-            });
-        };
-        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
-            var _this = this;
-            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
-            cat.entries.forEach(function (entry) {
-                var link = $("<a>" + entry.name + "</a>");
-                link.click(function () {
-                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
-                    container[0].scrollTop = target.offsetTop;
-                });
-                var li = $("<li></li>");
-                li.append(link);
-                entries.append(li);
-            });
-            toc.append(entries);
-            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            content.append($(this.block(cat.desc)));
-            cat.entries.forEach(function (entry) {
-                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
-            });
-            cat.subCategories.forEach(function (childCat) {
-                _this.generateCategory(childCat, container, toc, content, depth + 1);
-            });
-        };
-        Docs.prototype.block = function (desc) {
-            if (desc.trim() == "")
-                return "";
-            try {
-                $(desc);
-                return desc;
-            }
-            catch (e) {
-                return "<p>" + desc + "</p>";
-            }
-        };
-        return Docs;
-    }(Widget_5.Widget));
-    exports.Docs = Docs;
-});
 define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
     "use strict";
     exports.__esModule = true;
@@ -8745,13 +8883,13 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_2) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_3, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_2) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
         function ProjectPage(parent) {
             var _this = this;
-            this.eventBus = new Events_2.EventBus();
+            this.eventBus = new Events_3.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
             this.editor = new Editor_2.Editor(this.eventBus);
             this["debugger"] = new Debugger_2.Debugger(this.eventBus);
@@ -8842,7 +8980,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
                 _this.setupWorld(project.type);
-                _this.eventBus.event(new Events_2.ProjectLoaded(project));
+                _this.eventBus.event(new Events_3.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();
                 if (error.error == "ProjectDoesNotExist") {
@@ -8856,13 +8994,13 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             });
         };
         ProjectPage.prototype.onEvent = function (event) {
-            if (event instanceof Events_2.ProjectChanged) {
+            if (event instanceof Events_3.ProjectChanged) {
                 this.unsaved = true;
             }
-            else if (event instanceof Events_2.ProjectSaved) {
+            else if (event instanceof Events_3.ProjectSaved) {
                 this.unsaved = false;
             }
-            else if (event instanceof Events_2.ProjectLoaded) {
+            else if (event instanceof Events_3.ProjectLoaded) {
                 this.unsaved = false;
             }
         };
@@ -8870,7 +9008,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_8) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_4, Dialog_2, Api_2, Utils_8) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -8900,7 +9038,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.title = dom.find("#pb-toolbar-title");
             this.title.change(function () {
-                _this.bus.event(new Events_3.ProjectChanged());
+                _this.bus.event(new Events_4.ProjectChanged());
             });
             this.login = dom.find("#pb-toolbar-login");
             this.login.click(function (e) {
@@ -8919,7 +9057,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-logout").click(function () {
-                Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+                Api_2.Api.logout(function () { _this.bus.event(new Events_4.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
             this.setupLoginAndUser();
             window.onclick = function (event) {
@@ -9037,7 +9175,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             dialog.buttons[1].click(function () {
                 Api_2.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
-                    _this.bus.event(new Events_3.LoggedIn());
+                    _this.bus.event(new Events_4.LoggedIn());
                 }, function (invalidCode) {
                     if (invalidCode) {
                         spinner.hide();
@@ -9128,7 +9266,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
-                var saveProject = new Events_3.BeforeSaveProject({
+                var saveProject = new Events_4.BeforeSaveProject({
                     code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
                     contentObject: {},
                     content: null,
@@ -9157,7 +9295,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     _this.loadedProject.userName = Api_2.Api.getUserName();
                     dialog.hide();
                     history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
-                    _this.bus.event(new Events_3.ProjectSaved());
+                    _this.bus.event(new Events_4.ProjectSaved());
                 }, function (error) {
                     _this.serverErrorDialog();
                     dialog.hide();
@@ -9173,20 +9311,20 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         Toolbar.prototype.onEvent = function (event) {
-            if (event instanceof Events_3.LoggedIn || event instanceof Events_3.LoggedOut) {
+            if (event instanceof Events_4.LoggedIn || event instanceof Events_4.LoggedOut) {
                 this.setupLoginAndUser();
             }
-            else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
+            else if (event instanceof Events_4.Run || event instanceof Events_4.Debug) {
                 Utils_8.setElementEnabled(this.save, false);
                 Utils_8.setElementEnabled(this["new"], false);
                 Utils_8.setElementEnabled(this.title, false);
             }
-            else if (event instanceof Events_3.Stop) {
+            else if (event instanceof Events_4.Stop) {
                 Utils_8.setElementEnabled(this.save, true);
                 Utils_8.setElementEnabled(this["new"], true);
                 Utils_8.setElementEnabled(this.title, true);
             }
-            else if (event instanceof Events_3.ProjectLoaded) {
+            else if (event instanceof Events_4.ProjectLoaded) {
                 this.loadedProject = event.project;
                 this.title.val(Utils_8.unescapeHtml(event.project.title));
                 if (this.loadedProject.userName != Api_2.Api.getUserName()) {
@@ -9196,7 +9334,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     this.by.html("");
                 }
             }
-            else if (event instanceof Events_3.ProjectSaved) {
+            else if (event instanceof Events_4.ProjectSaved) {
                 this.by.hide();
             }
         };
@@ -9204,7 +9342,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_4, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_5, RobotWorld_2, Compiler_5, VirtualMachine_2) {
     "use strict";
     exports.__esModule = true;
     var Player = (function (_super) {
@@ -9212,7 +9350,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
         function Player(project, autoplay, showSourceLink, bus) {
             if (autoplay === void 0) { autoplay = false; }
             if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_4.EventBus(); }
+            if (bus === void 0) { bus = new Events_5.EventBus(); }
             var _this = _super.call(this, bus) || this;
             _this.project = project;
             _this.autoplay = autoplay;
@@ -9239,7 +9377,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                     requestAnimationFrame(advanceVm);
                 }
                 else {
-                    _this.bus.event(new Events_4.Stop());
+                    _this.bus.event(new Events_5.Stop());
                     _this.vm.restart();
                     _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                     stop.hide();
@@ -9248,7 +9386,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             };
             var run = dom.find("#pb-player-run");
             run.click(function () {
-                _this.bus.event(new Events_4.Run());
+                _this.bus.event(new Events_5.Run());
                 stop.show();
                 run.hide();
                 _this.vm.restart();
@@ -9257,7 +9395,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             var stop = dom.find("#pb-player-stop");
             stop.hide();
             stop.click(function () {
-                _this.bus.event(new Events_4.Stop());
+                _this.bus.event(new Events_5.Stop());
                 _this.vm.restart();
                 _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                 stop.hide();
@@ -9266,7 +9404,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             try {
                 var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
                 this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
-                this.bus.event(new Events_4.ProjectLoaded(this.project));
+                this.bus.event(new Events_5.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
             }
@@ -9277,7 +9415,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_4.AnnounceExternalFunctions) {
+            if (event instanceof Events_5.AnnounceExternalFunctions) {
                 this.extFuncs = event.functions;
             }
         };
@@ -9285,13 +9423,13 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_8.Widget));
     exports.Player = Player;
 });
-define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_5, RobotWorld_3) {
+define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_6, RobotWorld_3) {
     "use strict";
     exports.__esModule = true;
     var ProjectPreview = (function (_super) {
         __extends(ProjectPreview, _super);
         function ProjectPreview(project) {
-            var _this = _super.call(this, new Events_5.EventBus()) || this;
+            var _this = _super.call(this, new Events_6.EventBus()) || this;
             _this.project = project;
             _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
             _this.world.setWorldData(project.contentObject.world);
@@ -9310,12 +9448,12 @@ define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widge
     }(Widget_9.Widget));
     exports.ProjectPreview = ProjectPreview;
 });
-define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_6, Toolbar_2) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_7, Toolbar_2) {
     "use strict";
     exports.__esModule = true;
     var DevsPage = (function () {
         function DevsPage(parent) {
-            this.eventBus = new Events_6.EventBus();
+            this.eventBus = new Events_7.EventBus();
             this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -9344,12 +9482,12 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_7, Toolbar_3, Api_4, Dialog_4, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_3, Api_4, Dialog_4, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_7.EventBus();
+            this.eventBus = new Events_8.EventBus();
             this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -9381,12 +9519,12 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_4) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_9, Toolbar_4) {
     "use strict";
     exports.__esModule = true;
     var LearnPage = (function () {
         function LearnPage(parent) {
-            this.eventBus = new Events_8.EventBus();
+            this.eventBus = new Events_9.EventBus();
             this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -9401,13 +9539,13 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_5, Api_5, Dialog_5, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_10, Toolbar_5, Api_5, Dialog_5, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
             var _this = this;
-            this.eventBus = new Events_9.EventBus();
+            this.eventBus = new Events_10.EventBus();
             this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);

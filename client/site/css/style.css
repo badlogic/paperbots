@@ -31,6 +31,11 @@ a {
     background-color: transparent;
 }
 
+pre {
+	background: #333333;
+	overflow: auto;
+}
+
 code {
 	padding: 0.2em 0.4em;
     margin: 0;
@@ -392,10 +397,10 @@ WIDGET STYLES
 
 /* Canvas world widget styles */
 #pb-canvas-world {
-	user-select: none !important;
-	max-width: 960px;
-	max-height: 510px;
-	width: 100%;
+    max-width: 990px;
+    max-height: 510px;
+    width: 100%;
+    padding: 0 15px;
 }
 #pb-canvas-world canvas {
 	/*image-rendering: pixelated;*/

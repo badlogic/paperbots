@@ -4,6 +4,7 @@ import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } fro
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
 import { BooleanType, StringType, NumberType, NothingType } from "../language/Compiler";
+import { DocCategory } from "./Docs";
 
 function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);
@@ -166,6 +167,7 @@ export class RobotWorld extends Widget {
 		};
 		if (!this.noTools) this.input.addListener(this.toolsHandler);
 		this.announceExternals();
+		this.announceDocs()
 		requestAnimationFrame(() => { this.draw(0); });
 		return this.container[0];
 	}
@@ -442,6 +444,150 @@ export class RobotWorld extends Widget {
 		});
 
 		this.bus.event(new events.AnnounceExternalFunctions(ext));
+	}
+
+	announceDocs () {
+		let docs: DocCategory = {
+			name: "Robot program functions",
+			desc: "Use the below functions to create the program for your robot.",
+			entries: [],
+			subCategories: [
+				{
+					name: "Robot movement",
+					desc: "Make the robot move with these functions.",
+					entries: [
+						{
+							name: "<code>forward()</code>",
+							anchor: "robot-forward",
+							desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+						},
+						{
+							name: "<code>backward()</code>",
+							anchor: "robot-backward",
+							desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+						},
+						{
+							name: "<code>turnLeft()</code>",
+							anchor: "robot-turn-left",
+							desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
+						},
+						{
+							name: "<code>turnRight()</code>",
+							anchor: "robot-turn-right",
+							desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+						}
+					],
+					subCategories: []
+				},
+				{
+					name: "Robot input",
+					desc: "Let the robot read information from its environment.",
+					entries: [
+						{
+							name: "<code>scanNumber(): number</code>",
+							anchor: "robot-scan-number",
+							desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+						},
+						{
+							name: "<code>scanLetter(): string</code>",
+							anchor: "robot-scan-letter",
+							desc: `Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>""</code> is returned.`
+						},
+						{
+							name: "<code>isWallAhead(): boolean</code>",
+							anchor: "robot-is-wall-ahead",
+							desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+						},
+						{
+							name: "<code>isNumberAhead(): boolean</code>",
+							anchor: "robot-is-number-ahead",
+							desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+						},
+						{
+							name: "<code>isLetterAhead(): boolean</code>",
+							anchor: "robot-is-letter-ahead",
+							desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+						},
+						{
+							name: "<code>distanceToWall(): number</code>",
+							anchor: "robot-distance-to-wall",
+							desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+						}
+					],
+					subCategories: []
+				},
+				{
+					name: "Robot output",
+					desc: "Have the robot build and print stuff on the grid.",
+					entries: [
+						{
+							name: "<code>print(value: number)</code>",
+							anchor: "robot-print-number",
+							desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
+						},
+						{
+							name: "<code>print(letter: string)</code>",
+							anchor: "robot-print-letter",
+							desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+						},
+						{
+							name: "<code>buildWall()</code>",
+							anchor: "robot-build-wall",
+							desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+						},
+						{
+							name: "<code>destroyWall()</code>",
+							anchor: "robot-destroy-wall",
+							desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
+						}
+					],
+					subCategories: []
+				},
+				{
+					name: "Robot status",
+					desc: "Check the status of the robot.",
+					entries: [
+						{
+							name: "<code>getDirection(): number</code>",
+							anchor: "robot-get-direction",
+							desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+						},
+						{
+							name: "<code>getX(): number</code>",
+							anchor: "robot-get-x",
+							desc: "Returns the robot's x coordinate on the grid."
+						},
+						{
+							name: "<code>getY(): number</code>",
+							anchor: "robot-get-y",
+							desc: "Returns the robot's y coordinate on the grid."
+						},
+						{
+							name: "<code>getSpeed(): number</code>",
+							anchor: "robot-get-speed",
+							desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+						},
+						{
+							name: "<code>setSpeed(cellsPerSecond: number)</code>",
+							anchor: "robot-set-speed",
+							desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+						},
+						{
+							name: "<code>getTurningSpeed(): number</code>",
+							anchor: "robot-get-turning-speed",
+							desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
+						},
+						{
+							name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
+							anchor: "robot-set-turning-speed",
+							desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
+						}
+					],
+					subCategories: []
+				}
+			]
+		}
+		this.bus.event(new events.AnnounceDocumentation(docs));
 	}
 
 	onEvent(event: Event) {

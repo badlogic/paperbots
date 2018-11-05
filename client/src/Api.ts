@@ -149,6 +149,10 @@ export class Api {
 		return escapeHtml(this.getUrlParameter("id"));
 	}
 
+	public static getProjectType() {
+		return escapeHtml(this.getUrlParameter("type"));
+	}
+
 	public static getUserId() {
 		return escapeHtml(this.getUrlParameter("id"));
 	}

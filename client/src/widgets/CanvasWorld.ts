@@ -230,6 +230,8 @@ export class CanvasWorld extends Widget {
 			let ctx = this.context;
 			ctx.fillStyle = "black";
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		} else if (event instanceof events.BeforeSaveProject) {
+			event.project.type = "canvas";
 		}
 	}
 }

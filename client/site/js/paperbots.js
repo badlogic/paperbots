@@ -395,6 +395,9 @@ define("Api", ["require", "exports", "Utils"], function (require, exports, Utils
         Api.getProjectId = function () {
             return Utils_1.escapeHtml(this.getUrlParameter("id"));
         };
+        Api.getProjectType = function () {
+            return Utils_1.escapeHtml(this.getUrlParameter("type"));
+        };
         Api.getUserId = function () {
             return Utils_1.escapeHtml(this.getUrlParameter("id"));
         };
@@ -7398,6 +7401,9 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ctx.fillStyle = "black";
                 ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             }
+            else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "canvas";
+            }
         };
         return CanvasWorld;
     }(Widget_3.Widget));
@@ -7980,6 +7986,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(function () { _this.draw(0); });
             }
             else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "robot";
                 event.project.contentObject.type = "robot";
                 event.project.contentObject.world = this.world.data;
                 requestAnimationFrame(function () { _this.draw(0); });
@@ -8717,7 +8724,7 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_6.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_2) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
@@ -8727,7 +8734,6 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
             this.editor = new Editor_2.Editor(this.eventBus);
             this["debugger"] = new Debugger_2.Debugger(this.eventBus);
-            this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.unsaved = false;
@@ -8735,7 +8741,6 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
-            this.eventBus.addListener(this.playground);
             this.eventBus.addListener(this.docs);
             this.eventBus.addListener(this.desc);
             var dom = $("\n\t\t\t<div id=\"pb-project-page\">\n\t\t\t</div>\n\t\t");
@@ -8773,15 +8778,17 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             editorAndDocs.append(helpLabel);
             editorAndDocs.append(help);
             editorAndDebugger.append(editorAndDocs);
-            var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-world-and-comments\">\n\t\t\t</div>\n\t\t");
-            playgroundAndDescription.append(this.playground.render());
-            playgroundAndDescription.append(this.desc.render());
-            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
+            this.playgroundAndDescription = $("\n\t\t\t<div id=\"pb-world-and-comments\">\n\t\t\t</div>\n\t\t");
+            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, this.playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
             var projectId = Api_1.Api.getProjectId();
             if (projectId) {
                 this.loadProject(projectId);
+            }
+            else {
+                var projectType = Api_1.Api.getProjectType();
+                this.setupWorld(projectType);
             }
             window.onbeforeunload = function () {
                 if (window.location.host == "localhost:8001")
@@ -8794,6 +8801,17 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
                 }
             };
         }
+        ProjectPage.prototype.setupWorld = function (projectType) {
+            if (projectType === "canvas") {
+                this.microWorld = new CanvasWorld_2.CanvasWorld(this.eventBus);
+            }
+            else {
+                this.microWorld = new RobotWorld_1.RobotWorld(this.eventBus);
+            }
+            this.eventBus.addListener(this.microWorld);
+            this.playgroundAndDescription.append(this.microWorld.render());
+            this.playgroundAndDescription.append(this.desc.render());
+        };
         ProjectPage.prototype.loadProject = function (id) {
             var _this = this;
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
@@ -8802,6 +8820,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             dialog.show();
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
+                _this.setupWorld(project.type);
                 _this.eventBus.event(new Events_2.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();

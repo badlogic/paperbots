@@ -466,6 +466,7 @@ export class RobotWorld extends Widget {
 			this.world = new World(event.project.contentObject.world);
 			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.BeforeSaveProject) {
+			event.project.type = "robot";
 			event.project.contentObject.type = "robot";
 			event.project.contentObject.world = this.world.data;
 			requestAnimationFrame(() => {this.draw(0)});

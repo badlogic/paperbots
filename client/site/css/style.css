@@ -391,8 +391,16 @@ WIDGET STYLES
 }
 
 /* Canvas world widget styles */
+#pb-canvas-world {
+	user-select: none !important;
+	max-width: 960px;
+	max-height: 510px;
+	width: 100%;
+}
 #pb-canvas-world canvas {
 	/*image-rendering: pixelated;*/
+	width: 100%;
+	background: black;
 }
 
 /** Docs styles */

@@ -472,6 +472,16 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"
                     anchor: "lang-wait",
                     desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
                 },
+                {
+                    name: "<code>time(): number</code>",
+                    anchor: "lang-time",
+                    desc: "Returns the time in seconds since the web site started to load."
+                },
+                {
+                    name: "<code>random(): number</code>",
+                    anchor: "lang-random",
+                    desc: "Returns a random number between <code>0<code> and <code>1</code>."
+                }
             ],
             subCategories: []
         },
@@ -7520,9 +7530,13 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             input.addListener({
                 down: function (x, y) {
                     mouseButtonDown = true;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
                 },
                 up: function (x, y) {
                     mouseButtonDown = false;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
                 },
                 moved: function (x, y) {
                     mouseX = x / $(canvas).width() * canvas.width;
@@ -7564,6 +7578,16 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
             });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
+        };
+        CanvasWorld.prototype.onEvent = function (event) {
+            if (event instanceof events.Run) {
+                var ctx = this.context;
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "canvas";
+            }
         };
         CanvasWorld.prototype.announceDocs = function () {
             var docs = {
@@ -7691,16 +7715,6 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ]
             };
             this.bus.event(new events.AnnounceDocumentation(docs));
-        };
-        CanvasWorld.prototype.onEvent = function (event) {
-            if (event instanceof events.Run) {
-                var ctx = this.context;
-                ctx.fillStyle = "black";
-                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            }
-            else if (event instanceof events.BeforeSaveProject) {
-                event.project.type = "canvas";
-            }
         };
         return CanvasWorld;
     }(Widget_4.Widget));

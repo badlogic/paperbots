@@ -59,6 +59,16 @@ const DOCS: DocCategory[] = [
 				anchor: "lang-wait",
 				desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
 			},
+			{
+				name: "<code>time(): number</code>",
+				anchor: "lang-time",
+				desc: "Returns the time in seconds since the web site started to load."
+			},
+			{
+				name: "<code>random(): number</code>",
+				anchor: "lang-random",
+				desc: "Returns a random number between <code>0<code> and <code>1</code>."
+			}
 		],
 		subCategories: []
 	},

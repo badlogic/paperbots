@@ -198,11 +198,13 @@ export class CanvasWorld extends Widget {
 		input.addListener({
 			down: (x, y) => {
 				mouseButtonDown = true;
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
 			},
 			up:  (x, y) => {
 				mouseButtonDown = false;
-
-
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
 			},
 			moved: (x, y) => {
 				mouseX = x / $(canvas).width() * canvas.width;
@@ -248,6 +250,16 @@ export class CanvasWorld extends Widget {
 		});
 
 		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
+	}
+
+	onEvent(event: events.Event) {
+		if (event instanceof events.Run) {
+			let ctx = this.context;
+			ctx.fillStyle = "black";
+			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		} else if (event instanceof events.BeforeSaveProject) {
+			event.project.type = "canvas";
+		}
 	}
 
 	announceDocs () {
@@ -389,7 +401,7 @@ end</code>
 							anchor: "canvas-draw-image",
 							name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
 							desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
-						}
+						},
 						{
 							anchor: "canvas-image",
 							name: "<code>record image</code>",
@@ -432,15 +444,5 @@ end</code>
 			]
 		}
 		this.bus.event(new events.AnnounceDocumentation(docs));
-	}
-
-	onEvent(event: events.Event) {
-		if (event instanceof events.Run) {
-			let ctx = this.context;
-			ctx.fillStyle = "black";
-			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-		} else if (event instanceof events.BeforeSaveProject) {
-			event.project.type = "canvas";
-		}
 	}
 }

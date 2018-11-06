@@ -63,6 +63,22 @@ export class Input {
 				this.buttonDown = false;
 			}
 		}, true);
+		element.addEventListener("mouseleave", (ev: UIEvent) => {
+			if (ev instanceof MouseEvent) {
+				let rect = element.getBoundingClientRect();
+				let x = ev.clientX - rect.left;
+				let y = ev.clientY - rect.top;
+
+				let listeners = this.listeners;
+				for (let i = 0; i < listeners.length; i++) {
+					listeners[i].up(x, y);
+				}
+
+				this.lastX = x;
+				this.lastY = y;
+				this.buttonDown = false;
+			}
+		}, true);
 		element.addEventListener("touchstart", (ev: TouchEvent) => {
 			if (this.currTouch != null) return;
 

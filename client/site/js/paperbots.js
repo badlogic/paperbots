@@ -72,6 +72,20 @@ define("Utils", ["require", "exports"], function (require, exports) {
                     _this.buttonDown = false;
                 }
             }, true);
+            element.addEventListener("mouseleave", function (ev) {
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
             element.addEventListener("touchstart", function (ev) {
                 if (_this.currTouch != null)
                     return;

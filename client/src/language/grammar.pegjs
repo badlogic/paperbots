@@ -341,7 +341,7 @@ FieldAccess
   }
 
 ArrayAccess
-  = "[" _ index: Expression _ "]"
+  = _ "[" _ index: Expression _ "]" _
   {
   	return {
     	kind: "arrayAccess",
@@ -352,7 +352,7 @@ ArrayAccess
   }
 
 Arguments "arguments"
-  = "(" _ args:(Expression ( _ "," _ Expression )* ) ? _ ")"
+  = _ "(" _ args:(Expression ( _ "," _ Expression )* ) ? _ ")" _
   {
     if (args == null) return { kind: "arguments", args: [] };
     var head = args[0];

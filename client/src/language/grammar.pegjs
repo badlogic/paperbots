@@ -15,9 +15,12 @@ Comment
   }
 
 Type
-  = id:Identifier
+  = id:Identifier elementType:(_"<"_ Type _ ">")?
   {
-    return { id: id };
+    return {
+      id: id,
+      elementType: elementType != null ? elementType[3] : null
+    };
   }
 
 Function "function"
@@ -282,6 +285,7 @@ Unary
 
 Factor
   = "(" _ expr:Expression _ ")" { return expr; }
+  / List
   / Number
   / Boolean
   / String
@@ -359,6 +363,22 @@ Arguments "arguments"
     return {
     	kind: "arguments",
     	args: args
+    };
+  }
+
+List "list"
+  = "[" _ args:(Expression ( _ "," _ Expression )* ) ? _ "]"
+  {
+    if (args == null) return { kind: "list", args: [], location: location() };
+    var head = args[0];
+    args = args[1].map(function(element) {
+      return element[3];
+    })
+	  args.unshift(head);
+    return {
+    	kind: "list",
+    	values: args,
+      location: location()
     };
   }
 

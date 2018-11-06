@@ -48,6 +48,7 @@ export class Input {
 			}
 		}, true);
 		element.addEventListener("mouseup", (ev: UIEvent) => {
+			if (!this.buttonDown) return;
 			if (ev instanceof MouseEvent) {
 				let rect = element.getBoundingClientRect();
 				let x = ev.clientX - rect.left;

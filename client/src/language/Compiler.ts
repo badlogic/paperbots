@@ -38,6 +38,11 @@ export interface NumberLiteral extends Expression {
 	value: number
 }
 
+export interface ListLiteral extends Expression {
+	kind: "list",
+	values: Expression[]
+}
+
 export interface VariableAccess extends Expression {
 	kind: "variableAccess",
 	name: Identifier
@@ -103,6 +108,7 @@ export interface Assignment extends BaseNode {
 
 export interface TypeName {
 	id: Identifier
+	elementType?: TypeName;
 }
 
 export interface VariableDecl extends BaseNode {
@@ -168,6 +174,7 @@ type AstNode =
 	|	StringLiteral
 	|	BooleanLiteral
 	|	NumberLiteral
+	|	ListLiteral
 	|	VariableAccess
 	|	FunctionCall
 	|	FieldAccess
@@ -225,9 +232,9 @@ export interface Field {
 	type: Type
 }
 
-export interface ArrayType extends BaseType {
-	kind: "array"
-	// TODO Implement
+export interface ListType extends BaseType {
+	kind: "list"
+	elmentType: Type;
 }
 
 export const NothingType: PrimitiveType = {
@@ -250,7 +257,7 @@ export const StringType: PrimitiveType = {
 	signature: "string"
 };
 
-export type Type = PrimitiveType | FunctionType | RecordType | ArrayType;
+export type Type = PrimitiveType | FunctionType | RecordType | ListType;
 
 export class Types {
 	private all: Map<Type> = { }
@@ -325,6 +332,27 @@ export class Types {
 		})
 		sig += ")";
 		return sig;
+	}
+
+	static typeNameSignature(typeName: TypeName) {
+		if (!typeName.elementType) return typeName.id.value;
+		var signature = "list<"
+		let elementType = typeName.elementType;
+		var nestingLevel = 1
+		while (true) {
+			signature += "list<"
+			if (elementType.elementType) {
+				elementType = elementType.elementType;
+			} else {
+				break;
+			}
+		}
+		signature += elementType.id.value;
+		while(nestingLevel > 0) {
+			signature += ">";
+			nestingLevel--;
+		}
+		return signature;
 	}
 }
 
@@ -884,7 +912,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		case "variable":
 			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.typeName) {
-				let type = types.get(node.typeName.id.value);
+				let type = types.get(Types.typeNameSignature(node.typeName));
 				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
 				if (type != node.value.type) throw new CompilerError(`Can't assign a value of type '${node.value.type.signature}' to variable '${node.name.value}' with type '${type.signature}.`, node.value.location);
 				node.type = type;

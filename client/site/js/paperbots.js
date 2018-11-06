@@ -59,6 +59,8 @@ define("Utils", ["require", "exports"], function (require, exports) {
                 }
             }, true);
             element.addEventListener("mouseup", function (ev) {
+                if (!_this.buttonDown)
+                    return;
                 if (ev instanceof MouseEvent) {
                     var rect = element.getBoundingClientRect();
                     var x = ev.clientX - rect.left;
@@ -6728,6 +6730,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "string":
                 node.type = exports.StringType;
                 break;
+            case "list":
+                throw new CompilerError("List literals not implemented yet.", node.location);
             case "unaryOp":
                 typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 switch (node.operator) {
@@ -7002,6 +7006,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         statements.forEach(function (stmt) {
             emitAstNode(stmt, context, true);
             switch (stmt.kind) {
+                case "list":
+                    throw new CompilerError("List literals not implemented yet.", stmt.location);
                 case "number":
                 case "boolean":
                 case "string":
@@ -7076,6 +7082,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         var lastInsIndex = instructions.length;
         var lineInfos = fun.lineInfos;
         switch (node.kind) {
+            case "list":
+                throw new CompilerError("List literals not implemented yet.", node.location);
             case "number":
             case "boolean":
             case "string":

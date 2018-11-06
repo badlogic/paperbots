@@ -817,6 +817,10 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			node.type = StringType;
 			break;
 
+		case "list":
+			// TODO
+			throw new CompilerError(`List literals not implemented yet.`, node.location);
+
 		case "unaryOp":
 			typeCheckRec((node.value as AstNode), types, scopes, enclosingFun, enclosingLoop);
 			switch(node.operator) {
@@ -1091,6 +1095,10 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 		// Check if this is a node that leaves a value on the stack
 		// so we can insert a pop
 		switch(stmt.kind) {
+			case "list":
+				// TODO
+				throw new CompilerError(`List literals not implemented yet.`, stmt.location);
+
 			case "number":
 			case "boolean":
 			case "string":
@@ -1172,6 +1180,9 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 	let lineInfos = fun.lineInfos;
 
 	switch(node.kind) {
+		case "list":
+			// TODO
+			throw new CompilerError(`List literals not implemented yet.`, node.location);
 		case "number":
 		case "boolean":
 		case "string":
@@ -1226,7 +1237,6 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 				for (; fieldIndex < recordType.fields.length; fieldIndex++) {
 					if (recordType.fields[fieldIndex].name == fieldAccess.name.value) break;
 				}
-				// TODO deep copy assignment of record types
 				instructions.push({kind: "storeField", fieldIndex: fieldIndex});
 				emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			} else if (node.left.kind == "arrayAccess") {

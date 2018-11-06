@@ -7199,7 +7199,284 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_2.Widget));
     exports.Editor = Editor;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_3, Utils_6, compiler, Compiler_3) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_3) {
+    "use strict";
+    exports.__esModule = true;
+    var DOCS = [
+        {
+            name: "Functions",
+            desc: "Use the below functions to create your program.",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Robot movement",
+                    desc: "Make the robot move with these functions.",
+                    entries: [
+                        {
+                            name: "<code>forward()</code>",
+                            anchor: "robot-forward",
+                            desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                        },
+                        {
+                            name: "<code>backward()</code>",
+                            anchor: "robot-backward",
+                            desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                        },
+                        {
+                            name: "<code>turnLeft()</code>",
+                            anchor: "robot-turn-left",
+                            desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
+                        },
+                        {
+                            name: "<code>turnRight()</code>",
+                            anchor: "robot-turn-right",
+                            desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot input",
+                    desc: "Let the robot read information from its environment.",
+                    entries: [
+                        {
+                            name: "<code>scanNumber(): number</code>",
+                            anchor: "robot-scan-number",
+                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+                        },
+                        {
+                            name: "<code>scanLetter(): string</code>",
+                            anchor: "robot-scan-letter",
+                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
+                        },
+                        {
+                            name: "<code>isWallAhead(): boolean</code>",
+                            anchor: "robot-is-wall-ahead",
+                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isNumberAhead(): boolean</code>",
+                            anchor: "robot-is-number-ahead",
+                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>isLetterAhead(): boolean</code>",
+                            anchor: "robot-is-letter-ahead",
+                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                        },
+                        {
+                            name: "<code>distanceToWall(): number</code>",
+                            anchor: "robot-distance-to-wall",
+                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot output",
+                    desc: "Have the robot build and print stuff on the grid.",
+                    entries: [
+                        {
+                            name: "<code>print(value: number)</code>",
+                            anchor: "robot-print-number",
+                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
+                        },
+                        {
+                            name: "<code>print(letter: string)</code>",
+                            anchor: "robot-print-letter",
+                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+                        },
+                        {
+                            name: "<code>buildWall()</code>",
+                            anchor: "robot-build-wall",
+                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+                        },
+                        {
+                            name: "<code>destroyWall()</code>",
+                            anchor: "robot-destroy-wall",
+                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Robot status",
+                    desc: "Check the status of the robot.",
+                    entries: [
+                        {
+                            name: "<code>getDirection(): number</code>",
+                            anchor: "robot-get-direction",
+                            desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+                        },
+                        {
+                            name: "<code>getX(): number</code>",
+                            anchor: "robot-get-x",
+                            desc: "Returns the robot's x coordinate on the grid."
+                        },
+                        {
+                            name: "<code>getY(): number</code>",
+                            anchor: "robot-get-y",
+                            desc: "Returns the robot's y coordinate on the grid."
+                        },
+                        {
+                            name: "<code>getSpeed(): number</code>",
+                            anchor: "robot-get-speed",
+                            desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                        },
+                        {
+                            name: "<code>setSpeed(cellsPerSecond: number)</code>",
+                            anchor: "robot-set-speed",
+                            desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                        },
+                        {
+                            name: "<code>getTurningSpeed(): number</code>",
+                            anchor: "robot-get-turning-speed",
+                            desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
+                        },
+                        {
+                            name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
+                            anchor: "robot-set-turning-speed",
+                            desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
+                        }
+                    ],
+                    subCategories: []
+                },
+                {
+                    name: "Built-in",
+                    desc: "Functions to work with different data and for communicating with the user.",
+                    entries: [
+                        {
+                            name: "<code>alert(message: string)</code>",
+                            anchor: "lang-alert-string",
+                            desc: "Opens a dialog that displays the text given in <code>message</code>."
+                        },
+                        {
+                            name: "<code>alert(value: number)</code>",
+                            anchor: "lang-alert-number",
+                            desc: "Opens a dialog that displays the number given in <code>value</code>."
+                        },
+                        {
+                            name: "<code>alert(value: boolean)</code>",
+                            anchor: "lang-alert-boolean",
+                            desc: "Opens a dialog that displays the boolean given in <code>value</code>."
+                        },
+                        {
+                            name: "<code>toString(value: number): string</code>",
+                            anchor: "lang-to-string-number",
+                            desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
+                        },
+                        {
+                            name: "<code>toString(value: boolean): string</code>",
+                            anchor: "lang-to-string-number",
+                            desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
+                        },
+                        {
+                            name: "<code>length(text: string): number</code>",
+                            anchor: "lang-length-string",
+                            desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
+                        },
+                        {
+                            name: "<code>charAt(text: string, index: number): string</code>",
+                            anchor: "lang-char-at-string-number",
+                            desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
+                        },
+                        {
+                            name: "<code>pause(milliSeconds: number)</code>",
+                            anchor: "lang-wait",
+                            desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
+                        },
+                    ],
+                    subCategories: []
+                }
+            ]
+        },
+        {
+            name: "Statements",
+            desc: "",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Variables",
+                    desc: "Variables are really cool.",
+                    entries: [
+                        {
+                            name: "<code>var name = value</code>",
+                            anchor: "statement-var-decl",
+                            desc: "Foo bar."
+                        },
+                        {
+                            name: "<code>name = value</code>",
+                            anchor: "statement-assignment",
+                            desc: "Foo bar."
+                        }
+                    ],
+                    subCategories: []
+                },
+            ]
+        }
+    ];
+    var Docs = (function (_super) {
+        __extends(Docs, _super);
+        function Docs(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Docs.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            this.generateDocs(dom);
+            return dom[0];
+        };
+        Docs.prototype.onEvent = function (event) {
+        };
+        Docs.prototype.generateDocs = function (container) {
+            var _this = this;
+            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
+            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
+            container.append(toc);
+            container.append(content);
+            DOCS.forEach(function (cat) {
+                _this.generateCategory(cat, container, toc, content, 2);
+            });
+        };
+        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
+            var _this = this;
+            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
+            cat.entries.forEach(function (entry) {
+                var link = $("<a>" + entry.name + "</a>");
+                link.click(function () {
+                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
+                    container[0].scrollTop = target.offsetTop;
+                });
+                var li = $("<li></li>");
+                li.append(link);
+                entries.append(li);
+            });
+            toc.append(entries);
+            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            content.append($(this.block(cat.desc)));
+            cat.entries.forEach(function (entry) {
+                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
+            });
+            cat.subCategories.forEach(function (childCat) {
+                _this.generateCategory(childCat, container, toc, content, depth + 1);
+            });
+        };
+        Docs.prototype.block = function (desc) {
+            if (desc.trim() == "")
+                return "";
+            try {
+                $(desc);
+                return desc;
+            }
+            catch (e) {
+                return "<p>" + desc + "</p>";
+            }
+        };
+        return Docs;
+    }(Widget_3.Widget));
+    exports.Docs = Docs;
+});
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_3) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -7368,9 +7645,13 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             input.addListener({
                 down: function (x, y) {
                     mouseButtonDown = true;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
                 },
                 up: function (x, y) {
                     mouseButtonDown = false;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
                 },
                 moved: function (x, y) {
                     mouseX = x / $(canvas).width() * canvas.width;
@@ -7390,6 +7671,99 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
                 return mouseButtonDown;
             });
+            functionsAndTypes.addFunction("rgb", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue));
+                return "rgb(" + red + ", " + green + ", " + blue + ")";
+            });
+            functionsAndTypes.addFunction("rgba", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType },
+                { name: "alpha", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue)) / 255;
+                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
+            });
+            var soundType = functionsAndTypes.addType("sound", [
+                { name: "url", type: Compiler_3.StringType },
+                { name: "duration", type: Compiler_3.NumberType },
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "rate", type: Compiler_3.NumberType }
+            ], false);
+            functionsAndTypes.addFunction("loadSound", [
+                { name: "url", type: Compiler_3.StringType }
+            ], soundType, true, function (url) {
+                var sound = new Howl({
+                    src: [url, url]
+                });
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                sound.on("load", function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = sound;
+                    asyncResult.value = record;
+                });
+                sound.on("loaderror", function () {
+                    alert("Couldn't load sound " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = new Howl({
+                        src: [url, url]
+                    });
+                    asyncResult.value = record;
+                });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("playSound", [
+                { name: "sound", type: soundType }
+            ], Compiler_3.NumberType, false, function (sound) {
+                return sound[sound.length - 1].play();
+            });
+            functionsAndTypes.addFunction("stopSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].stop(soundId);
+            });
+            functionsAndTypes.addFunction("pauseSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].pause(soundId);
+            });
+            functionsAndTypes.addFunction("setVolume", [
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (volume, sound, soundId) {
+                sound[sound.length - 1].volume(volume, soundId);
+            });
+            functionsAndTypes.addFunction("setRate", [
+                { name: "rate", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (rate, sound, soundId) {
+                sound[sound.length - 1].rate(rate, soundId);
+            });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
         };
         CanvasWorld.prototype.onEvent = function (event) {
@@ -7398,9 +7772,12 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 ctx.fillStyle = "black";
                 ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             }
+            else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "canvas";
+            }
         };
         return CanvasWorld;
-    }(Widget_3.Widget));
+    }(Widget_4.Widget));
     exports.CanvasWorld = CanvasWorld;
 });
 define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_1, Editor_1, Debugger_1, CanvasWorld_1) {
@@ -7428,7 +7805,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             var _this = this;
             if (event instanceof Events_1.SourceChanged) {
                 if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
+                    requestAnimationFrame(function () { return _this.editor.setSource("\n\t\t\tvar sound = loadSound(\"http://mo.flussbuero.at/music/hochgeladenes/do.mp3\")\n\t\t\tvar id  = playSound(sound)\n\t\t\tpause(5000)\n\t\t\tsetVolume(0.5,sound,id)\n\t\t\tpause(5000)\n\t\t\tsetVolume(1,sound,id)\n\t\t\tsetRate(2,sound,id)\n\t\t\tstopSound(sound,id)"); });
                 this.sentSource = true;
             }
         };
@@ -7527,7 +7904,7 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
     }());
     exports.Dialog = Dialog;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_7, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_5, Utils_7, compiler, Compiler_4) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -8115,7 +8492,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             ctx.restore();
         };
         return RobotWorld;
-    }(Widget_4.Widget));
+    }(Widget_5.Widget));
     exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
@@ -8421,283 +8798,6 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
         return SplitPane;
     }());
     exports.SplitPane = SplitPane;
-});
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
-    "use strict";
-    exports.__esModule = true;
-    var DOCS = [
-        {
-            name: "Functions",
-            desc: "Use the below functions to create your program.",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Robot movement",
-                    desc: "Make the robot move with these functions.",
-                    entries: [
-                        {
-                            name: "<code>forward()</code>",
-                            anchor: "robot-forward",
-                            desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>backward()</code>",
-                            anchor: "robot-backward",
-                            desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>turnLeft()</code>",
-                            anchor: "robot-turn-left",
-                            desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
-                        },
-                        {
-                            name: "<code>turnRight()</code>",
-                            anchor: "robot-turn-right",
-                            desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot input",
-                    desc: "Let the robot read information from its environment.",
-                    entries: [
-                        {
-                            name: "<code>scanNumber(): number</code>",
-                            anchor: "robot-scan-number",
-                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
-                        },
-                        {
-                            name: "<code>scanLetter(): string</code>",
-                            anchor: "robot-scan-letter",
-                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
-                        },
-                        {
-                            name: "<code>isWallAhead(): boolean</code>",
-                            anchor: "robot-is-wall-ahead",
-                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isNumberAhead(): boolean</code>",
-                            anchor: "robot-is-number-ahead",
-                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isLetterAhead(): boolean</code>",
-                            anchor: "robot-is-letter-ahead",
-                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>distanceToWall(): number</code>",
-                            anchor: "robot-distance-to-wall",
-                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot output",
-                    desc: "Have the robot build and print stuff on the grid.",
-                    entries: [
-                        {
-                            name: "<code>print(value: number)</code>",
-                            anchor: "robot-print-number",
-                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
-                        },
-                        {
-                            name: "<code>print(letter: string)</code>",
-                            anchor: "robot-print-letter",
-                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
-                        },
-                        {
-                            name: "<code>buildWall()</code>",
-                            anchor: "robot-build-wall",
-                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
-                        },
-                        {
-                            name: "<code>destroyWall()</code>",
-                            anchor: "robot-destroy-wall",
-                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot status",
-                    desc: "Check the status of the robot.",
-                    entries: [
-                        {
-                            name: "<code>getDirection(): number</code>",
-                            anchor: "robot-get-direction",
-                            desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
-                        },
-                        {
-                            name: "<code>getX(): number</code>",
-                            anchor: "robot-get-x",
-                            desc: "Returns the robot's x coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getY(): number</code>",
-                            anchor: "robot-get-y",
-                            desc: "Returns the robot's y coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getSpeed(): number</code>",
-                            anchor: "robot-get-speed",
-                            desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>setSpeed(cellsPerSecond: number)</code>",
-                            anchor: "robot-set-speed",
-                            desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>getTurningSpeed(): number</code>",
-                            anchor: "robot-get-turning-speed",
-                            desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
-                        },
-                        {
-                            name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
-                            anchor: "robot-set-turning-speed",
-                            desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Built-in",
-                    desc: "Functions to work with different data and for communicating with the user.",
-                    entries: [
-                        {
-                            name: "<code>alert(message: string)</code>",
-                            anchor: "lang-alert-string",
-                            desc: "Opens a dialog that displays the text given in <code>message</code>."
-                        },
-                        {
-                            name: "<code>alert(value: number)</code>",
-                            anchor: "lang-alert-number",
-                            desc: "Opens a dialog that displays the number given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>alert(value: boolean)</code>",
-                            anchor: "lang-alert-boolean",
-                            desc: "Opens a dialog that displays the boolean given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>toString(value: number): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
-                        },
-                        {
-                            name: "<code>toString(value: boolean): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
-                        },
-                        {
-                            name: "<code>length(text: string): number</code>",
-                            anchor: "lang-length-string",
-                            desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
-                        },
-                        {
-                            name: "<code>charAt(text: string, index: number): string</code>",
-                            anchor: "lang-char-at-string-number",
-                            desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
-                        },
-                        {
-                            name: "<code>pause(milliSeconds: number)</code>",
-                            anchor: "lang-wait",
-                            desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
-                        },
-                    ],
-                    subCategories: []
-                }
-            ]
-        },
-        {
-            name: "Statements",
-            desc: "",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Variables",
-                    desc: "Variables are really cool.",
-                    entries: [
-                        {
-                            name: "<code>var name = value</code>",
-                            anchor: "statement-var-decl",
-                            desc: "Foo bar."
-                        },
-                        {
-                            name: "<code>name = value</code>",
-                            anchor: "statement-assignment",
-                            desc: "Foo bar."
-                        }
-                    ],
-                    subCategories: []
-                },
-            ]
-        }
-    ];
-    var Docs = (function (_super) {
-        __extends(Docs, _super);
-        function Docs(bus) {
-            return _super.call(this, bus) || this;
-        }
-        Docs.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
-            this.generateDocs(dom);
-            return dom[0];
-        };
-        Docs.prototype.onEvent = function (event) {
-        };
-        Docs.prototype.generateDocs = function (container) {
-            var _this = this;
-            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
-            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
-            container.append(toc);
-            container.append(content);
-            DOCS.forEach(function (cat) {
-                _this.generateCategory(cat, container, toc, content, 2);
-            });
-        };
-        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
-            var _this = this;
-            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
-            cat.entries.forEach(function (entry) {
-                var link = $("<a>" + entry.name + "</a>");
-                link.click(function () {
-                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
-                    container[0].scrollTop = target.offsetTop;
-                });
-                var li = $("<li></li>");
-                li.append(link);
-                entries.append(li);
-            });
-            toc.append(entries);
-            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            content.append($(this.block(cat.desc)));
-            cat.entries.forEach(function (entry) {
-                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
-            });
-            cat.subCategories.forEach(function (childCat) {
-                _this.generateCategory(childCat, container, toc, content, depth + 1);
-            });
-        };
-        Docs.prototype.block = function (desc) {
-            if (desc.trim() == "")
-                return "";
-            try {
-                $(desc);
-                return desc;
-            }
-            catch (e) {
-                return "<p>" + desc + "</p>";
-            }
-        };
-        return Docs;
-    }(Widget_5.Widget));
-    exports.Docs = Docs;
 });
 define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
     "use strict";

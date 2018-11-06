@@ -3,7 +3,9 @@ import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
+
 import { NumberType, StringType, NothingType } from "../language/Compiler";
+import { DocCategory } from "./Docs";
 
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
@@ -42,6 +44,7 @@ export class CanvasWorld extends Widget {
 		}
 		canvasResize();
 		this.announceExternalFunctions();
+		
 
 		return dom[0];
 	}
@@ -183,8 +186,8 @@ export class CanvasWorld extends Widget {
 			if (!image[3]) return;
 			ctx.drawImage(image[3],x,y,width,height);
 		});
-
-
+		
+		
 		var mouseX = 0;
 		var mouseY = 0;
 		var mouseButtonDown = false;
@@ -196,11 +199,13 @@ export class CanvasWorld extends Widget {
 		input.addListener({
 			down: (x, y) => {
 				mouseButtonDown = true;
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
 			},
 			up:  (x, y) => {
 				mouseButtonDown = false;
-
-
+				mouseX = x / $(canvas).width() * canvas.width;
+				mouseY = y / $(canvas).height() * canvas.height;
 			},
 			moved: (x, y) => {
 				mouseX = x / $(canvas).width() * canvas.width;
@@ -222,6 +227,113 @@ export class CanvasWorld extends Widget {
 			return mouseButtonDown;
 		})
 
+		functionsAndTypes.addFunction("rgb", [
+			{name: "red", type: NumberType},
+			{name: "green", type: NumberType},
+			{name: "blue", type: NumberType}
+		], StringType, false, (red: number, green: number, blue: number) => {
+			red = Math.max(0, Math.min(255, red));
+			green = Math.max(0, Math.min(255, green))
+			blue = Math.max(0, Math.min(255, blue))
+			return `rgb(${red}, ${green}, ${blue})`;
+		});
+
+		functionsAndTypes.addFunction("rgba", [
+			{name: "red", type: NumberType},
+			{name: "green", type: NumberType},
+			{name: "blue", type: NumberType},
+			{name: "alpha", type: NumberType}
+		], StringType, false, (red: number, green: number, blue: number, alpha) => {
+			red = Math.max(0, Math.min(255, red));
+			green = Math.max(0, Math.min(255, green))
+			blue = Math.max(0, Math.min(255, blue)) / 255;
+			return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+		});
+		let soundType = functionsAndTypes.addType("sound", [
+			{name: "url", type: StringType},
+			{name: "duration", type: NumberType},
+			{name: "volume",type: NumberType},
+			{name: "rate",type: NumberType}
+		], false);
+		
+
+		functionsAndTypes.addFunction("loadSound",[
+			{name:"url",type:StringType}
+		],soundType,true,(url)=>{
+			var sound = new Howl({
+				src: [url, url]
+			  });
+			let asyncResult: vm.AsyncPromise<Array<any>> = {
+				completed: false,
+				value: null
+			}
+			sound.on("load",()=>{
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = url;
+				record[1] = sound.duration;
+				record[2] = sound.volume;
+				record[3] = sound.rate;
+				record[4] = sound;
+				asyncResult.value = record;
+
+			});
+			sound.on("loaderror",()=>{
+				alert("Couldn't load sound " + url);
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = url;
+				record[1] = sound.duration;
+				record[2] = sound.volume;
+				record[3] = sound.rate;
+				record[4] = new Howl({
+					src: [url, url]
+					});
+				asyncResult.value = record;
+			});
+		
+			return asyncResult;
+
+		});
+
+		functionsAndTypes.addFunction("playSound",[
+			{name:"sound",type:soundType}
+		],NumberType,false,(sound)=>{
+			return sound[sound.length-1].play();
+		});
+		functionsAndTypes.addFunction("stopSound",[
+			{name:"sound",type:soundType},
+			{name:"soundId",type:NumberType}
+		],NothingType,false,(sound,soundId)=>{
+			sound[sound.length-1].stop(soundId);
+		});
+		
+		functionsAndTypes.addFunction("pauseSound",[
+			{name:"sound",type:soundType},
+			{name:"soundId",type:NumberType}
+		],NothingType,false,(sound,soundId)=>{
+			sound[sound.length-1].pause(soundId);
+		});
+		functionsAndTypes.addFunction("setVolume",[
+			{name:"volume",type:NumberType},
+			{name:"sound",type:soundType},
+			{name:"soundId",type:NumberType}
+		],NothingType,false,(volume,sound,soundId)=>{
+			sound[sound.length-1].volume(volume,soundId);
+
+		});
+		functionsAndTypes.addFunction("setRate",[
+			{name:"rate",type:NumberType},
+			{name:"sound",type:soundType},
+			{name:"soundId",type:NumberType}
+		],NothingType,false,(rate,sound,soundId)=>{
+			sound[sound.length-1].rate(rate,soundId);
+
+		});
+	
+
+
+	
 		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 	}
 
@@ -230,6 +342,10 @@ export class CanvasWorld extends Widget {
 			let ctx = this.context;
 			ctx.fillStyle = "black";
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		} else if (event instanceof events.BeforeSaveProject) {
+			event.project.type = "canvas";
 		}
 	}
+
+	
 }

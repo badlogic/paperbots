@@ -34,30 +34,14 @@ export class CanvasPage implements EventListener {
 	onEvent(event: Event) {
 		if (event instanceof SourceChanged) {
 			if (!this.sentSource) requestAnimationFrame(() => this.editor.setSource(`
-var img = loadImage("https://avatars1.githubusercontent.com/u/514052?s=88&v=4")
-
-while true do
-	clear("black")
-	var x = getMouseX()
-	var y = getMouseY()
-
-	var start = time()
-
-	repeat 1000 times
-		drawImage(img, random() * 960, random() * 510, img.width, img.height)
-	end
-
-	if isMouseButtonDown() then
-		drawRectangle(x, y, img.width, img.height, "red")
-	else
-		drawRectangle(x, y, img.width, img.height, "green")
-	end
-
-	drawText(toString(truncate((time() - start) * 1000)) .. "ms", 100, 100, 43, "Arial", "red")
-
-	show()
-end
-			`));
+			var sound = loadSound("http://mo.flussbuero.at/music/hochgeladenes/do.mp3")
+			var id  = playSound(sound)
+			pause(5000)
+			setVolume(0.5,sound,id)
+			pause(5000)
+			setVolume(1,sound,id)
+			setRate(2,sound,id)
+			stopSound(sound,id)`));
 			this.sentSource = true;
 		}
 	}

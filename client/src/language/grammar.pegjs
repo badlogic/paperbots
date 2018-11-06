@@ -171,7 +171,7 @@ ElseIf
       condition: cond,
       trueBlock: trueBlock.map(function(element) { return element[1]; }),
       elseIfs: [],
-      falseBlock: []
+      falseBlock: [],
       location: location()
 	  }
   }

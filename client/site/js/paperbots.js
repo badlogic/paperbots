@@ -7262,9 +7262,12 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             }
             else if (event instanceof events.ProjectLoaded) {
                 this.justLoaded = true;
-                setTimeout(function () {
+                var setSource_1 = function () {
+                    if (!_this.editor)
+                        requestAnimationFrame(setSource_1);
                     _this.editor.getDoc().setValue(event.project.contentObject.code);
-                }, 100);
+                };
+                requestAnimationFrame(setSource_1);
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.contentObject.code = this.editor.getDoc().getValue();

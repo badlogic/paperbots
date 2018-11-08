@@ -507,11 +507,59 @@ export class ExternalFunctionsTypesConstants {
 		)
 
 		externals.addFunction(
+			"abs",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.abs(value); }
+		)
+
+		externals.addFunction(
 			"truncate",
 			[{name:"value", type: NumberType}],
 			NumberType,
 			false,
 			(value) => { return value | 0; }
+		)
+
+		externals.addFunction(
+			"sqrt",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.sqrt(value); }
+		)
+
+		externals.addFunction(
+			"pow",
+			[{name:"value", type: NumberType}, {name:"power", type: NumberType}],
+			NumberType,
+			false,
+			(value: number, power: number) => { return Math.pow(value, power); }
+		)
+
+		externals.addFunction(
+			"cos",
+			[{name:"radians", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.cos(value); }
+		)
+
+		externals.addFunction(
+			"sin",
+			[{name:"radians", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.sin(value); }
+		)
+
+		externals.addFunction(
+			"atan2",
+			[{name:"x", type: NumberType}, {name:"y", type: NumberType}],
+			NumberType,
+			false,
+			(x: number, y: number) => { return Math.atan2(x, y); }
 		)
 
 		externals.addFunction(

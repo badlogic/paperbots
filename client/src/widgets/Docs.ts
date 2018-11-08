@@ -68,6 +68,36 @@ const DOCS: DocCategory[] = [
 				name: "<code>random(): number</code>",
 				anchor: "lang-random",
 				desc: "Returns a random number between <code>0<code> and <code>1</code>."
+			},
+			{
+				name: "<code>abs(value: number): number</code>",
+				anchor: "lang-abs",
+				desc: "Returns the absolute <code>value</code>, i.e. negative numbers turn positive, positive numbers stay positive."
+			},
+			{
+				name: "<code>sqrt(value: number): number</code>",
+				anchor: "lang-sqrt",
+				desc: "Returns the square root of the <code>value</code>. Negative values are not allowed."
+			},
+			{
+				name: "<code>pow(value: number, power: number): number</code>",
+				anchor: "lang-pow",
+				desc: "Returns the <code>value</code> to the <code>power</code>, i.e. <code>pow(2, 3) return 2 to the power of 3."
+			},
+			{
+				name: "<code>cos(radians: number): number</code>",
+				anchor: "lang-cos",
+				desc: "Returns the cosine of the angle given in <code>radians</code>."
+			},
+			{
+				name: "<code>sin(radians: number): number</code>",
+				anchor: "lang-sin",
+				desc: "Returns the sine of the angle given in <code>radians</code>."
+			},
+			{
+				name: "<code>atan2(x: number, y: number): number</code>",
+				anchor: "lang-atan2",
+				desc: "Returns the arc tangent of <code>x</code> and <code>y</code>."
 			}
 		],
 		subCategories: []

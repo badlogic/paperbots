@@ -302,442 +302,6 @@ define("Utils", ["require", "exports"], function (require, exports) {
         return target.replace(new RegExp(search, 'g'), replacement);
     };
 });
-define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_1) {
-    "use strict";
-    exports.__esModule = true;
-    var Api = (function () {
-        function Api() {
-        }
-        Api.request = function (endpoint, data, success, error) {
-            $.ajax({
-                url: endpoint,
-                method: "POST",
-                contentType: "application/json; charset=utf-8",
-                processData: false,
-                data: JSON.stringify(data)
-            })
-                .done(function (response) {
-                success(response);
-            }).fail(function (e) {
-                console.log(e);
-                if (e.responseJSON)
-                    error(e.responseJSON);
-                else
-                    error({ error: "ServerError" });
-            });
-        };
-        Api.signup = function (email, name, success, error) {
-            this.request("api/signup", { email: email, name: name }, function (r) {
-                success();
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.login = function (emailOrUser, success, error) {
-            this.request("api/login", { email: emailOrUser }, function (r) {
-                success();
-            }, function (e) {
-                error(e.error == "UserDoesNotExist");
-            });
-        };
-        Api.verify = function (code, success, error) {
-            this.request("api/verify", { code: code }, function () {
-                success();
-            }, function (e) {
-                error(e.error == "CouldNotVerifyCode");
-            });
-        };
-        Api.logout = function (success, error) {
-            this.request("api/logout", {}, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.loadProject = function (projectId, success, error) {
-            this.request("api/getproject", { projectId: projectId }, function (project) {
-                try {
-                    project.contentObject = JSON.parse(project.content);
-                }
-                catch (e) {
-                    console.log(e);
-                    error({ error: "ServerError" });
-                }
-                success(project);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.saveProject = function (project, success, error) {
-            this.request("api/saveproject", project, function (r) {
-                success(r.projectId);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.deleteProject = function (projectId, success, error) {
-            this.request("api/deleteproject", { projectId: projectId }, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.getUserProjects = function (userName, worldData, success, error) {
-            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getFeaturedProjects = function (success, error) {
-            this.request("api/getfeaturedprojects", {}, function (projects) {
-                projects.forEach(function (project) {
-                    try {
-                        project.contentObject = JSON.parse(project.content);
-                    }
-                    catch (e) {
-                        console.log(e);
-                        error({ error: "ServerError" });
-                    }
-                });
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getUserName = function () {
-            return Utils_1.escapeHtml(this.getCookie("name"));
-        };
-        Api.getProjectId = function () {
-            return Utils_1.escapeHtml(this.getUrlParameter("id"));
-        };
-        Api.getProjectType = function () {
-            return Utils_1.escapeHtml(this.getUrlParameter("type"));
-        };
-        Api.getUserId = function () {
-            return Utils_1.escapeHtml(this.getUrlParameter("id"));
-        };
-        Api.getUserUrl = function (name) {
-            return Utils_1.escapeHtml("/user.html?id=" + name);
-        };
-        Api.getProjectUrl = function (name) {
-            return Utils_1.escapeHtml("/project.html?id=" + name);
-        };
-        Api.getUrlParameter = function (name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            var results = regex.exec(location.search);
-            return Utils_1.escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
-        };
-        ;
-        Api.getCookie = function (key) {
-            if (!key) {
-                return null;
-            }
-            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
-        };
-        return Api;
-    }());
-    exports.Api = Api;
-});
-define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"], function (require, exports, Widget_1, Events_1) {
-    "use strict";
-    exports.__esModule = true;
-    var DOCS = [
-        {
-            name: "Built-in functions",
-            desc: "These functions are built into the programming language and available to programs of any type.",
-            entries: [
-                {
-                    name: "<code>alert(message: string)</code>",
-                    anchor: "lang-alert-string",
-                    desc: "Opens a dialog that displays the text given in <code>message</code>."
-                },
-                {
-                    name: "<code>alert(value: number)</code>",
-                    anchor: "lang-alert-number",
-                    desc: "Opens a dialog that displays the number given in <code>value</code>."
-                },
-                {
-                    name: "<code>alert(value: boolean)</code>",
-                    anchor: "lang-alert-boolean",
-                    desc: "Opens a dialog that displays the boolean given in <code>value</code>."
-                },
-                {
-                    name: "<code>toString(value: number): string</code>",
-                    anchor: "lang-to-string-number",
-                    desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
-                },
-                {
-                    name: "<code>toString(value: boolean): string</code>",
-                    anchor: "lang-to-string-number",
-                    desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
-                },
-                {
-                    name: "<code>length(text: string): number</code>",
-                    anchor: "lang-length-string",
-                    desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
-                },
-                {
-                    name: "<code>charAt(text: string, index: number): string</code>",
-                    anchor: "lang-char-at-string-number",
-                    desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
-                },
-                {
-                    name: "<code>pause(milliSeconds: number)</code>",
-                    anchor: "lang-wait",
-                    desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
-                },
-                {
-                    name: "<code>time(): number</code>",
-                    anchor: "lang-time",
-                    desc: "Returns the time in seconds since the web site started to load."
-                },
-                {
-                    name: "<code>random(): number</code>",
-                    anchor: "lang-random",
-                    desc: "Returns a random number between <code>0<code> and <code>1</code>."
-                }
-            ],
-            subCategories: []
-        },
-        {
-            name: "Statements",
-            desc: "",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Variables",
-                    desc: "Variables are really cool.",
-                    entries: [
-                        {
-                            name: "<code>var name = value</code>",
-                            anchor: "statement-var-decl",
-                            desc: "Foo bar."
-                        },
-                        {
-                            name: "<code>name = value</code>",
-                            anchor: "statement-assignment",
-                            desc: "Foo bar."
-                        }
-                    ],
-                    subCategories: []
-                },
-            ]
-        }
-    ];
-    var Docs = (function (_super) {
-        __extends(Docs, _super);
-        function Docs(bus) {
-            return _super.call(this, bus) || this;
-        }
-        Docs.prototype.render = function () {
-            this.dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
-            return this.dom[0];
-        };
-        Docs.prototype.onEvent = function (event) {
-            if (event instanceof Events_1.AnnounceDocumentation) {
-                DOCS.unshift(event.docs);
-                this.generateDocs(this.dom);
-            }
-        };
-        Docs.prototype.generateDocs = function (container) {
-            var _this = this;
-            this.dom.empty();
-            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
-            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
-            container.append(toc);
-            container.append(content);
-            DOCS.forEach(function (cat) {
-                _this.generateCategory(cat, container, toc, content, 2);
-            });
-        };
-        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
-            var _this = this;
-            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
-            cat.entries.forEach(function (entry) {
-                var link = $("<a>" + entry.name + "</a>");
-                link.click(function () {
-                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
-                    container[0].scrollTop = target.offsetTop;
-                });
-                var li = $("<li></li>");
-                li.append(link);
-                entries.append(li);
-            });
-            toc.append(entries);
-            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            content.append($(this.block(cat.desc)));
-            cat.entries.forEach(function (entry) {
-                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
-            });
-            cat.subCategories.forEach(function (childCat) {
-                _this.generateCategory(childCat, container, toc, content, depth + 1);
-            });
-        };
-        Docs.prototype.block = function (desc) {
-            if (desc.trim() == "")
-                return "";
-            try {
-                $(desc);
-                return desc;
-            }
-            catch (e) {
-                return "<p>" + desc + "</p>";
-            }
-        };
-        return Docs;
-    }(Widget_1.Widget));
-    exports.Docs = Docs;
-});
-define("widgets/Events", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var SourceChanged = (function () {
-        function SourceChanged(source, module) {
-            this.source = source;
-            this.module = module;
-        }
-        return SourceChanged;
-    }());
-    exports.SourceChanged = SourceChanged;
-    var Run = (function () {
-        function Run() {
-        }
-        return Run;
-    }());
-    exports.Run = Run;
-    var Debug = (function () {
-        function Debug() {
-        }
-        return Debug;
-    }());
-    exports.Debug = Debug;
-    var Pause = (function () {
-        function Pause() {
-        }
-        return Pause;
-    }());
-    exports.Pause = Pause;
-    var Resume = (function () {
-        function Resume() {
-        }
-        return Resume;
-    }());
-    exports.Resume = Resume;
-    var Stop = (function () {
-        function Stop() {
-        }
-        return Stop;
-    }());
-    exports.Stop = Stop;
-    var Step = (function () {
-        function Step(line) {
-            this.line = line;
-        }
-        return Step;
-    }());
-    exports.Step = Step;
-    var LineChange = (function () {
-        function LineChange(line) {
-            this.line = line;
-        }
-        return LineChange;
-    }());
-    exports.LineChange = LineChange;
-    var Select = (function () {
-        function Select(startLine, startColumn, endLine, endColumn) {
-            this.startLine = startLine;
-            this.startColumn = startColumn;
-            this.endLine = endLine;
-            this.endColumn = endColumn;
-        }
-        return Select;
-    }());
-    exports.Select = Select;
-    var AnnounceExternalFunctions = (function () {
-        function AnnounceExternalFunctions(functions) {
-            this.functions = functions;
-        }
-        return AnnounceExternalFunctions;
-    }());
-    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var AnnounceDocumentation = (function () {
-        function AnnounceDocumentation(docs) {
-            this.docs = docs;
-        }
-        return AnnounceDocumentation;
-    }());
-    exports.AnnounceDocumentation = AnnounceDocumentation;
-    var BreakpointAdded = (function () {
-        function BreakpointAdded(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointAdded;
-    }());
-    exports.BreakpointAdded = BreakpointAdded;
-    var BreakpointRemoved = (function () {
-        function BreakpointRemoved(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointRemoved;
-    }());
-    exports.BreakpointRemoved = BreakpointRemoved;
-    var LoggedIn = (function () {
-        function LoggedIn() {
-        }
-        return LoggedIn;
-    }());
-    exports.LoggedIn = LoggedIn;
-    ;
-    var LoggedOut = (function () {
-        function LoggedOut() {
-        }
-        return LoggedOut;
-    }());
-    exports.LoggedOut = LoggedOut;
-    ;
-    var ProjectLoaded = (function () {
-        function ProjectLoaded(project) {
-            this.project = project;
-        }
-        return ProjectLoaded;
-    }());
-    exports.ProjectLoaded = ProjectLoaded;
-    var BeforeSaveProject = (function () {
-        function BeforeSaveProject(project) {
-            this.project = project;
-        }
-        return BeforeSaveProject;
-    }());
-    exports.BeforeSaveProject = BeforeSaveProject;
-    var ProjectSaved = (function () {
-        function ProjectSaved() {
-        }
-        return ProjectSaved;
-    }());
-    exports.ProjectSaved = ProjectSaved;
-    var ProjectChanged = (function () {
-        function ProjectChanged() {
-        }
-        return ProjectChanged;
-    }());
-    exports.ProjectChanged = ProjectChanged;
-    var EventBus = (function () {
-        function EventBus() {
-            this.listeners = new Array();
-        }
-        EventBus.prototype.addListener = function (listener) {
-            this.listeners.push(listener);
-        };
-        EventBus.prototype.event = function (event) {
-            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
-        };
-        return EventBus;
-    }());
-    exports.EventBus = EventBus;
-});
 define("widgets/Widget", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -749,7 +313,7 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
     }());
     exports.Widget = Widget;
 });
-define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_2) {
+define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_1) {
     "use strict";
     exports.__esModule = true;
     var Slot = (function () {
@@ -1060,14 +624,14 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
                 }
                 default:
-                    Utils_2.assertNever(ins);
+                    Utils_1.assertNever(ins);
             }
         };
         return VirtualMachine;
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_2, events, Utils_3, vm) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -1256,13 +820,13 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             if (event instanceof events.SourceChanged) {
                 if (event.module) {
                     this.lastModule = event.module;
-                    Utils_3.setElementEnabled(this.run, true);
-                    Utils_3.setElementEnabled(this.debug, true);
+                    Utils_2.setElementEnabled(this.run, true);
+                    Utils_2.setElementEnabled(this.debug, true);
                 }
                 else {
                     this.lastModule = null;
-                    Utils_3.setElementEnabled(this.run, false);
-                    Utils_3.setElementEnabled(this.debug, false);
+                    Utils_2.setElementEnabled(this.run, false);
+                    Utils_2.setElementEnabled(this.debug, false);
                 }
             }
             else if (event instanceof events.Run) {
@@ -1271,11 +835,11 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.pause.show();
                 this.stop.show();
                 this.stepOver.show();
-                Utils_3.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
                 this.stepInto.show();
-                Utils_3.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Debug) {
@@ -1286,26 +850,26 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.show();
                 this.stepInto.show();
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
                 this.setBreakpoints();
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Pause) {
                 this.resume.show();
                 this.pause.hide();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Resume) {
                 this.pause.show();
                 this.resume.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Stop) {
@@ -1317,9 +881,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.hide();
                 this.stepInto.hide();
                 this.stepOut.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.locals.empty();
                 this.callstack.empty();
                 this.vmState.empty();
@@ -1411,7 +975,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             this.vmState.text(output);
         };
         return Debugger;
-    }(Widget_2.Widget));
+    }(Widget_1.Widget));
     exports.Debugger = Debugger;
 });
 define("language/Parser", ["require", "exports"], function (require, exports) {
@@ -6300,14 +5864,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_4, Parser_1) {
+define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_3, Parser_1) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
         function CompilerError(message, location) {
             this.message = message;
             this.location = location;
-            message = Utils_4.escapeHtml(message);
+            message = Utils_3.escapeHtml(message);
         }
         return CompilerError;
     }());
@@ -6968,7 +6532,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access not implemented yet.", node.location);
             default:
-                Utils_4.assertNever(node);
+                Utils_3.assertNever(node);
         }
     }
     var EmitterContext = (function () {
@@ -7081,7 +6645,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 case "comment":
                     break;
                 default:
-                    Utils_4.assertNever(stmt);
+                    Utils_3.assertNever(stmt);
             }
         });
     }
@@ -7306,7 +6870,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access emission not implemented yet.", node.location);
             default:
-                Utils_4.assertNever(node);
+                Utils_3.assertNever(node);
         }
         if (isStatement)
             context.lineInfoIndex++;
@@ -7318,71 +6882,539 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         }
     }
 });
-define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/VirtualMachine"], function (require, exports, Compiler_2, VirtualMachine_1) {
+define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_4) {
     "use strict";
     exports.__esModule = true;
-    var BenchmarkPage = (function () {
-        function BenchmarkPage(parent) {
-            this.addBenchmark(parent, "Fibonacci", "\nfun fib (n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\nfib(30)\n");
+    var Api = (function () {
+        function Api() {
         }
-        BenchmarkPage.prototype.addBenchmark = function (parent, title, source) {
-            var _this = this;
-            source = source.trim();
-            var dom = $("\n\t\t\t<div class=\"pb-benchmark\">\n\t\t\t\t<h1>" + title + "</h1>\n\t\t\t\t<div class=\"pb-benchmark-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-vm-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-result\">No benchmark results yet.</div>\n\t\t\t\t<button id=\"pb-benchmark-run\">Run</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            setTimeout(function () {
-                var editor = _this.editor = CodeMirror(dom.find(".pb-benchmark-code")[0], {
-                    tabSize: 3,
-                    indentUnit: 3,
-                    indentWithTabs: true,
-                    lineNumbers: true,
-                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
-                    fixedGutter: true,
-                    extraKeys: {
-                        "Tab": "indentAuto"
-                    },
-                    theme: "monokai"
-                });
-                editor.on("change", function () {
-                    var module = null;
-                    try {
-                        module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
-                    }
-                    catch (e) {
-                        alert("Error in " + title + ": " + e.message);
-                        return;
-                    }
-                    dom.find(".pb-benchmark-vm-code").text(Compiler_2.moduleToString(module));
-                });
-                editor.setValue(source);
-            }, 400);
-            dom.find("#pb-benchmark-run").click(function () {
-                var module = null;
+        Api.request = function (endpoint, data, success, error) {
+            $.ajax({
+                url: endpoint,
+                method: "POST",
+                contentType: "application/json; charset=utf-8",
+                processData: false,
+                data: JSON.stringify(data)
+            })
+                .done(function (response) {
+                success(response);
+            }).fail(function (e) {
+                console.log(e);
+                if (e.responseJSON)
+                    error(e.responseJSON);
+                else
+                    error({ error: "ServerError" });
+            });
+        };
+        Api.signup = function (email, name, success, error) {
+            this.request("api/signup", { email: email, name: name }, function (r) {
+                success();
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.login = function (emailOrUser, success, error) {
+            this.request("api/login", { email: emailOrUser }, function (r) {
+                success();
+            }, function (e) {
+                error(e.error == "UserDoesNotExist");
+            });
+        };
+        Api.verify = function (code, success, error) {
+            this.request("api/verify", { code: code }, function () {
+                success();
+            }, function (e) {
+                error(e.error == "CouldNotVerifyCode");
+            });
+        };
+        Api.logout = function (success, error) {
+            this.request("api/logout", {}, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.loadProject = function (projectId, success, error) {
+            this.request("api/getproject", { projectId: projectId }, function (project) {
                 try {
-                    module = Compiler_2.compile(_this.editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
+                    project.contentObject = JSON.parse(project.content);
                 }
                 catch (e) {
-                    alert("Error in " + title + ": " + e.message);
-                    return;
+                    console.log(e);
+                    error({ error: "ServerError" });
                 }
-                var result = dom.find(".pb-benchmark-result");
-                result.text("Benchmark running...");
-                var vm = new VirtualMachine_1.VirtualMachine(module.functions, module.externalFunctions);
-                var start = performance.now();
-                for (var runs = 0; runs < 5; runs++) {
-                    while (vm.state != VirtualMachine_1.VirtualMachineState.Completed) {
-                        vm.run(10000);
-                    }
-                    vm.restart();
-                }
-                var total = (performance.now() - start) / 1000;
-                var perRun = total / 5;
-                result.text("Total: " + total + " secs, " + perRun + " secs/run");
+                success(project);
+            }, function (e) {
+                error(e);
             });
-            parent.append(dom);
         };
-        return BenchmarkPage;
+        Api.saveProject = function (project, success, error) {
+            this.request("api/saveproject", project, function (r) {
+                success(r.projectId);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.deleteProject = function (projectId, success, error) {
+            this.request("api/deleteproject", { projectId: projectId }, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.getUserProjects = function (userName, worldData, success, error) {
+            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getProjectsAdmin = function (sorting, dateOffset, success, error) {
+            this.request("/api/getprojectsadmin", { sorting: sorting, dateOffset: dateOffset }, function (projects) {
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getFeaturedProjects = function (success, error) {
+            this.request("api/getfeaturedprojects", {}, function (projects) {
+                projects.forEach(function (project) {
+                    try {
+                        project.contentObject = JSON.parse(project.content);
+                    }
+                    catch (e) {
+                        console.log(e);
+                        error({ error: "ServerError" });
+                    }
+                });
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getUserName = function () {
+            return Utils_4.escapeHtml(this.getCookie("name"));
+        };
+        Api.getProjectId = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getProjectType = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("type"));
+        };
+        Api.getUserId = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getUserUrl = function (name) {
+            return Utils_4.escapeHtml("/user.html?id=" + name);
+        };
+        Api.getProjectUrl = function (name) {
+            return Utils_4.escapeHtml("/project.html?id=" + name);
+        };
+        Api.getUrlParameter = function (name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return Utils_4.escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
+        };
+        ;
+        Api.getCookie = function (key) {
+            if (!key) {
+                return null;
+            }
+            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+        };
+        return Api;
     }());
-    exports.BenchmarkPage = BenchmarkPage;
+    exports.Api = Api;
+});
+define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"], function (require, exports, Widget_2, Events_1) {
+    "use strict";
+    exports.__esModule = true;
+    var DOCS = [
+        {
+            name: "Built-in functions",
+            desc: "These functions are built into the programming language and available to programs of any type.",
+            entries: [
+                {
+                    name: "<code>alert(message: string)</code>",
+                    anchor: "lang-alert-string",
+                    desc: "Opens a dialog that displays the text given in <code>message</code>."
+                },
+                {
+                    name: "<code>alert(value: number)</code>",
+                    anchor: "lang-alert-number",
+                    desc: "Opens a dialog that displays the number given in <code>value</code>."
+                },
+                {
+                    name: "<code>alert(value: boolean)</code>",
+                    anchor: "lang-alert-boolean",
+                    desc: "Opens a dialog that displays the boolean given in <code>value</code>."
+                },
+                {
+                    name: "<code>toString(value: number): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
+                },
+                {
+                    name: "<code>toString(value: boolean): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
+                },
+                {
+                    name: "<code>length(text: string): number</code>",
+                    anchor: "lang-length-string",
+                    desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
+                },
+                {
+                    name: "<code>charAt(text: string, index: number): string</code>",
+                    anchor: "lang-char-at-string-number",
+                    desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
+                },
+                {
+                    name: "<code>pause(milliSeconds: number)</code>",
+                    anchor: "lang-wait",
+                    desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
+                },
+                {
+                    name: "<code>time(): number</code>",
+                    anchor: "lang-time",
+                    desc: "Returns the time in seconds since the web site started to load."
+                },
+                {
+                    name: "<code>random(): number</code>",
+                    anchor: "lang-random",
+                    desc: "Returns a random number between <code>0<code> and <code>1</code>."
+                }
+            ],
+            subCategories: []
+        },
+        {
+            name: "Statements",
+            desc: "",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Variables",
+                    desc: "Variables are really cool.",
+                    entries: [
+                        {
+                            name: "<code>var name = value</code>",
+                            anchor: "statement-var-decl",
+                            desc: "Foo bar."
+                        },
+                        {
+                            name: "<code>name = value</code>",
+                            anchor: "statement-assignment",
+                            desc: "Foo bar."
+                        }
+                    ],
+                    subCategories: []
+                },
+            ]
+        }
+    ];
+    var Docs = (function (_super) {
+        __extends(Docs, _super);
+        function Docs(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Docs.prototype.render = function () {
+            this.dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            return this.dom[0];
+        };
+        Docs.prototype.onEvent = function (event) {
+            if (event instanceof Events_1.AnnounceDocumentation) {
+                DOCS.unshift(event.docs);
+                this.generateDocs(this.dom);
+            }
+        };
+        Docs.prototype.generateDocs = function (container) {
+            var _this = this;
+            this.dom.empty();
+            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
+            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
+            container.append(toc);
+            container.append(content);
+            DOCS.forEach(function (cat) {
+                _this.generateCategory(cat, container, toc, content, 2);
+            });
+        };
+        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
+            var _this = this;
+            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
+            cat.entries.forEach(function (entry) {
+                var link = $("<a>" + entry.name + "</a>");
+                link.click(function () {
+                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
+                    container[0].scrollTop = target.offsetTop;
+                });
+                var li = $("<li></li>");
+                li.append(link);
+                entries.append(li);
+            });
+            toc.append(entries);
+            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            content.append($(this.block(cat.desc)));
+            cat.entries.forEach(function (entry) {
+                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
+            });
+            cat.subCategories.forEach(function (childCat) {
+                _this.generateCategory(childCat, container, toc, content, depth + 1);
+            });
+        };
+        Docs.prototype.block = function (desc) {
+            if (desc.trim() == "")
+                return "";
+            try {
+                $(desc);
+                return desc;
+            }
+            catch (e) {
+                return "<p>" + desc + "</p>";
+            }
+        };
+        return Docs;
+    }(Widget_2.Widget));
+    exports.Docs = Docs;
+});
+define("widgets/Events", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var SourceChanged = (function () {
+        function SourceChanged(source, module) {
+            this.source = source;
+            this.module = module;
+        }
+        return SourceChanged;
+    }());
+    exports.SourceChanged = SourceChanged;
+    var Run = (function () {
+        function Run() {
+        }
+        return Run;
+    }());
+    exports.Run = Run;
+    var Debug = (function () {
+        function Debug() {
+        }
+        return Debug;
+    }());
+    exports.Debug = Debug;
+    var Pause = (function () {
+        function Pause() {
+        }
+        return Pause;
+    }());
+    exports.Pause = Pause;
+    var Resume = (function () {
+        function Resume() {
+        }
+        return Resume;
+    }());
+    exports.Resume = Resume;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
+    var Step = (function () {
+        function Step(line) {
+            this.line = line;
+        }
+        return Step;
+    }());
+    exports.Step = Step;
+    var LineChange = (function () {
+        function LineChange(line) {
+            this.line = line;
+        }
+        return LineChange;
+    }());
+    exports.LineChange = LineChange;
+    var Select = (function () {
+        function Select(startLine, startColumn, endLine, endColumn) {
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
+        }
+        return Select;
+    }());
+    exports.Select = Select;
+    var AnnounceExternalFunctions = (function () {
+        function AnnounceExternalFunctions(functions) {
+            this.functions = functions;
+        }
+        return AnnounceExternalFunctions;
+    }());
+    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var AnnounceDocumentation = (function () {
+        function AnnounceDocumentation(docs) {
+            this.docs = docs;
+        }
+        return AnnounceDocumentation;
+    }());
+    exports.AnnounceDocumentation = AnnounceDocumentation;
+    var BreakpointAdded = (function () {
+        function BreakpointAdded(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointAdded;
+    }());
+    exports.BreakpointAdded = BreakpointAdded;
+    var BreakpointRemoved = (function () {
+        function BreakpointRemoved(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointRemoved;
+    }());
+    exports.BreakpointRemoved = BreakpointRemoved;
+    var LoggedIn = (function () {
+        function LoggedIn() {
+        }
+        return LoggedIn;
+    }());
+    exports.LoggedIn = LoggedIn;
+    ;
+    var LoggedOut = (function () {
+        function LoggedOut() {
+        }
+        return LoggedOut;
+    }());
+    exports.LoggedOut = LoggedOut;
+    ;
+    var ProjectLoaded = (function () {
+        function ProjectLoaded(project) {
+            this.project = project;
+        }
+        return ProjectLoaded;
+    }());
+    exports.ProjectLoaded = ProjectLoaded;
+    var BeforeSaveProject = (function () {
+        function BeforeSaveProject(project) {
+            this.project = project;
+        }
+        return BeforeSaveProject;
+    }());
+    exports.BeforeSaveProject = BeforeSaveProject;
+    var ProjectSaved = (function () {
+        function ProjectSaved() {
+        }
+        return ProjectSaved;
+    }());
+    exports.ProjectSaved = ProjectSaved;
+    var ProjectChanged = (function () {
+        function ProjectChanged() {
+        }
+        return ProjectChanged;
+    }());
+    exports.ProjectChanged = ProjectChanged;
+    var EventBus = (function () {
+        function EventBus() {
+            this.listeners = new Array();
+        }
+        EventBus.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        EventBus.prototype.event = function (event) {
+            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        };
+        return EventBus;
+    }());
+    exports.EventBus = EventBus;
+});
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.focus();
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
 });
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_3, events, compiler, Utils_5) {
     "use strict";
@@ -7610,491 +7642,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_3) {
-    "use strict";
-    exports.__esModule = true;
-    var CanvasWorld = (function (_super) {
-        __extends(CanvasWorld, _super);
-        function CanvasWorld(bus) {
-            return _super.call(this, bus) || this;
-        }
-        CanvasWorld.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
-            var canvas = dom.find("canvas");
-            this.canvas = canvas[0];
-            this.context = this.canvas.getContext('2d');
-            var canvasResize = function () {
-                var canvas = dom.find("canvas");
-                var width = canvas.width();
-                var height = width / 16 * 9;
-                if (height == canvas.height()) {
-                    requestAnimationFrame(canvasResize);
-                    return;
-                }
-                canvas.height(height);
-                var el = canvas[0];
-                if (el.width != 960) {
-                    el.width = 960;
-                    el.height = 510;
-                }
-                requestAnimationFrame(canvasResize);
-            };
-            canvasResize();
-            this.announceExternalFunctions();
-            this.announceDocs();
-            return dom[0];
-        };
-        CanvasWorld.prototype.announceExternalFunctions = function () {
-            var _this = this;
-            var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
-            functionsAndTypes.addFunction("clear", [
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
-            });
-            functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
-                var asyncResult = {
-                    completed: false,
-                    value: null
-                };
-                requestAnimationFrame(function () { asyncResult.completed = true; });
-                return asyncResult;
-            });
-            functionsAndTypes.addFunction("drawCircle", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "radius", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, radius, color) {
-                var ctx = _this.context;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-                ctx.fillStyle = color;
-                ctx.fill();
-            });
-            functionsAndTypes.addFunction("drawLine", [
-                { name: "x1", type: Compiler_3.NumberType },
-                { name: "y1", type: Compiler_3.NumberType },
-                { name: "x2", type: Compiler_3.NumberType },
-                { name: "y2", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType },
-            ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
-                var ctx = _this.context;
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            });
-            functionsAndTypes.addFunction("drawRectangle", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.fillRect(x, y, width, hegiht);
-            });
-            functionsAndTypes.addFunction("drawEllipse", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "radiusX", type: Compiler_3.NumberType },
-                { name: "radiusY", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.ellipse(x, y, radiusX, radiusY, 0 * Math.PI / 180, 0, 2 * Math.PI);
-                ctx.fill();
-            });
-            functionsAndTypes.addFunction("drawText", [
-                { name: "text", type: Compiler_3.StringType },
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "fontSize", type: Compiler_3.NumberType },
-                { name: "fontFamily", type: Compiler_3.StringType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
-                var ctx = _this.context;
-                ctx.font = fontSize.toString() + "px " + fontFamily;
-                ctx.fillStyle = color;
-                ctx.fillText(text, x, y);
-            });
-            var imageType = functionsAndTypes.addType("image", [
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType },
-                { name: "url", type: Compiler_3.StringType }
-            ], false);
-            functionsAndTypes.addFunction("loadImage", [
-                { name: "url", type: Compiler_3.StringType }
-            ], imageType, true, function (url) {
-                var image = new Image();
-                var asyncResult = {
-                    completed: false,
-                    value: null
-                };
-                image.onload = function () {
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = image.width;
-                    record[1] = image.height;
-                    record[2] = url;
-                    record[3] = image;
-                    asyncResult.value = record;
-                };
-                image.onerror = function () {
-                    alert("Couldn't load image " + url);
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = image.width;
-                    record[1] = image.height;
-                    record[2] = url;
-                    record[3] = new Image();
-                    asyncResult.value = record;
-                };
-                image.src = url;
-                return asyncResult;
-            });
-            functionsAndTypes.addFunction("drawImage", [
-                { name: "image", type: imageType },
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
-                var ctx = _this.context;
-                if (!image[3])
-                    return;
-                ctx.drawImage(image[3], x, y, width, height);
-            });
-            var mouseX = 0;
-            var mouseY = 0;
-            var mouseButtonDown = false;
-            var input = new Utils_6.Input(this.canvas);
-            var canvas = this.canvas;
-            input.addListener({
-                down: function (x, y) {
-                    mouseButtonDown = true;
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                up: function (x, y) {
-                    mouseButtonDown = false;
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                moved: function (x, y) {
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                dragged: function (x, y) {
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                }
-            });
-            functionsAndTypes.addFunction("getMouseX", [], Compiler_3.NumberType, false, function () {
-                return mouseX;
-            });
-            functionsAndTypes.addFunction("getMouseY", [], Compiler_3.NumberType, false, function () {
-                return mouseY;
-            });
-            functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
-                return mouseButtonDown;
-            });
-            functionsAndTypes.addFunction("rgb", [
-                { name: "red", type: Compiler_3.NumberType },
-                { name: "green", type: Compiler_3.NumberType },
-                { name: "blue", type: Compiler_3.NumberType }
-            ], Compiler_3.StringType, false, function (red, green, blue) {
-                red = Math.max(0, Math.min(255, red));
-                green = Math.max(0, Math.min(255, green));
-                blue = Math.max(0, Math.min(255, blue));
-                return "rgb(" + red + ", " + green + ", " + blue + ")";
-            });
-            functionsAndTypes.addFunction("rgba", [
-                { name: "red", type: Compiler_3.NumberType },
-                { name: "green", type: Compiler_3.NumberType },
-                { name: "blue", type: Compiler_3.NumberType },
-                { name: "alpha", type: Compiler_3.NumberType }
-            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
-                red = Math.max(0, Math.min(255, red));
-                green = Math.max(0, Math.min(255, green));
-                blue = Math.max(0, Math.min(255, blue)) / 255;
-                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
-            });
-            this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
-        };
-        CanvasWorld.prototype.onEvent = function (event) {
-            if (event instanceof events.Run) {
-                var ctx = this.context;
-                ctx.fillStyle = "black";
-                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            }
-            else if (event instanceof events.BeforeSaveProject) {
-                event.project.type = "canvas";
-            }
-        };
-        CanvasWorld.prototype.announceDocs = function () {
-            var docs = {
-                name: "Canvas program functions & types",
-                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
-                entries: [],
-                subCategories: [
-                    {
-                        name: "Clearing and showing the canvas",
-                        desc: "These functions let you clear the canvas and show it.",
-                        entries: [
-                            {
-                                anchor: "canvas-clear",
-                                name: "<code>clear(color: string)</code>",
-                                desc: "Erases the entire canvas with the <code>color</code>."
-                            },
-                            {
-                                anchor: "canvas-show",
-                                name: "<code>show()</code>",
-                                desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
-                            }
-                        ],
-                        subCategories: []
-                    },
-                    {
-                        name: "Drawing shapes",
-                        desc: "This functions let draw shapes.",
-                        entries: [
-                            {
-                                anchor: "canvas-draw-line",
-                                name: "<code>drawLine(x1: number, y1: number, x2: number, y2: number, color: string)</code>",
-                                desc: "Draws a line from <code>(x1, y1)</code> to <code>(x2, y2)</code> with the given <code>color</code>."
-                            },
-                            {
-                                anchor: "canvas-draw-rect",
-                                name: "<code>drawRectangle(x: number, y: number, width: number, height: number, color: string)</code>",
-                                desc: "Draws a filled rectangle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the rectangle. The <code>width</code> and <code>height</code> specify the size of the rectangle in pixels."
-                            },
-                            {
-                                anchor: "canvas-draw-circle",
-                                name: "<code>drawCircle(x: number, y: number, radius: number, color: string)</code>",
-                                desc: "Draws a filled circle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the circle. The <code>radius</code> specifies the radius of the circle in pixels."
-                            },
-                            {
-                                anchor: "canvas-draw-ellipse",
-                                name: "<code>drawEllipse(x: number, y: number, radiusX: number, radiusY: number, color: string)</code>",
-                                desc: "Draws a filled ellipse with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the ellipse. The <code>radiusX</code> and <code>radiusY</code> parameters specify the radius of the circle in pixels on the x- and y-axis respectively."
-                            }
-                        ],
-                        subCategories: []
-                    },
-                    {
-                        name: "Drawing text",
-                        desc: "This functions let draw text.",
-                        entries: [
-                            {
-                                anchor: "canvas-draw-text",
-                                name: "<code>drawText(text: string, x: number, y: number, fontSize: number, fontName: String, color: string)</code>",
-                                desc: "Draws the text with the given color, size, and font. The <code>(x, y)</code> coordinate specifies the position of the bottom left corner of the text. The <code>fontSize</code> parameter specifies the height of the text in pixels. The <code>fontName</code> specifies the name of the font, e.g. \"Arial\", or \"Helvetica\". See the <a target=\"_blank\" href=\"https://www.w3schools.com/cssref/css_websafe_fonts.asp\">safe web font list</a> for available font names. Note that this function will ignore new lines in the text!"
-                            }
-                        ],
-                        subCategories: []
-                    },
-                    {
-                        name: "Colors",
-                        desc: "These functions let create color strings from red, green, and blue color values.",
-                        entries: [
-                            {
-                                anchor: "canvas-rgb",
-                                name: "<code>rgb(red: number, green: number, blue: number): string</code>",
-                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>."
-                            },
-                            {
-                                anchor: "canvas-rgba",
-                                name: "<code>rgba(red: number, green: number, blue: number, alpha: number): string</code>",
-                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>. The <code>alpha</code> parameter specifies the opacity of the color, with <code>0</code> meaning fully transparent, and <code>255</code> meaning fully opaque."
-                            },
-                        ],
-                        subCategories: []
-                    },
-                    {
-                        name: "Loading and drawing images",
-                        desc: "These functions and records let load images from the Web and draw them onto the canvas.",
-                        entries: [
-                            {
-                                anchor: "canvas-load-image",
-                                name: "<code>loadImage(url: string): image</code>",
-                                desc: "Loads the image from the given <code>url</code> and returns it as an <code>image</code> record value. If loading the image failed, a dialog will be shown displaying an error."
-                            },
-                            {
-                                anchor: "canvas-draw-image",
-                                name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
-                                desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
-                            },
-                            {
-                                anchor: "canvas-image",
-                                name: "<code>record image</code>",
-                                desc: "\n\t\t\t\t\t\t\t\t<p>\n\t\t\t\t\t\t\t\t\tThis record type stores the data for an image loaded via <code>loadImage(url: string): image</code>. It has the following fields:\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t<ul>\n\t\t\t\t\t\t\t\t\t<li><em>width</em>: the width of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>height</em>: the height of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>url</em>: the url from which the image was loaded.</li>\n\t\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t\t"
-                            }
-                        ],
-                        subCategories: []
-                    },
-                    {
-                        name: "Mouse and touch input",
-                        desc: "These functions let check where the mouse cursor or finger is on the canvas.",
-                        entries: [
-                            {
-                                anchor: "canvas-get-mouse-x",
-                                name: "<code>getMouseX(): number</code>",
-                                desc: "Returns the x-coordinate of the current mouse cursor or finger location on the canvas."
-                            },
-                            {
-                                anchor: "canvas-get-mouse-y",
-                                name: "<code>getMouseY(): number</code>",
-                                desc: "Returns the y-coordinate of the current mouse cursor or finger location on the canvas."
-                            },
-                            {
-                                anchor: "canvas-is-mouse-button-down",
-                                name: "<code>isMouseButtonDown(): boolean</code>",
-                                desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
-                            },
-                        ],
-                        subCategories: []
-                    }
-                ]
-            };
-            this.bus.event(new events.AnnounceDocumentation(docs));
-        };
-        return CanvasWorld;
-    }(Widget_4.Widget));
-    exports.CanvasWorld = CanvasWorld;
-});
-define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_2, Editor_1, Debugger_1, CanvasWorld_1) {
-    "use strict";
-    exports.__esModule = true;
-    var CanvasPage = (function () {
-        function CanvasPage(parent) {
-            this.eventBus = new Events_2.EventBus();
-            this.editor = new Editor_1.Editor(this.eventBus);
-            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
-            this.canvas = new CanvasWorld_1.CanvasWorld(this.eventBus);
-            this.sentSource = false;
-            this.eventBus.addListener(this);
-            this.eventBus.addListener(this.editor);
-            this.eventBus.addListener(this["debugger"]);
-            this.eventBus.addListener(this.canvas);
-            var dom = $("\n\t\t\t<div id=\"pb-canvas-page\">\n\t\t\t</div>\n\t\t");
-            dom.append(this["debugger"].render());
-            dom.append(this.editor.render());
-            dom.append(this.canvas.render());
-            this.editor.setEmbedURls(false);
-            parent.append(dom);
-        }
-        CanvasPage.prototype.onEvent = function (event) {
-            var _this = this;
-            if (event instanceof Events_2.SourceChanged) {
-                if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
-                this.sentSource = true;
-            }
-        };
-        return CanvasPage;
-    }());
-    exports.CanvasPage = CanvasPage;
-});
-define("widgets/Dialog", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Dialog = (function () {
-        function Dialog(title, content, buttons) {
-            this.buttons = Array();
-            this.dom = this.renderDialog(title, content, buttons);
-        }
-        Dialog.prototype.show = function () {
-            document.body.appendChild(this.dom[0]);
-        };
-        Dialog.prototype.hide = function () {
-            this.dom.remove();
-        };
-        Dialog.prototype.renderDialog = function (title, content, buttons) {
-            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
-            dom.find(".pb-dialog-body").append(content);
-            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
-            for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
-                this.buttons.push(button);
-                buttonsDiv.append(button);
-            }
-            dom.find(".pb-dialog-footer").append(buttonsDiv);
-            return dom;
-        };
-        Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.focus();
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed();
-            });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
-            return dialog;
-        };
-        Dialog.prompt = function (title, value, confirmed, cancled) {
-            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-                cancled();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed(textField.val());
-            });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
-            textField.keyup(function (event) {
-                if (event.keyCode == 13) {
-                    dialog.buttons[1].click();
-                }
-            });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        return Dialog;
-    }());
-    exports.Dialog = Dialog;
-});
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_5, Utils_7, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_2) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -8105,12 +7653,12 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         function RobotWorld(bus, noTools) {
             if (noTools === void 0) { noTools = false; }
             var _this = _super.call(this, bus) || this;
-            _this.assets = new Utils_7.AssetManager();
+            _this.assets = new Utils_6.AssetManager();
             _this.selectedTool = "Robot";
             _this.lastWidth = 0;
             _this.cellSize = 0;
             _this.drawingSize = 0;
-            _this.time = new Utils_7.TimeKeeper();
+            _this.time = new Utils_6.TimeKeeper();
             _this.isRunning = false;
             _this.noTools = false;
             _this.lastFrameTime = -1;
@@ -8142,7 +7690,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.selectedTool = value;
                 });
             }
-            this.input = new Utils_7.Input(this.canvas);
+            this.input = new Utils_6.Input(this.canvas);
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
@@ -8255,7 +7803,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         RobotWorld.prototype.announceExternals = function () {
             var _this = this;
             var ext = new compiler.ExternalFunctionsTypesConstants();
-            ext.addFunction("forward", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("forward", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
                 var asyncResult = {
                     completed: false,
@@ -8271,7 +7819,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("backward", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("backward", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Backward);
                 var asyncResult = {
                     completed: false,
@@ -8287,7 +7835,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnLeft", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("turnLeft", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnLeft);
                 var asyncResult = {
                     completed: false,
@@ -8303,7 +7851,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnRight", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("turnRight", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnRight);
                 var asyncResult = {
                     completed: false,
@@ -8319,7 +7867,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [{ name: "value", type: Compiler_4.NumberType }], Compiler_4.NothingType, true, function (number) {
+            ext.addFunction("print", [{ name: "value", type: Compiler_2.NumberType }], Compiler_2.NothingType, true, function (number) {
                 if (number < 0 || number > 99 || isNaN(number)) {
                     alert("The number must be between 0-99.");
                     return {
@@ -8348,7 +7896,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [{ name: "letter", type: Compiler_4.StringType }], Compiler_4.NothingType, true, function (letter) {
+            ext.addFunction("print", [{ name: "letter", type: Compiler_2.StringType }], Compiler_2.NothingType, true, function (letter) {
                 if (letter.trim().length == 0) {
                     return {
                         completed: true,
@@ -8384,7 +7932,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("scanNumber", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("scanNumber", [], Compiler_2.NumberType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8395,7 +7943,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("scanLetter", [], Compiler_4.StringType, false, function () {
+            ext.addFunction("scanLetter", [], Compiler_2.StringType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8406,25 +7954,25 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("isWallAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isWallAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "wall";
             });
-            ext.addFunction("isNumberAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isNumberAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "number";
             });
-            ext.addFunction("isLetterAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isLetterAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "letter";
             });
-            ext.addFunction("distanceToWall", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("distanceToWall", [], Compiler_2.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 var x = _this.world.robot.data.x + dirX;
@@ -8441,7 +7989,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 return distance;
             });
-            ext.addFunction("getDirection", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getDirection", [], Compiler_2.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 if (dirX == 1 && dirY == 0)
@@ -8454,33 +8002,33 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return 3;
                 return 0;
             });
-            ext.addFunction("getX", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getX", [], Compiler_2.NumberType, false, function () {
                 return _this.world.robot.data.x;
             });
-            ext.addFunction("getY", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getY", [], Compiler_2.NumberType, false, function () {
                 return _this.world.robot.data.y;
             });
-            ext.addFunction("getSpeed", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getSpeed", [], Compiler_2.NumberType, false, function () {
                 return 1 / _this.world.robot.moveDuration;
             });
-            ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (speed) {
+            ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (speed) {
                 if (speed < 0) {
                     alert("The robot's speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.moveDuration = 1 / speed;
             });
-            ext.addFunction("getTurningSpeed", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getTurningSpeed", [], Compiler_2.NumberType, false, function () {
                 return 90 / _this.world.robot.turnDuration;
             });
-            ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (degrees) {
+            ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (degrees) {
                 if (degrees < 0) {
                     alert("The robot's turning speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.turnDuration = 1 / degrees * 90;
             });
-            ext.addFunction("buildWall", [], Compiler_4.NothingType, true, function (speed) {
+            ext.addFunction("buildWall", [], Compiler_2.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 _this.world.setTile(x, y, World.newWall());
@@ -8499,7 +8047,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("destroyWall", [], Compiler_4.NothingType, true, function (speed) {
+            ext.addFunction("destroyWall", [], Compiler_2.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8670,7 +8218,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_7.setElementEnabled($(element), true);
+                    Utils_6.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
@@ -8679,7 +8227,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_7.setElementEnabled($(element), false);
+                    Utils_6.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
@@ -8827,7 +8375,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             ctx.restore();
         };
         return RobotWorld;
-    }(Widget_5.Widget));
+    }(Widget_4.Widget));
     exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
@@ -9134,7 +8682,7 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
     "use strict";
     exports.__esModule = true;
     var Description = (function (_super) {
@@ -9149,19 +8697,379 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
         Description.prototype.onEvent = function (event) {
         };
         return Description;
-    }(Widget_6.Widget));
+    }(Widget_5.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_3, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_2) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasWorld = (function (_super) {
+        __extends(CanvasWorld, _super);
+        function CanvasWorld(bus) {
+            return _super.call(this, bus) || this;
+        }
+        CanvasWorld.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
+            var canvas = dom.find("canvas");
+            this.canvas = canvas[0];
+            this.context = this.canvas.getContext('2d');
+            var canvasResize = function () {
+                var canvas = dom.find("canvas");
+                var width = canvas.width();
+                var height = width / 16 * 9;
+                if (height == canvas.height()) {
+                    requestAnimationFrame(canvasResize);
+                    return;
+                }
+                canvas.height(height);
+                var el = canvas[0];
+                if (el.width != 960) {
+                    el.width = 960;
+                    el.height = 510;
+                }
+                requestAnimationFrame(canvasResize);
+            };
+            canvasResize();
+            this.announceExternalFunctions();
+            this.announceDocs();
+            return dom[0];
+        };
+        CanvasWorld.prototype.announceExternalFunctions = function () {
+            var _this = this;
+            var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
+            functionsAndTypes.addFunction("clear", [
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
+            });
+            functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                requestAnimationFrame(function () { asyncResult.completed = true; });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("drawCircle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radius", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radius, color) {
+                var ctx = _this.context;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = color;
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawLine", [
+                { name: "x1", type: Compiler_3.NumberType },
+                { name: "y1", type: Compiler_3.NumberType },
+                { name: "x2", type: Compiler_3.NumberType },
+                { name: "y2", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType },
+            ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
+                var ctx = _this.context;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            });
+            functionsAndTypes.addFunction("drawRectangle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, width, hegiht);
+            });
+            functionsAndTypes.addFunction("drawEllipse", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radiusX", type: Compiler_3.NumberType },
+                { name: "radiusY", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.ellipse(x, y, radiusX, radiusY, 0 * Math.PI / 180, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawText", [
+                { name: "text", type: Compiler_3.StringType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "fontSize", type: Compiler_3.NumberType },
+                { name: "fontFamily", type: Compiler_3.StringType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
+                var ctx = _this.context;
+                ctx.font = fontSize.toString() + "px " + fontFamily;
+                ctx.fillStyle = color;
+                ctx.fillText(text, x, y);
+            });
+            var imageType = functionsAndTypes.addType("image", [
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "url", type: Compiler_3.StringType }
+            ], false);
+            functionsAndTypes.addFunction("loadImage", [
+                { name: "url", type: Compiler_3.StringType }
+            ], imageType, true, function (url) {
+                var image = new Image();
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                image.onload = function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = image;
+                    asyncResult.value = record;
+                };
+                image.onerror = function () {
+                    alert("Couldn't load image " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = new Image();
+                    asyncResult.value = record;
+                };
+                image.src = url;
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("drawImage", [
+                { name: "image", type: imageType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
+                var ctx = _this.context;
+                if (!image[3])
+                    return;
+                ctx.drawImage(image[3], x, y, width, height);
+            });
+            var mouseX = 0;
+            var mouseY = 0;
+            var mouseButtonDown = false;
+            var input = new Utils_7.Input(this.canvas);
+            var canvas = this.canvas;
+            input.addListener({
+                down: function (x, y) {
+                    mouseButtonDown = true;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                up: function (x, y) {
+                    mouseButtonDown = false;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                moved: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                dragged: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                }
+            });
+            functionsAndTypes.addFunction("getMouseX", [], Compiler_3.NumberType, false, function () {
+                return mouseX;
+            });
+            functionsAndTypes.addFunction("getMouseY", [], Compiler_3.NumberType, false, function () {
+                return mouseY;
+            });
+            functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
+                return mouseButtonDown;
+            });
+            functionsAndTypes.addFunction("rgb", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue));
+                return "rgb(" + red + ", " + green + ", " + blue + ")";
+            });
+            functionsAndTypes.addFunction("rgba", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType },
+                { name: "alpha", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue)) / 255;
+                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
+            });
+            this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
+        };
+        CanvasWorld.prototype.onEvent = function (event) {
+            if (event instanceof events.Run) {
+                var ctx = this.context;
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "canvas";
+            }
+        };
+        CanvasWorld.prototype.announceDocs = function () {
+            var docs = {
+                name: "Canvas program functions & types",
+                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
+                entries: [],
+                subCategories: [
+                    {
+                        name: "Clearing and showing the canvas",
+                        desc: "These functions let you clear the canvas and show it.",
+                        entries: [
+                            {
+                                anchor: "canvas-clear",
+                                name: "<code>clear(color: string)</code>",
+                                desc: "Erases the entire canvas with the <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-show",
+                                name: "<code>show()</code>",
+                                desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing shapes",
+                        desc: "This functions let draw shapes.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-line",
+                                name: "<code>drawLine(x1: number, y1: number, x2: number, y2: number, color: string)</code>",
+                                desc: "Draws a line from <code>(x1, y1)</code> to <code>(x2, y2)</code> with the given <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-draw-rect",
+                                name: "<code>drawRectangle(x: number, y: number, width: number, height: number, color: string)</code>",
+                                desc: "Draws a filled rectangle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the rectangle. The <code>width</code> and <code>height</code> specify the size of the rectangle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-circle",
+                                name: "<code>drawCircle(x: number, y: number, radius: number, color: string)</code>",
+                                desc: "Draws a filled circle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the circle. The <code>radius</code> specifies the radius of the circle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-ellipse",
+                                name: "<code>drawEllipse(x: number, y: number, radiusX: number, radiusY: number, color: string)</code>",
+                                desc: "Draws a filled ellipse with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the ellipse. The <code>radiusX</code> and <code>radiusY</code> parameters specify the radius of the circle in pixels on the x- and y-axis respectively."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing text",
+                        desc: "This functions let draw text.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-text",
+                                name: "<code>drawText(text: string, x: number, y: number, fontSize: number, fontName: String, color: string)</code>",
+                                desc: "Draws the text with the given color, size, and font. The <code>(x, y)</code> coordinate specifies the position of the bottom left corner of the text. The <code>fontSize</code> parameter specifies the height of the text in pixels. The <code>fontName</code> specifies the name of the font, e.g. \"Arial\", or \"Helvetica\". See the <a target=\"_blank\" href=\"https://www.w3schools.com/cssref/css_websafe_fonts.asp\">safe web font list</a> for available font names. Note that this function will ignore new lines in the text!"
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Colors",
+                        desc: "These functions let create color strings from red, green, and blue color values.",
+                        entries: [
+                            {
+                                anchor: "canvas-rgb",
+                                name: "<code>rgb(red: number, green: number, blue: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>."
+                            },
+                            {
+                                anchor: "canvas-rgba",
+                                name: "<code>rgba(red: number, green: number, blue: number, alpha: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>. The <code>alpha</code> parameter specifies the opacity of the color, with <code>0</code> meaning fully transparent, and <code>255</code> meaning fully opaque."
+                            },
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Loading and drawing images",
+                        desc: "These functions and records let load images from the Web and draw them onto the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-load-image",
+                                name: "<code>loadImage(url: string): image</code>",
+                                desc: "Loads the image from the given <code>url</code> and returns it as an <code>image</code> record value. If loading the image failed, a dialog will be shown displaying an error."
+                            },
+                            {
+                                anchor: "canvas-draw-image",
+                                name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
+                                desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
+                            },
+                            {
+                                anchor: "canvas-image",
+                                name: "<code>record image</code>",
+                                desc: "\n\t\t\t\t\t\t\t\t<p>\n\t\t\t\t\t\t\t\t\tThis record type stores the data for an image loaded via <code>loadImage(url: string): image</code>. It has the following fields:\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t<ul>\n\t\t\t\t\t\t\t\t\t<li><em>width</em>: the width of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>height</em>: the height of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>url</em>: the url from which the image was loaded.</li>\n\t\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t\t"
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Mouse and touch input",
+                        desc: "These functions let check where the mouse cursor or finger is on the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-get-mouse-x",
+                                name: "<code>getMouseX(): number</code>",
+                                desc: "Returns the x-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-get-mouse-y",
+                                name: "<code>getMouseY(): number</code>",
+                                desc: "Returns the y-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-is-mouse-button-down",
+                                name: "<code>isMouseButtonDown(): boolean</code>",
+                                desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
+                            },
+                        ],
+                        subCategories: []
+                    }
+                ]
+            };
+            this.bus.event(new events.AnnounceDocumentation(docs));
+        };
+        return CanvasWorld;
+    }(Widget_6.Widget));
+    exports.CanvasWorld = CanvasWorld;
+});
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
         function ProjectPage(parent) {
             var _this = this;
-            this.eventBus = new Events_3.EventBus();
+            this.eventBus = new Events_2.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
-            this.editor = new Editor_2.Editor(this.eventBus);
-            this["debugger"] = new Debugger_2.Debugger(this.eventBus);
+            this.editor = new Editor_1.Editor(this.eventBus);
+            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.unsaved = false;
@@ -9231,7 +9139,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
         }
         ProjectPage.prototype.setupWorld = function (projectType) {
             if (projectType === "canvas") {
-                this.microWorld = new CanvasWorld_2.CanvasWorld(this.eventBus);
+                this.microWorld = new CanvasWorld_1.CanvasWorld(this.eventBus);
             }
             else {
                 this.microWorld = new RobotWorld_1.RobotWorld(this.eventBus);
@@ -9249,7 +9157,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
                 _this.setupWorld(project.type);
-                _this.eventBus.event(new Events_3.ProjectLoaded(project));
+                _this.eventBus.event(new Events_2.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();
                 if (error.error == "ProjectDoesNotExist") {
@@ -9263,13 +9171,13 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             });
         };
         ProjectPage.prototype.onEvent = function (event) {
-            if (event instanceof Events_3.ProjectChanged) {
+            if (event instanceof Events_2.ProjectChanged) {
                 this.unsaved = true;
             }
-            else if (event instanceof Events_3.ProjectSaved) {
+            else if (event instanceof Events_2.ProjectSaved) {
                 this.unsaved = false;
             }
-            else if (event instanceof Events_3.ProjectLoaded) {
+            else if (event instanceof Events_2.ProjectLoaded) {
                 this.unsaved = false;
             }
         };
@@ -9277,7 +9185,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_4, Dialog_2, Api_2, Utils_8) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_8) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -9307,7 +9215,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.title = dom.find("#pb-toolbar-title");
             this.title.change(function () {
-                _this.bus.event(new Events_4.ProjectChanged());
+                _this.bus.event(new Events_3.ProjectChanged());
             });
             this.login = dom.find("#pb-toolbar-login");
             this.login.click(function (e) {
@@ -9326,7 +9234,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-logout").click(function () {
-                Api_2.Api.logout(function () { _this.bus.event(new Events_4.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+                Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
             this.setupLoginAndUser();
             window.onclick = function (event) {
@@ -9444,7 +9352,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             dialog.buttons[1].click(function () {
                 Api_2.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
-                    _this.bus.event(new Events_4.LoggedIn());
+                    _this.bus.event(new Events_3.LoggedIn());
                 }, function (invalidCode) {
                     if (invalidCode) {
                         spinner.hide();
@@ -9535,7 +9443,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_2.Dialog("Saving", content[0], []);
                 dialog.show();
-                var saveProject = new Events_4.BeforeSaveProject({
+                var saveProject = new Events_3.BeforeSaveProject({
                     code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
                     contentObject: {},
                     content: null,
@@ -9564,7 +9472,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     _this.loadedProject.userName = Api_2.Api.getUserName();
                     dialog.hide();
                     history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
-                    _this.bus.event(new Events_4.ProjectSaved());
+                    _this.bus.event(new Events_3.ProjectSaved());
                 }, function (error) {
                     _this.serverErrorDialog();
                     dialog.hide();
@@ -9580,20 +9488,20 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             }
         };
         Toolbar.prototype.onEvent = function (event) {
-            if (event instanceof Events_4.LoggedIn || event instanceof Events_4.LoggedOut) {
+            if (event instanceof Events_3.LoggedIn || event instanceof Events_3.LoggedOut) {
                 this.setupLoginAndUser();
             }
-            else if (event instanceof Events_4.Run || event instanceof Events_4.Debug) {
+            else if (event instanceof Events_3.Run || event instanceof Events_3.Debug) {
                 Utils_8.setElementEnabled(this.save, false);
                 Utils_8.setElementEnabled(this["new"], false);
                 Utils_8.setElementEnabled(this.title, false);
             }
-            else if (event instanceof Events_4.Stop) {
+            else if (event instanceof Events_3.Stop) {
                 Utils_8.setElementEnabled(this.save, true);
                 Utils_8.setElementEnabled(this["new"], true);
                 Utils_8.setElementEnabled(this.title, true);
             }
-            else if (event instanceof Events_4.ProjectLoaded) {
+            else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
                 this.title.val(Utils_8.unescapeHtml(event.project.title));
                 if (this.loadedProject.userName != Api_2.Api.getUserName()) {
@@ -9603,7 +9511,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     this.by.html("");
                 }
             }
-            else if (event instanceof Events_4.ProjectSaved) {
+            else if (event instanceof Events_3.ProjectSaved) {
                 this.by.hide();
             }
         };
@@ -9611,7 +9519,159 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_5, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_3, Dialog_3) {
+    "use strict";
+    exports.__esModule = true;
+    var AdminPage = (function () {
+        function AdminPage(parent) {
+            var _this = this;
+            this.eventBus = new Events_4.EventBus();
+            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.projects = [];
+            this.fetching = false;
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            parent.append(this.toolbar.render());
+            var dom = $("\n\t\t\t<div id=\"pb-admin-page\">\n\t\t\t\t<h1>Administration</h1>\n\t\t\t\t<div class=\"pb-project-list\" style=\"width: 100%\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            $(parent).append(dom);
+            this.fetchProjects(dom.find(".pb-project-list"));
+            window.onscroll = function () {
+                var scrollHeight, totalHeight;
+                scrollHeight = document.body.scrollHeight;
+                totalHeight = window.scrollY + window.innerHeight;
+                if (totalHeight >= scrollHeight) {
+                    _this.fetchProjects(dom.find(".pb-project-list"));
+                }
+            };
+        }
+        AdminPage.prototype.fetchProjects = function (projectListDom) {
+            var _this = this;
+            if (this.fetching)
+                return;
+            console.log("Fetching");
+            Api_3.Api.getProjectsAdmin("Newest", this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
+                _this.renderProjects(projectListDom, projects);
+                _this.fetching = false;
+            }, function () {
+                Dialog_3.Dialog.alert("Error", $("<p>Couldn't retrieve projects.</p>")).show();
+                _this.fetching = false;
+            });
+            this.fetching = true;
+        };
+        AdminPage.prototype.renderProjects = function (dom, projects) {
+            var _this = this;
+            projects.forEach(function (project) {
+                _this.projects.push(project);
+                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_3.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>User:</td><td><a href=\"" + Api_3.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></td></tr>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t");
+                dom.append(projectDom);
+            });
+        };
+        AdminPage.prototype.onEvent = function (event) {
+        };
+        return AdminPage;
+    }());
+    exports.AdminPage = AdminPage;
+});
+define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/VirtualMachine"], function (require, exports, Compiler_4, VirtualMachine_1) {
+    "use strict";
+    exports.__esModule = true;
+    var BenchmarkPage = (function () {
+        function BenchmarkPage(parent) {
+            this.addBenchmark(parent, "Fibonacci", "\nfun fib (n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\nfib(30)\n");
+        }
+        BenchmarkPage.prototype.addBenchmark = function (parent, title, source) {
+            var _this = this;
+            source = source.trim();
+            var dom = $("\n\t\t\t<div class=\"pb-benchmark\">\n\t\t\t\t<h1>" + title + "</h1>\n\t\t\t\t<div class=\"pb-benchmark-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-vm-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-result\">No benchmark results yet.</div>\n\t\t\t\t<button id=\"pb-benchmark-run\">Run</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            setTimeout(function () {
+                var editor = _this.editor = CodeMirror(dom.find(".pb-benchmark-code")[0], {
+                    tabSize: 3,
+                    indentUnit: 3,
+                    indentWithTabs: true,
+                    lineNumbers: true,
+                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
+                    fixedGutter: true,
+                    extraKeys: {
+                        "Tab": "indentAuto"
+                    },
+                    theme: "monokai"
+                });
+                editor.on("change", function () {
+                    var module = null;
+                    try {
+                        module = Compiler_4.compile(editor.getValue(), new Compiler_4.ExternalFunctionsTypesConstants());
+                    }
+                    catch (e) {
+                        alert("Error in " + title + ": " + e.message);
+                        return;
+                    }
+                    dom.find(".pb-benchmark-vm-code").text(Compiler_4.moduleToString(module));
+                });
+                editor.setValue(source);
+            }, 400);
+            dom.find("#pb-benchmark-run").click(function () {
+                var module = null;
+                try {
+                    module = Compiler_4.compile(_this.editor.getValue(), new Compiler_4.ExternalFunctionsTypesConstants());
+                }
+                catch (e) {
+                    alert("Error in " + title + ": " + e.message);
+                    return;
+                }
+                var result = dom.find(".pb-benchmark-result");
+                result.text("Benchmark running...");
+                var vm = new VirtualMachine_1.VirtualMachine(module.functions, module.externalFunctions);
+                var start = performance.now();
+                for (var runs = 0; runs < 5; runs++) {
+                    while (vm.state != VirtualMachine_1.VirtualMachineState.Completed) {
+                        vm.run(10000);
+                    }
+                    vm.restart();
+                }
+                var total = (performance.now() - start) / 1000;
+                var perRun = total / 5;
+                result.text("Total: " + total + " secs, " + perRun + " secs/run");
+            });
+            parent.append(dom);
+        };
+        return BenchmarkPage;
+    }());
+    exports.BenchmarkPage = BenchmarkPage;
+});
+define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_5, Editor_2, Debugger_2, CanvasWorld_2) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasPage = (function () {
+        function CanvasPage(parent) {
+            this.eventBus = new Events_5.EventBus();
+            this.editor = new Editor_2.Editor(this.eventBus);
+            this["debugger"] = new Debugger_2.Debugger(this.eventBus);
+            this.canvas = new CanvasWorld_2.CanvasWorld(this.eventBus);
+            this.sentSource = false;
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.editor);
+            this.eventBus.addListener(this["debugger"]);
+            this.eventBus.addListener(this.canvas);
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-page\">\n\t\t\t</div>\n\t\t");
+            dom.append(this["debugger"].render());
+            dom.append(this.editor.render());
+            dom.append(this.canvas.render());
+            this.editor.setEmbedURls(false);
+            parent.append(dom);
+        }
+        CanvasPage.prototype.onEvent = function (event) {
+            var _this = this;
+            if (event instanceof Events_5.SourceChanged) {
+                if (!this.sentSource)
+                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
+                this.sentSource = true;
+            }
+        };
+        return CanvasPage;
+    }());
+    exports.CanvasPage = CanvasPage;
+});
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_6, RobotWorld_2, Compiler_5, VirtualMachine_2) {
     "use strict";
     exports.__esModule = true;
     var Player = (function (_super) {
@@ -9619,7 +9679,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
         function Player(project, autoplay, showSourceLink, bus) {
             if (autoplay === void 0) { autoplay = false; }
             if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_5.EventBus(); }
+            if (bus === void 0) { bus = new Events_6.EventBus(); }
             var _this = _super.call(this, bus) || this;
             _this.project = project;
             _this.autoplay = autoplay;
@@ -9646,7 +9706,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                     requestAnimationFrame(advanceVm);
                 }
                 else {
-                    _this.bus.event(new Events_5.Stop());
+                    _this.bus.event(new Events_6.Stop());
                     _this.vm.restart();
                     _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                     stop.hide();
@@ -9655,7 +9715,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             };
             var run = dom.find("#pb-player-run");
             run.click(function () {
-                _this.bus.event(new Events_5.Run());
+                _this.bus.event(new Events_6.Run());
                 stop.show();
                 run.hide();
                 _this.vm.restart();
@@ -9664,7 +9724,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             var stop = dom.find("#pb-player-stop");
             stop.hide();
             stop.click(function () {
-                _this.bus.event(new Events_5.Stop());
+                _this.bus.event(new Events_6.Stop());
                 _this.vm.restart();
                 _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                 stop.hide();
@@ -9673,7 +9733,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             try {
                 var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
                 this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
-                this.bus.event(new Events_5.ProjectLoaded(this.project));
+                this.bus.event(new Events_6.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
             }
@@ -9684,7 +9744,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_5.AnnounceExternalFunctions) {
+            if (event instanceof Events_6.AnnounceExternalFunctions) {
                 this.extFuncs = event.functions;
             }
         };
@@ -9692,13 +9752,13 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_8.Widget));
     exports.Player = Player;
 });
-define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_6, RobotWorld_3) {
+define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_7, RobotWorld_3) {
     "use strict";
     exports.__esModule = true;
     var ProjectPreview = (function (_super) {
         __extends(ProjectPreview, _super);
         function ProjectPreview(project) {
-            var _this = _super.call(this, new Events_6.EventBus()) || this;
+            var _this = _super.call(this, new Events_7.EventBus()) || this;
             _this.project = project;
             _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
             _this.world.setWorldData(project.contentObject.world);
@@ -9717,13 +9777,13 @@ define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widge
     }(Widget_9.Widget));
     exports.ProjectPreview = ProjectPreview;
 });
-define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_7, Toolbar_2) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_3) {
     "use strict";
     exports.__esModule = true;
     var DevsPage = (function () {
         function DevsPage(parent) {
-            this.eventBus = new Events_7.EventBus();
-            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.eventBus = new Events_8.EventBus();
+            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             $(this.toolbar.render()).insertBefore($(parent).find("#pb-devs-page"));
@@ -9734,16 +9794,16 @@ define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], 
     }());
     exports.DevsPage = DevsPage;
 });
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_3, Dialog_3) {
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_4) {
     "use strict";
     exports.__esModule = true;
     var EmbeddedPage = (function () {
         function EmbeddedPage(parent) {
             var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
-            Api_3.Api.loadProject(Api_3.Api.getProjectId(), function (project) {
+            Api_4.Api.loadProject(Api_4.Api.getProjectId(), function (project) {
                 dom.append(new Player_1.Player(project).render());
             }, function () {
-                Dialog_3.Dialog.alert("Sorry", $("Could not load project " + Api_3.Api.getProjectId()));
+                Dialog_4.Dialog.alert("Sorry", $("Could not load project " + Api_4.Api.getProjectId()));
             });
             parent.append(dom);
         }
@@ -9751,35 +9811,35 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_3, Api_4, Dialog_4, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_5, Dialog_5, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_8.EventBus();
-            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
+            this.eventBus = new Events_9.EventBus();
+            this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" width=\"390px\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<h1 style=\"text-align: center\">Want to learn how to code?</h1>\n\t\t\t\t<div style=\"margin-bottom: 2em;\">\n\t\t\t\t\t<a class=\"pb-button\" href=\"/learn.html\">Teach me how to code</a>\n\t\t\t\t\t<a class=\"pb-button\" href=\"/devs.html\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share your programs with your friends!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the <a href=\"/learn.html\">Paperbots course</a>\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Read the <a href=\"/for-devs.html\">language documentation</a>, then create interesting programs\n\t\t\t\t\t\tothers can remix and learn from.</p>\n\t\t\t\t</div>\n\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            Api_4.Api.loadProject("IgMlfr", function (project) {
+            Api_5.Api.loadProject("IgMlfr", function (project) {
                 dom.find("#pb-index-page-example").append(new Player_2.Player(project, true, true).render());
             }, function () { });
             $(parent).append(dom);
-            var projectId = Api_4.Api.getUrlParameter("projectId");
+            var projectId = Api_5.Api.getUrlParameter("projectId");
             if (projectId) {
                 window.location = "/project.html?id=" + projectId;
             }
-            Api_4.Api.getFeaturedProjects(function (projects) {
+            Api_5.Api.getFeaturedProjects(function (projects) {
                 var featured = dom.find(".pb-index-page-featured");
                 projects.forEach(function (project) {
-                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_4.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_4.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_5.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
                     card.find(".pb-featured-card-player").append(new Player_2.Player(project, false, false).render());
                     featured.append(card);
                 });
             }, function () {
-                Dialog_4.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
+                Dialog_5.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
             });
         }
         IndexPage.prototype.onEvent = function (event) {
@@ -9788,13 +9848,13 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_9, Toolbar_4) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_10, Toolbar_5) {
     "use strict";
     exports.__esModule = true;
     var LearnPage = (function () {
         function LearnPage(parent) {
-            this.eventBus = new Events_9.EventBus();
-            this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
+            this.eventBus = new Events_10.EventBus();
+            this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
@@ -9808,29 +9868,29 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_10, Toolbar_5, Api_5, Dialog_5, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_11, Toolbar_6, Api_6, Dialog_6, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
             var _this = this;
-            this.eventBus = new Events_10.EventBus();
-            this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
+            this.eventBus = new Events_11.EventBus();
+            this.toolbar = new Toolbar_6.Toolbar(this.eventBus, Toolbar_6.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
-            var userId = Api_5.Api.getUserId();
+            var userId = Api_6.Api.getUserId();
             if (!userId) {
-                var dialog = Dialog_5.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
+                var dialog = Dialog_6.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
                     window.location = "/";
                 });
                 dialog.show();
             }
             else {
-                Api_5.Api.getUserProjects(userId, true, function (projects) {
+                Api_6.Api.getUserProjects(userId, true, function (projects) {
                     _this.renderUser(dom, userId, projects);
                 }, function (error) {
                 });
@@ -9844,16 +9904,16 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                     project.contentObject = JSON.parse(project.content);
                     var preview = new Player_3.Player(project, false, false).render();
                     projectDom.append(preview);
-                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    if (project.userName == Api_5.Api.getUserName()) {
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_6.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_6.Api.getUserName()) {
                         var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
                         projectDom.append(deleteButton);
                         deleteButton.click(function () {
-                            Dialog_5.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
-                                Api_5.Api.deleteProject(project.code, function () {
+                            Dialog_6.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
+                                Api_6.Api.deleteProject(project.code, function () {
                                     projectDom.fadeOut(1000);
                                 }, function () {
-                                    Dialog_5.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
+                                    Dialog_6.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
                                 });
                             }).show();
                         });

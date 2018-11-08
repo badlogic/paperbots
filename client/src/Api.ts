@@ -7,6 +7,7 @@ export interface RequestError {
 }
 
 export type ProjectType = "robot" | "canvas";
+export type Sorting = "Newest" | "Oldest" | "LastModified";
 
 export interface Project {
 	code: string
@@ -113,6 +114,15 @@ export class Api {
 
 	static getUserProjects (userName: string, worldData: boolean, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
 		this.request("api/getprojects", { userName: userName, worldData: worldData },
+		(projects: Array<Project>) => {
+			success(projects);
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
+	static getProjectsAdmin (sorting: Sorting, dateOffset: String, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
+		this.request("/api/getprojectsadmin", {sorting: sorting, dateOffset: dateOffset},
 		(projects: Array<Project>) => {
 			success(projects);
 		}, (e: RequestError) => {

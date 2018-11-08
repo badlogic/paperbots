@@ -523,6 +523,30 @@ export class ExternalFunctionsTypesConstants {
 		)
 
 		externals.addFunction(
+			"round",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.round(value); }
+		)
+
+		externals.addFunction(
+			"floor",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.floor(value); }
+		)
+
+		externals.addFunction(
+			"ceiling",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.ceil(value); }
+		)
+
+		externals.addFunction(
 			"sqrt",
 			[{name:"value", type: NumberType}],
 			NumberType,

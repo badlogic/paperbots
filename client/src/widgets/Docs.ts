@@ -75,6 +75,26 @@ const DOCS: DocCategory[] = [
 				desc: "Returns the absolute <code>value</code>, i.e. negative numbers turn positive, positive numbers stay positive."
 			},
 			{
+				name: "<code>truncate(value: number): number</code>",
+				anchor: "lang-truncate",
+				desc: "Removes the decimal places of the <code>value</code>, i.e. <code>truncate(-23.433)</code> returns <code>-23</code>."
+			},
+			{
+				name: "<code>round(value: number): number</code>",
+				anchor: "lang-round",
+				desc: "Rounds the <code>value</code> the nearest integer, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
+			},
+			{
+				name: "<code>floor(value: number): number</code>",
+				anchor: "lang-floor",
+				desc: "Rounds the <code>value</code> the nearest integer that is smaller, i.e. <code>round(-23.433)</code> returns <code>-24</code>, <code>round(0.6)</code> returns <code>0</code>."
+			},
+			{
+				name: "<code>ceiling(value: number): number</code>",
+				anchor: "lang-ceiling",
+				desc: "Rounds the <code>value</code> the nearest integer that is bigger, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
+			},
+			{
 				name: "<code>sqrt(value: number): number</code>",
 				anchor: "lang-sqrt",
 				desc: "Returns the square root of the <code>value</code>. Negative values are not allowed."

@@ -6076,6 +6076,9 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             externals.addFunction("random", [], exports.NumberType, false, function () { return Math.random(); });
             externals.addFunction("abs", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.abs(value); });
             externals.addFunction("truncate", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return value | 0; });
+            externals.addFunction("round", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.round(value); });
+            externals.addFunction("floor", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.floor(value); });
+            externals.addFunction("ceiling", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.ceil(value); });
             externals.addFunction("sqrt", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.sqrt(value); });
             externals.addFunction("pow", [{ name: "value", type: exports.NumberType }, { name: "power", type: exports.NumberType }], exports.NumberType, false, function (value, power) { return Math.pow(value, power); });
             externals.addFunction("cos", [{ name: "radians", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.cos(value); });
@@ -7114,6 +7117,26 @@ define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"
                     name: "<code>abs(value: number): number</code>",
                     anchor: "lang-abs",
                     desc: "Returns the absolute <code>value</code>, i.e. negative numbers turn positive, positive numbers stay positive."
+                },
+                {
+                    name: "<code>truncate(value: number): number</code>",
+                    anchor: "lang-truncate",
+                    desc: "Removes the decimal places of the <code>value</code>, i.e. <code>truncate(-23.433)</code> returns <code>-23</code>."
+                },
+                {
+                    name: "<code>round(value: number): number</code>",
+                    anchor: "lang-round",
+                    desc: "Rounds the <code>value</code> the nearest integer, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
+                },
+                {
+                    name: "<code>floor(value: number): number</code>",
+                    anchor: "lang-floor",
+                    desc: "Rounds the <code>value</code> the nearest integer that is smaller, i.e. <code>round(-23.433)</code> returns <code>-24</code>, <code>round(0.6)</code> returns <code>0</code>."
+                },
+                {
+                    name: "<code>ceiling(value: number): number</code>",
+                    anchor: "lang-ceiling",
+                    desc: "Rounds the <code>value</code> the nearest integer that is bigger, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
                 },
                 {
                     name: "<code>sqrt(value: number): number</code>",

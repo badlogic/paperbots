@@ -6115,13 +6115,15 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         };
         ExternalFunctionsTypesConstants.prototype.copy = function () {
             var copy = new ExternalFunctionsTypesConstants();
+            copy.functions.length = 0;
+            copy.functionLookup = {};
             for (var i = 0; i < this.functions.length; i++) {
                 var f = this.functions[i];
                 copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
             }
             for (var i = 0; i < this.records.length; i++) {
                 var r = this.records[i];
-                copy.addType(r.signature, r.fields);
+                copy.addType(r.signature, r.fields, r.generateConstructor);
             }
             return copy;
         };
@@ -6215,7 +6217,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             var type = {
                 kind: "record",
                 fields: [],
-                generateConstructor: false,
+                generateConstructor: true,
                 declarationNode: rec,
                 signature: rec.name.value
             };
@@ -6252,13 +6254,30 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             });
         });
         records.forEach(function (rec) {
-            if (!rec.type.generateConstructor)
-                return;
             var params = [];
             rec.fields.forEach(function (field) {
                 return params.push({ name: field.name.value, type: field.type });
             });
             externalFunctions.addFunction(rec.name.value, params, rec.type, false, function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                var value = [];
+                for (var i = 0; i < args.length; i++) {
+                    value[i] = args[i];
+                }
+                return value;
+            });
+        });
+        externalFunctions.records.forEach(function (rec) {
+            if (!rec.generateConstructor)
+                return;
+            var params = [];
+            rec.fields.forEach(function (field) {
+                return params.push({ name: field.name, type: field.type });
+            });
+            externalFunctions.addFunction(rec.signature, params, rec, false, function () {
                 var args = [];
                 for (var _i = 0; _i < arguments.length; _i++) {
                     args[_i] = arguments[_i];

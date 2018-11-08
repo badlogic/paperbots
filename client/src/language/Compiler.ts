@@ -612,13 +612,15 @@ export class ExternalFunctionsTypesConstants {
 
 	copy () {
 		let copy = new ExternalFunctionsTypesConstants();
+		copy.functions.length = 0;
+		copy.functionLookup = {};
 		for(var i = 0; i < this.functions.length; i++) {
 			let f = this.functions[i];
 			copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
 		}
 		for (var i = 0; i < this.records.length; i++) {
 			let r = this.records[i];
-			copy.addType(r.signature, r.fields);
+			copy.addType(r.signature, r.fields, r.generateConstructor);
 		}
 		return copy;
 	}
@@ -722,7 +724,7 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		let type: Type = {
 			kind: "record",
 			fields: [],
-			generateConstructor: false,
+			generateConstructor: true,
 			declarationNode: rec,
 			signature: rec.name.value
 		}
@@ -767,10 +769,9 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		});
 	});
 
-	// Create constructor functions for all records
+	// Create constructor functions for all records, user defined and external
 	// TODO check for recursive types
 	records.forEach(rec => {
-		if (!rec.type.generateConstructor) return;
 		let params: Array<Parameter> = [];
 		rec.fields.forEach(field =>
 			params.push({name: field.name.value, type: field.type})
@@ -783,6 +784,22 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			return value;
 		});
 	});
+
+	externalFunctions.records.forEach(rec => {
+		if (!rec.generateConstructor) return;
+		let params: Array<Parameter> = [];
+		rec.fields.forEach(field =>
+			params.push({name: field.name, type: field.type})
+		);
+		externalFunctions.addFunction(rec.signature, params, rec, false, (...args: any[]) => {
+			let value = [];
+			for (var i = 0; i < args.length; i++) {
+				value[i] = args[i];
+			}
+			return value;
+		});
+	});
+
 
 	// Create the external function look up, copy
 	// the user provided externals, otherwise we

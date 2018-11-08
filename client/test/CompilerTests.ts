@@ -424,6 +424,27 @@ describe("Compiler", () => {
 		}
 		assert.fail();
 	});
+	it("Should generate a constructor function for a user defined type.", () => {
+		let module = compiler.compile("record point x: number y: number end", new compiler.ExternalFunctionsTypesConstants());
+		let type = module.types.findExternalFunction("point", [compiler.NumberType, compiler.NumberType]);
+		assert.equal(type.signature, "point(number,number):point");
+		assert.equal(null, module.types.findFunction("point", [compiler.NumberType, compiler.NumberType]));
+	});
+	it("Should not generate a constructor function for an externally defined type if it's not instructed to do that.", () => {
+		let extFuncs = new compiler.ExternalFunctionsTypesConstants();
+		extFuncs.addType("point", [{name: "x", type: compiler.NumberType}, {name: "y", type: compiler.NumberType}], false);
+		let module = compiler.compile("", extFuncs);
+		assert.equal(null, module.types.findFunction("point", [compiler.NumberType, compiler.NumberType]));
+		assert.equal(null, module.types.findExternalFunction("point", [compiler.NumberType, compiler.NumberType]));
+	});
+	it("Should generate a constructor function for an externally defined type if it is instructed to do that.", () => {
+		let extFuncs = new compiler.ExternalFunctionsTypesConstants();
+		extFuncs.addType("point", [{name: "x", type: compiler.NumberType}, {name: "y", type: compiler.NumberType}], true);
+		let module = compiler.compile("", extFuncs);
+		let type = module.types.findExternalFunction("point", [compiler.NumberType, compiler.NumberType]);
+		assert.equal(type.signature, "point(number,number):point");
+		assert.equal(null, module.types.findFunction("point", [compiler.NumberType, compiler.NumberType]));
+	});
 
 	// TODO check emitter output, including debug info
 });

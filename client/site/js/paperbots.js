@@ -75,7 +75,7 @@ define("Utils", ["require", "exports"], function (require, exports) {
                 }
             }, true);
             element.addEventListener("mouseleave", function (ev) {
-                if (ev instanceof MouseEvent) {
+                if (ev instanceof MouseEvent && _this.buttonDown) {
                     var rect = element.getBoundingClientRect();
                     var x = ev.clientX - rect.left;
                     var y = ev.clientY - rect.top;

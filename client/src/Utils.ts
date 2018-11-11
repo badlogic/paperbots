@@ -65,7 +65,7 @@ export class Input {
 			}
 		}, true);
 		element.addEventListener("mouseleave", (ev: UIEvent) => {
-			if (ev instanceof MouseEvent) {
+			if (ev instanceof MouseEvent && this.buttonDown) {
 				let rect = element.getBoundingClientRect();
 				let x = ev.clientX - rect.left;
 				let y = ev.clientY - rect.top;

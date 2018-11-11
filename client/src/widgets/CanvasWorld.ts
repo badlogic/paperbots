@@ -5,6 +5,7 @@ import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
 import { NumberType, StringType, NothingType } from "../language/Compiler";
 import { DocCategory } from "./Docs";
+import { Dialog } from "./Dialog";
 
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
@@ -62,7 +63,8 @@ export class CanvasWorld extends Widget {
 		functionsAndTypes.addFunction("show", [], NothingType, true, () => {
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			requestAnimationFrame(() => { asyncResult.completed = true });
 			return asyncResult;
@@ -160,7 +162,8 @@ export class CanvasWorld extends Widget {
 			var image = new Image();
 			let asyncResult: vm.AsyncPromise<Array<any>> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			image.onload = () => {
 				asyncResult.completed = true;
@@ -172,14 +175,16 @@ export class CanvasWorld extends Widget {
 				asyncResult.value = record;
 			};
 			image.onerror = () => {
-				alert("Couldn't load image " + url);
-				asyncResult.completed = true;
-				let record = [];
-				record[0] = image.width;
-				record[1] = image.height;
-				record[2] = url;
-				record[3] = new Image();
-				asyncResult.value = record;
+				let dialog = Dialog.alert("Program says", $("<p>Couldn't load image " + url + "</p>"));
+				dialog.buttons[0].click(() => {
+					asyncResult.completed = true;
+					let record = [];
+					record[0] = image.width;
+					record[1] = image.height;
+					record[2] = url;
+					record[3] = new Image();
+					asyncResult.value = record;
+				});
 			}
 			image.src = url;
 			return asyncResult;

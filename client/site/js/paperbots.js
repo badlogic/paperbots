@@ -342,6 +342,12 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
         VirtualMachineState[VirtualMachineState["Running"] = 0] = "Running";
         VirtualMachineState[VirtualMachineState["Completed"] = 1] = "Completed";
     })(VirtualMachineState = exports.VirtualMachineState || (exports.VirtualMachineState = {}));
+    var StopVirtualMachine = (function () {
+        function StopVirtualMachine() {
+        }
+        return StopVirtualMachine;
+    }());
+    exports.StopVirtualMachine = StopVirtualMachine;
     var VirtualMachine = (function () {
         function VirtualMachine(functions, externalFunctions) {
             this.functions = functions;
@@ -363,6 +369,11 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 return;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
+                    if (this.asyncPromise.stopVirtualMachine) {
+                        this.frames.length = 0;
+                        this.state = VirtualMachineState.Completed;
+                        return;
+                    }
                     if (this.asyncFun.returnType != Compiler_1.NothingType) {
                         this.stack.push(this.asyncPromise.value);
                     }
@@ -370,10 +381,20 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     this.asyncFun = null;
                 }
             }
-            while (!this.asyncPromise && numInstructions-- > 0) {
-                this.step();
-                if (this.hitBreakpoint())
-                    break;
+            try {
+                while (!this.asyncPromise && numInstructions-- > 0) {
+                    this.step();
+                    if (this.hitBreakpoint())
+                        break;
+                }
+            }
+            catch (e) {
+                if (e instanceof StopVirtualMachine) {
+                    this.frames.length = 0;
+                }
+                else {
+                    throw e;
+                }
             }
             if (this.frames.length == 0)
                 this.state = VirtualMachineState.Completed;
@@ -393,6 +414,11 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 return null;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
+                    if (this.asyncPromise.stopVirtualMachine) {
+                        this.frames.length = 0;
+                        this.state = VirtualMachineState.Completed;
+                        return;
+                    }
                     if (this.asyncFun.returnType != Compiler_1.NothingType) {
                         this.stack.push(this.asyncPromise.value);
                     }
@@ -408,28 +434,40 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 frame: frame,
                 lineInfoIndex: lineInfoIndex
             };
-            var executed = 0;
-            while (true) {
-                if (this.asyncPromise)
-                    return snapshot;
-                if (this.frames.length == 0) {
-                    this.state = VirtualMachineState.Completed;
-                    return null;
-                }
-                if (executed++ > 1000)
-                    return snapshot;
-                var currFrameIndex = this.frames.length - 1;
-                var currFrame = this.frames[currFrameIndex];
-                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
-                if (currFrameIndex == frameIndex)
-                    if (lineInfoIndex != currLineInfoIndex)
+            try {
+                var executed = 0;
+                while (true) {
+                    if (this.asyncPromise)
+                        return snapshot;
+                    if (this.frames.length == 0) {
+                        this.state = VirtualMachineState.Completed;
                         return null;
-                if (currFrameIndex < frameIndex)
-                    return null;
-                this.step();
-                if (this.hitBreakpoint())
-                    break;
+                    }
+                    if (executed++ > 1000)
+                        return snapshot;
+                    var currFrameIndex = this.frames.length - 1;
+                    var currFrame = this.frames[currFrameIndex];
+                    var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                    if (currFrameIndex == frameIndex)
+                        if (lineInfoIndex != currLineInfoIndex)
+                            return null;
+                    if (currFrameIndex < frameIndex)
+                        return null;
+                    this.step();
+                    if (this.hitBreakpoint())
+                        break;
+                }
             }
+            catch (e) {
+                if (e instanceof StopVirtualMachine) {
+                    this.frames.length = 0;
+                }
+                else {
+                    throw e;
+                }
+            }
+            if (this.frames.length == 0)
+                this.state = VirtualMachineState.Completed;
         };
         VirtualMachine.prototype.stepInto = function () {
             if (this.frames.length == 0)
@@ -438,6 +476,11 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                 return;
             if (this.asyncPromise) {
                 if (this.asyncPromise.completed) {
+                    if (this.asyncPromise.stopVirtualMachine) {
+                        this.frames.length = 0;
+                        this.state = VirtualMachineState.Completed;
+                        return;
+                    }
                     if (this.asyncFun.returnType != Compiler_1.NothingType) {
                         this.stack.push(this.asyncPromise.value);
                     }
@@ -445,29 +488,37 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     this.asyncFun = null;
                 }
             }
-            var frameIndex = this.frames.length - 1;
-            var frame = this.frames[frameIndex];
-            var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
-            while (true) {
-                if (this.asyncPromise)
-                    return;
-                if (this.frames.length == 0)
-                    return;
-                var currFrameIndex = this.frames.length - 1;
-                var currFrame = this.frames[currFrameIndex];
-                var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
-                if (lineInfoIndex != currLineInfoIndex)
-                    return;
-                if (currFrameIndex != frameIndex)
-                    return;
-                this.step();
-                if (this.hitBreakpoint())
-                    break;
+            try {
+                var frameIndex = this.frames.length - 1;
+                var frame = this.frames[frameIndex];
+                var lineInfoIndex = frame.code.lineInfos[frame.pc].index;
+                while (true) {
+                    if (this.asyncPromise)
+                        return;
+                    if (this.frames.length == 0)
+                        return;
+                    var currFrameIndex = this.frames.length - 1;
+                    var currFrame = this.frames[currFrameIndex];
+                    var currLineInfoIndex = currFrame.code.lineInfos[currFrame.pc].index;
+                    if (lineInfoIndex != currLineInfoIndex)
+                        return;
+                    if (currFrameIndex != frameIndex)
+                        return;
+                    this.step();
+                    if (this.hitBreakpoint())
+                        break;
+                }
+            }
+            catch (e) {
+                if (e instanceof StopVirtualMachine) {
+                    this.frames.length = 0;
+                }
+                else {
+                    throw e;
+                }
             }
             if (this.frames.length == 0)
                 this.state = VirtualMachineState.Completed;
-            if (this.state == VirtualMachineState.Completed)
-                return;
         };
         VirtualMachine.prototype.getLineNumber = function () {
             if (this.frames.length == 0)
@@ -631,7 +682,99 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, vm) {
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.attr("contenteditable", "true");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" class=\"pb-input-field\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
+});
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine", "widgets/Dialog"], function (require, exports, Widget_1, events, Utils_2, vm, Dialog_1) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -723,7 +866,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                     }
                     else {
                         if (_this.vm.state == vm.VirtualMachineState.Completed) {
-                            alert("Program complete.");
+                            Dialog_1.Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
                             _this.bus.event(new events.Stop());
                             return;
                         }
@@ -742,7 +885,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 }
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == vm.VirtualMachineState.Completed) {
-                    alert("Program complete.");
+                    Dialog_1.Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
                     _this.bus.event(new events.Stop());
                     return;
                 }
@@ -751,7 +894,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 _this.vm.stepInto();
                 _this.bus.event(new events.Step(_this.vm.getLineNumber()));
                 if (_this.vm.state == vm.VirtualMachineState.Completed) {
-                    alert("Program complete.");
+                    Dialog_1.Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
                     _this.bus.event(new events.Stop());
                     return;
                 }
@@ -775,7 +918,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
         Debugger.prototype.checkVmStopped = function () {
             if (this.vm.state == vm.VirtualMachineState.Completed) {
                 this.state = DebuggerState.Stopped;
-                alert("Program complete.");
+                Dialog_1.Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
                 this.bus.event(new events.Stop());
                 return;
             }
@@ -5864,7 +6007,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_3, Parser_1) {
+define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "widgets/Dialog"], function (require, exports, Utils_3, Parser_1, Dialog_2) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
@@ -6063,9 +6206,63 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             this.records = new Array();
             this.recordLookup = {};
             var externals = this;
-            externals.addFunction("alert", [{ name: "message", type: exports.StringType }], exports.NothingType, false, function (message) { alert(message); });
-            externals.addFunction("alert", [{ name: "value", type: exports.NumberType }], exports.NothingType, false, function (value) { alert(value); });
-            externals.addFunction("alert", [{ name: "value", type: exports.BooleanType }], exports.NothingType, false, function (value) { alert(value); });
+            externals.addFunction("alert", [{ name: "message", type: exports.StringType }], exports.NothingType, true, function (value) {
+                var asyncResult = {
+                    completed: false,
+                    value: null,
+                    stopVirtualMachine: false
+                };
+                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                dialog.buttons[0].click(function () {
+                    asyncResult.stopVirtualMachine = true;
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.buttons[1].click(function () {
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.show();
+                return asyncResult;
+            });
+            externals.addFunction("alert", [{ name: "value", type: exports.NumberType }], exports.NothingType, true, function (value) {
+                var asyncResult = {
+                    completed: false,
+                    value: null,
+                    stopVirtualMachine: false
+                };
+                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                dialog.buttons[0].click(function () {
+                    asyncResult.stopVirtualMachine = true;
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.buttons[1].click(function () {
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.show();
+                return asyncResult;
+            });
+            externals.addFunction("alert", [{ name: "value", type: exports.BooleanType }], exports.NothingType, true, function (value) {
+                var asyncResult = {
+                    completed: false,
+                    value: null,
+                    stopVirtualMachine: false
+                };
+                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                dialog.buttons[0].click(function () {
+                    asyncResult.stopVirtualMachine = true;
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.buttons[1].click(function () {
+                    asyncResult.completed = true;
+                    dialog.hide();
+                });
+                dialog.show();
+                return asyncResult;
+            });
             externals.addFunction("toString", [{ name: "value", type: exports.NumberType }], exports.StringType, false, function (value) { return "" + value; });
             externals.addFunction("toString", [{ name: "value", type: exports.BooleanType }], exports.StringType, false, function (value) { return "" + value; });
             externals.addFunction("length", [{ name: "value", type: exports.StringType }], exports.NumberType, false, function (value) { return value.length; });
@@ -6088,7 +6285,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             externals.addFunction("pause", [{ name: "milliSeconds", type: exports.NumberType }], exports.NumberType, true, function (milliSeconds) {
                 var promise = {
                     completed: false,
-                    value: 0
+                    value: 0,
+                    stopVirtualMachine: false
                 };
                 setTimeout(function () {
                     promise.value = milliSeconds;
@@ -7403,97 +7601,6 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
     }());
     exports.EventBus = EventBus;
 });
-define("widgets/Dialog", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Dialog = (function () {
-        function Dialog(title, content, buttons) {
-            this.buttons = Array();
-            this.dom = this.renderDialog(title, content, buttons);
-        }
-        Dialog.prototype.show = function () {
-            document.body.appendChild(this.dom[0]);
-        };
-        Dialog.prototype.hide = function () {
-            this.dom.remove();
-        };
-        Dialog.prototype.renderDialog = function (title, content, buttons) {
-            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
-            dom.find(".pb-dialog-body").append(content);
-            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
-            for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
-                this.buttons.push(button);
-                buttonsDiv.append(button);
-            }
-            dom.find(".pb-dialog-footer").append(buttonsDiv);
-            return dom;
-        };
-        Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.focus();
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed();
-            });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
-            return dialog;
-        };
-        Dialog.prompt = function (title, value, confirmed, cancled) {
-            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-                cancled();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed(textField.val());
-            });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
-            textField.keyup(function (event) {
-                if (event.keyCode == 13) {
-                    dialog.buttons[1].click();
-                }
-            });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        return Dialog;
-    }());
-    exports.Dialog = Dialog;
-});
 define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_3, events, compiler, Utils_5) {
     "use strict";
     exports.__esModule = true;
@@ -7568,9 +7675,6 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                         cm.setGutterMarker(n, "gutter-breakpoints", null);
                         _this.bus.event(new events.BreakpointRemoved(bp));
                     }
-                });
-                _this.editor.on("delete", function (line) {
-                    alert(line);
                 });
                 _this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());
                 var module = _this.compile();
@@ -7720,7 +7824,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_2) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler", "widgets/Dialog"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_2, Dialog_3) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7800,40 +7904,37 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                         _this.bus.event(new events.ProjectChanged());
                     }
                     else if (_this.selectedTool == "Number") {
-                        var number = null;
-                        while (number == null) {
-                            number = prompt("Please enter a number between 0-99.", "0");
-                            if (!number)
-                                return;
+                        Dialog_3.Dialog.prompt("Prompt", "Please enter a number between 0-99", function (number) {
                             try {
                                 number = parseInt(number, 10);
                                 if (number < 0 || number > 99 || isNaN(number)) {
-                                    alert("The number must be between 0-99.");
-                                    number = null;
+                                    Dialog_3.Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
+                                }
+                                else {
+                                    _this.world.setTile(x, y, World.newNumber(number));
+                                    _this.bus.event(new events.ProjectChanged());
+                                    requestAnimationFrame(function () { _this.draw(0); });
                                 }
                             }
                             catch (e) {
-                                alert("The number must be between 0-99.");
-                                number = null;
+                                Dialog_3.Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
                             }
-                        }
-                        _this.world.setTile(x, y, World.newNumber(number));
-                        _this.bus.event(new events.ProjectChanged());
+                        }, function () {
+                        });
                     }
                     else if (_this.selectedTool == "Letter") {
-                        var letter = null;
-                        while (letter == null) {
-                            letter = prompt("Please enter a letter", "a");
-                            if (!letter)
-                                return;
+                        Dialog_3.Dialog.prompt("Prompt", "Please enter a letter", function (letter) {
                             letter = letter.trim();
                             if (letter.length != 1) {
-                                alert("Only a single letter is allowed.");
-                                letter = null;
+                                Dialog_3.Dialog.alert("Error", $("<p>Only a single letter is allowed.</p>")).show();
                             }
-                        }
-                        _this.world.setTile(x, y, World.newLetter(letter));
-                        _this.bus.event(new events.ProjectChanged());
+                            else {
+                                _this.world.setTile(x, y, World.newLetter(letter));
+                                _this.bus.event(new events.ProjectChanged());
+                                requestAnimationFrame(function () { _this.draw(0); });
+                            }
+                        }, function () {
+                        });
                     }
                     else if (_this.selectedTool == "Robot") {
                         if (_this.world.robot.data.x != x || _this.world.robot.data.y != y) {
@@ -7885,7 +7986,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
@@ -7901,7 +8003,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.robot.setAction(_this.world, RobotAction.Backward);
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
@@ -7917,7 +8020,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.robot.setAction(_this.world, RobotAction.TurnLeft);
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
@@ -7933,7 +8037,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.robot.setAction(_this.world, RobotAction.TurnRight);
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var check = function () {
                     if (_this.world.robot.action == RobotAction.None) {
@@ -7947,7 +8052,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             });
             ext.addFunction("print", [{ name: "value", type: Compiler_2.NumberType }], Compiler_2.NothingType, true, function (number) {
                 if (number < 0 || number > 99 || isNaN(number)) {
-                    alert("The number must be between 0-99.");
                     return {
                         completed: true,
                         value: null
@@ -7961,7 +8065,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var num = 1;
                 var check = function () {
@@ -7983,7 +8088,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 ;
                 if (letter.trim().length != 1) {
-                    alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
                     return {
                         completed: true,
                         value: null
@@ -7997,7 +8101,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var num = 1;
                 var check = function () {
@@ -8091,7 +8196,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             });
             ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (speed) {
                 if (speed < 0) {
-                    alert("The robot's speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.moveDuration = 1 / speed;
@@ -8101,7 +8205,6 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             });
             ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (degrees) {
                 if (degrees < 0) {
-                    alert("The robot's turning speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.turnDuration = 1 / degrees * 90;
@@ -8112,7 +8215,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 _this.world.setTile(x, y, World.newWall());
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var num = 1;
                 var check = function () {
@@ -8133,7 +8237,8 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.world.setTile(x, y, null);
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 var num = 1;
                 var check = function () {
@@ -8778,7 +8883,7 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_5.Widget));
     exports.Description = Description;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler", "widgets/Dialog"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3, Dialog_4) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -8825,7 +8930,8 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 requestAnimationFrame(function () { asyncResult.completed = true; });
                 return asyncResult;
@@ -8926,7 +9032,8 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 var image = new Image();
                 var asyncResult = {
                     completed: false,
-                    value: null
+                    value: null,
+                    stopVirtualMachine: false
                 };
                 image.onload = function () {
                     asyncResult.completed = true;
@@ -8938,14 +9045,16 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                     asyncResult.value = record;
                 };
                 image.onerror = function () {
-                    alert("Couldn't load image " + url);
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = image.width;
-                    record[1] = image.height;
-                    record[2] = url;
-                    record[3] = new Image();
-                    asyncResult.value = record;
+                    var dialog = Dialog_4.Dialog.alert("Program says", $("<p>Couldn't load image " + url + "</p>"));
+                    dialog.buttons[0].click(function () {
+                        asyncResult.completed = true;
+                        var record = [];
+                        record[0] = image.width;
+                        record[1] = image.height;
+                        record[2] = url;
+                        record[3] = new Image();
+                        asyncResult.value = record;
+                    });
                 };
                 image.src = url;
                 return asyncResult;
@@ -9166,7 +9275,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
     }(Widget_6.Widget));
     exports.CanvasWorld = CanvasWorld;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_1) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_5, CanvasWorld_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
@@ -9258,7 +9367,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var _this = this;
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
             var spinner = content.find("#pb-spinner");
-            var dialog = new Dialog_1.Dialog("Loading", content[0], []);
+            var dialog = new Dialog_5.Dialog("Loading", content[0], []);
             dialog.show();
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
@@ -9267,12 +9376,12 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             }, function (error) {
                 dialog.hide();
                 if (error.error == "ProjectDoesNotExist") {
-                    Dialog_1.Dialog.alert("Sorry", $("<p>The project with id " + id + " does not exist.</p>")).buttons[0].click(function () {
+                    Dialog_5.Dialog.alert("Sorry", $("<p>The project with id " + id + " does not exist.</p>")).buttons[0].click(function () {
                         window.location = "/";
                     });
                 }
                 else {
-                    Dialog_1.Dialog.alert("Sorry", $("<p>Couldn't load project " + id + ".</p>"));
+                    Dialog_5.Dialog.alert("Sorry", $("<p>Couldn't load project " + id + ".</p>"));
                 }
             });
         };
@@ -9291,7 +9400,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_2, Api_2, Utils_8) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_6, Api_2, Utils_8) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -9399,7 +9508,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             content.find("#pb-new-canvas-program").click(function () {
                 window.location = "/project.html?type=canvas";
             });
-            var dialog = new Dialog_2.Dialog("New Project", content[0], ["Cancel"]);
+            var dialog = new Dialog_6.Dialog("New Project", content[0], ["Cancel"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9417,7 +9526,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_2.Dialog("Log in", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_6.Dialog("Log in", content[0], ["Cancel", "Log in"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9451,7 +9560,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_2.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_6.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9487,7 +9596,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_2.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
+            var dialog = new Dialog_6.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9532,22 +9641,22 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             dialog.show();
         };
         Toolbar.prototype.serverErrorDialog = function () {
-            Dialog_2.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
+            Dialog_6.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
         Toolbar.prototype.saveProject = function () {
             var _this = this;
             if (!Api_2.Api.getUserName()) {
-                Dialog_2.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
+                Dialog_6.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
                 return;
             }
             if (this.title.val().trim().length == 0) {
-                Dialog_2.Dialog.alert("Sorry", $("<p>Can not save project without a title<p>")).show();
+                Dialog_6.Dialog.alert("Sorry", $("<p>Can not save project without a title<p>")).show();
                 return;
             }
             var internalSave = function () {
                 var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + Utils_8.escapeHtml(_this.title.val()) + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
                 var spinner = content.find("#pb-spinner");
-                var dialog = new Dialog_2.Dialog("Saving", content[0], []);
+                var dialog = new Dialog_6.Dialog("Saving", content[0], []);
                 dialog.show();
                 var saveProject = new Events_3.BeforeSaveProject({
                     code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
@@ -9568,7 +9677,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 }
                 catch (e) {
                     dialog.hide();
-                    Dialog_2.Dialog.alert("Sorry", $("<p>An error occured while saving the project.<p>")).show();
+                    Dialog_6.Dialog.alert("Sorry", $("<p>An error occured while saving the project.<p>")).show();
                     return;
                 }
                 Api_2.Api.saveProject(saveProject.project, function (projectCode) {
@@ -9585,7 +9694,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 });
             };
             if (this.loadedProject && this.loadedProject.userName != Api_2.Api.getUserName()) {
-                Dialog_2.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
+                Dialog_6.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
                     internalSave();
                 }).show();
             }
@@ -9625,7 +9734,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_3, Dialog_3) {
+define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_3, Dialog_7) {
     "use strict";
     exports.__esModule = true;
     var AdminPage = (function () {
@@ -9659,7 +9768,7 @@ define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                 _this.renderProjects(projectListDom, projects);
                 _this.fetching = false;
             }, function () {
-                Dialog_3.Dialog.alert("Error", $("<p>Couldn't retrieve projects.</p>")).show();
+                Dialog_7.Dialog.alert("Error", $("<p>Couldn't retrieve projects.</p>")).show();
                 _this.fetching = false;
             });
             this.fetching = true;
@@ -9900,7 +10009,7 @@ define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], 
     }());
     exports.DevsPage = DevsPage;
 });
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_4) {
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_8) {
     "use strict";
     exports.__esModule = true;
     var EmbeddedPage = (function () {
@@ -9909,7 +10018,7 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
             Api_4.Api.loadProject(Api_4.Api.getProjectId(), function (project) {
                 dom.append(new Player_1.Player(project).render());
             }, function () {
-                Dialog_4.Dialog.alert("Sorry", $("Could not load project " + Api_4.Api.getProjectId()));
+                Dialog_8.Dialog.alert("Sorry", $("Could not load project " + Api_4.Api.getProjectId()));
             });
             parent.append(dom);
         }
@@ -9917,7 +10026,7 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_5, Dialog_5, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_5, Dialog_9, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
@@ -9945,7 +10054,7 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
                     featured.append(card);
                 });
             }, function () {
-                Dialog_5.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
+                Dialog_9.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
             });
         }
         IndexPage.prototype.onEvent = function (event) {
@@ -9974,7 +10083,7 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_11, Toolbar_6, Api_6, Dialog_6, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_11, Toolbar_6, Api_6, Dialog_10, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
@@ -9989,7 +10098,7 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
             $(parent).append(dom);
             var userId = Api_6.Api.getUserId();
             if (!userId) {
-                var dialog = Dialog_6.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
+                var dialog = Dialog_10.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
                     window.location = "/";
                 });
@@ -10015,11 +10124,11 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                         var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
                         projectDom.append(deleteButton);
                         deleteButton.click(function () {
-                            Dialog_6.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
+                            Dialog_10.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
                                 Api_6.Api.deleteProject(project.code, function () {
                                     projectDom.fadeOut(1000);
                                 }, function () {
-                                    Dialog_6.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
+                                    Dialog_10.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
                                 });
                             }).show();
                         });

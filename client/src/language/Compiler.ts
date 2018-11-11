@@ -1,7 +1,8 @@
 import { assertNever, Map, escapeHtml } from "../Utils";
 import { Breakpoint } from "../widgets/Debugger";
 import { IFileRange, parse, SyntaxError } from "./Parser";
-import { AsyncPromise, FunctionCode, Instruction, JumpIns, LineInfo, ScopeInfo } from "./VirtualMachine";
+import { AsyncPromise, FunctionCode, Instruction, JumpIns, LineInfo, ScopeInfo, StopVirtualMachine } from "./VirtualMachine";
+import { Dialog } from "../widgets/Dialog";
 
 export class CompilerError {
 	constructor (public message: string, public location: IFileRange) {
@@ -450,22 +451,76 @@ export class ExternalFunctionsTypesConstants {
 			"alert",
 			[{name: "message", type: StringType}],
 			NothingType,
-			false,
-			(message: string) => { alert(message); }
+			true,
+			(value: string) => {
+				let asyncResult: AsyncPromise<void> = {
+					completed: false,
+					value: null,
+					stopVirtualMachine: false
+				}
+				let dialog = new Dialog("Program says", $(escapeHtml(value))[0], ["Stop", "OK"]);
+				dialog.buttons[0].click(() => {
+					asyncResult.stopVirtualMachine = true;
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.buttons[1].click(() => {
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.show();
+				return asyncResult;
+			}
 		)
 		externals.addFunction(
 			"alert",
 			[{name: "value", type: NumberType}],
 			NothingType,
-			false,
-			(value: string) => { alert(value); }
+			true,
+			(value: string) => {
+				let asyncResult: AsyncPromise<void> = {
+					completed: false,
+					value: null,
+					stopVirtualMachine: false
+				}
+				let dialog = new Dialog("Program says", $(escapeHtml(value))[0], ["Stop", "OK"]);
+				dialog.buttons[0].click(() => {
+					asyncResult.stopVirtualMachine = true;
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.buttons[1].click(() => {
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.show();
+				return asyncResult;
+			}
 		)
 		externals.addFunction(
 			"alert",
 			[{name: "value", type: BooleanType}],
 			NothingType,
-			false,
-			(value: string) => { alert(value); }
+			true,
+			(value: string) => {
+				let asyncResult: AsyncPromise<void> = {
+					completed: false,
+					value: null,
+					stopVirtualMachine: false
+				}
+				let dialog = new Dialog("Program says", $(escapeHtml(value))[0], ["Stop", "OK"]);
+				dialog.buttons[0].click(() => {
+					asyncResult.stopVirtualMachine = true;
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.buttons[1].click(() => {
+					asyncResult.completed = true;
+					dialog.hide();
+				});
+				dialog.show();
+				return asyncResult;
+			}
 		)
 		externals.addFunction(
 			"toString",
@@ -602,7 +657,8 @@ export class ExternalFunctionsTypesConstants {
 			(milliSeconds: number) => {
 				let promise: AsyncPromise<number> = {
 					completed: false,
-					value: 0
+					value: 0,
+					stopVirtualMachine: false
 				}
 				setTimeout(() => {
 					promise.value = milliSeconds;

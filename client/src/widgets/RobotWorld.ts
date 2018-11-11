@@ -5,6 +5,7 @@ import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
 import { BooleanType, StringType, NumberType, NothingType } from "../language/Compiler";
 import { DocCategory } from "./Docs";
+import { Dialog } from "./Dialog";
 
 function assertNever(x: never): never {
 	throw new Error("Unexpected object: " + x);
@@ -101,37 +102,33 @@ export class RobotWorld extends Widget {
 					this.world.setTile(x, y, null);
 					this.bus.event(new events.ProjectChanged());
 				} else if (this.selectedTool == "Number") {
-					var number = null;
-					while (number == null) {
-						number = prompt("Please enter a number between 0-99.", "0");
-						if (!number) return;
+					Dialog.prompt("Prompt", "Please enter a number between 0-99", (number: any) => {
 						try {
 							number = parseInt(number, 10);
 							if (number < 0 || number > 99 || isNaN(number)) {
-								alert("The number must be between 0-99.");
-								number = null;
+								Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
+							} else {
+								this.world.setTile(x, y, World.newNumber(number));
+								this.bus.event(new events.ProjectChanged());
+								requestAnimationFrame(() => {this.draw(0)});
 							}
 						} catch (e) {
-							alert("The number must be between 0-99.");
-							number = null;
+							Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
 						}
-					}
-					this.world.setTile(x, y, World.newNumber(number));
-					this.bus.event(new events.ProjectChanged());
+					}, () => {
+					});
 				} else if (this.selectedTool == "Letter") {
-					var letter = null;
-					while (letter == null) {
-						letter = prompt("Please enter a letter", "a");
-						if (!letter) return;
-
+					Dialog.prompt("Prompt", "Please enter a letter", (letter) => {
 						letter = letter.trim();
 						if (letter.length != 1) {
-							alert("Only a single letter is allowed.");
-							letter = null;
+							Dialog.alert("Error", $("<p>Only a single letter is allowed.</p>")).show();
+						} else {
+							this.world.setTile(x, y, World.newLetter(letter));
+							this.bus.event(new events.ProjectChanged());
+							requestAnimationFrame(() => {this.draw(0)});
 						}
-					}
-					this.world.setTile(x, y, World.newLetter(letter));
-					this.bus.event(new events.ProjectChanged());
+					}, () => {
+					});
 				} else if (this.selectedTool == "Robot") {
 					if (this.world.robot.data.x != x || this.world.robot.data.y != y) {
 						this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));
@@ -179,7 +176,8 @@ export class RobotWorld extends Widget {
 			this.world.robot.setAction(this.world, RobotAction.Forward);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
@@ -195,7 +193,8 @@ export class RobotWorld extends Widget {
 			this.world.robot.setAction(this.world, RobotAction.Backward);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
@@ -212,7 +211,8 @@ export class RobotWorld extends Widget {
 			this.world.robot.setAction(this.world, RobotAction.TurnLeft);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
@@ -229,7 +229,8 @@ export class RobotWorld extends Widget {
 			this.world.robot.setAction(this.world, RobotAction.TurnRight);
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			let check = () => {
 				if (this.world.robot.action == RobotAction.None) {
@@ -244,7 +245,6 @@ export class RobotWorld extends Widget {
 
 		ext.addFunction("print", [{name: "value", type: NumberType}], NothingType, true, (number) => {
 			if (number < 0 || number > 99 || isNaN(number)) {
-				alert("The number must be between 0-99.");
 				return {
 					completed: true,
 					value: null
@@ -258,7 +258,8 @@ export class RobotWorld extends Widget {
 			}
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			var num = 1;
 			let check = () => {
@@ -281,7 +282,6 @@ export class RobotWorld extends Widget {
 			};
 
 			if (letter.trim().length != 1) {
-				alert("The string must consist of exactly 1 letter, got '" + letter + "' instead.");
 				return {
 					completed: true,
 					value: null
@@ -295,7 +295,8 @@ export class RobotWorld extends Widget {
 			}
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			var num = 1;
 			let check = () => {
@@ -386,7 +387,6 @@ export class RobotWorld extends Widget {
 		});
 		ext.addFunction("setSpeed", [{name: "speed", type: NumberType}], NothingType, false, (speed) => {
 			if (speed < 0) {
-				alert("The robot's speed must be >= 0.");
 				return;
 			}
 			this.world.robot.moveDuration = 1 / speed;
@@ -396,7 +396,6 @@ export class RobotWorld extends Widget {
 		});
 		ext.addFunction("setTurningSpeed", [{name: "degrees", type: NumberType}], NothingType, false, (degrees) => {
 			if (degrees < 0) {
-				alert("The robot's turning speed must be >= 0.");
 				return;
 			}
 			this.world.robot.turnDuration = 1 / degrees * 90;
@@ -408,7 +407,8 @@ export class RobotWorld extends Widget {
 
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			var num = 1;
 			let check = () => {
@@ -429,7 +429,8 @@ export class RobotWorld extends Widget {
 
 			let asyncResult: vm.AsyncPromise<void> = {
 				completed: false,
-				value: null
+				value: null,
+				stopVirtualMachine: false
 			}
 			var num = 1;
 			let check = () => {

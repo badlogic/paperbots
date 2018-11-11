@@ -3,6 +3,7 @@ import * as events from "./Events"
 import { setElementEnabled } from "../Utils";
 import * as compiler from "../language/Compiler";
 import * as vm from "../language/VirtualMachine";
+import { Dialog } from "./Dialog";
 
 export enum DebuggerState {
 	Stopped,
@@ -148,7 +149,7 @@ export class Debugger extends Widget {
 					requestAnimationFrame(stepOverAsync);
 				} else {
 					if (this.vm.state == vm.VirtualMachineState.Completed) {
-						alert("Program complete.");
+						Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
 						this.bus.event(new events.Stop())
 						return;
 					}
@@ -175,7 +176,7 @@ export class Debugger extends Widget {
 			// complete.
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			if (this.vm.state == vm.VirtualMachineState.Completed) {
-				alert("Program complete.");
+				Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
 				this.bus.event(new events.Stop())
 				return;
 			}
@@ -185,7 +186,7 @@ export class Debugger extends Widget {
 			this.vm.stepInto();
 			this.bus.event(new events.Step(this.vm.getLineNumber()));
 			if (this.vm.state == vm.VirtualMachineState.Completed) {
-				alert("Program complete.");
+				Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
 				this.bus.event(new events.Stop())
 				return;
 			}
@@ -213,7 +214,7 @@ export class Debugger extends Widget {
 	checkVmStopped () {
 		if (this.vm.state == vm.VirtualMachineState.Completed) {
 			this.state = DebuggerState.Stopped;
-			alert("Program complete.");
+			Dialog.alert("Program says", $("<p>Program complete.</p>")).show();
 			this.bus.event(new events.Stop())
 			return;
 		} else {

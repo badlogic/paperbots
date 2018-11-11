@@ -44,11 +44,12 @@ export class Dialog {
 		})
 		document.body.appendChild(dialog.dom[0]);
 		dialog.dom.attr("tabindex", "1");
-		dialog.dom.focus();
+		dialog.dom.attr("contenteditable", "true");
 		dialog.dom.keyup((ev: any) => {
 			if (ev.keyCode == 13) dialog.buttons[0].click();
 			if (ev.keyCode == 27) dialog.buttons[0].click();
-		})
+		});
+		dialog.dom.focus();
 		return dialog;
 	}
 
@@ -72,7 +73,7 @@ export class Dialog {
 	}
 
 	static prompt (title: string, value: string, confirmed: (value: string) => void, cancled: () => void) {
-		let textField = $(`<input type="text" value="${value}" style="width: 100%; box-sizing: border-box;">`);
+		let textField = $(`<input type="text" value="${value}" class="pb-input-field">`);
 		let dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
 		dialog.buttons[0].click(() => {
 			dialog.dom.remove();

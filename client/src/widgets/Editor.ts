@@ -15,32 +15,6 @@ class CodeMirrorBreakpoint implements Breakpoint {
 	}
 }
 
-// const DEFAULT_SOURCE = `
-// fun forwardUntilNumber (n: number)
-// 	while true do
-// 		if scanNumber() == n then return end
-// 		forward()
-// 	end
-// end
-
-// forwardUntilNumber(3)
-
-// turnRight()
-// forward()
-// forward()
-
-// repeat 4 times
-// 	forward()
-// 	print(3)
-// 	forward()
-// 	print(3)
-// 	turnRight()
-// end
-
-// print(10)
-// alert("Oh no!")
-// `
-
 const DEFAULT_SOURCE = "";
 
 export class Editor extends Widget {
@@ -105,10 +79,6 @@ export class Editor extends Widget {
 					cm.setGutterMarker(n, "gutter-breakpoints", null);
 					this.bus.event(new events.BreakpointRemoved(bp));
 				}
-			});
-
-			this.editor.on("delete", (line) => {
-				alert(line);
 			});
 
 			this.editor.getDoc().setValue(DEFAULT_SOURCE.trim());

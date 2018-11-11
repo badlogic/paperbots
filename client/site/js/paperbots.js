@@ -1298,11 +1298,11 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         var peg$c31 = function (fields) {
             if (fields == null)
                 return [];
-            var head = fields[0];
-            fields = fields[1].map(function (element) {
+            fields = fields.map(function (element) {
                 return element[1];
+            }).filter(function (element) {
+                return element.kind != "comment";
             });
-            fields.unshift(head);
             return fields;
         };
         var peg$c32 = "var";
@@ -2594,64 +2594,65 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             return s0;
         }
         function peg$parseFields() {
-            var s0, s1, s2, s3, s4, s5, s6;
+            var s0, s1, s2, s3, s4, s5;
             s0 = peg$currPos;
-            s1 = peg$currPos;
-            s2 = peg$parseField();
-            if (s2 !== peg$FAILED) {
-                s3 = [];
-                s4 = peg$currPos;
-                s5 = peg$parse_();
-                if (s5 !== peg$FAILED) {
-                    s6 = peg$parseField();
-                    if (s6 !== peg$FAILED) {
-                        s5 = [s5, s6];
-                        s4 = s5;
-                    }
-                    else {
-                        peg$currPos = s4;
-                        s4 = peg$FAILED;
-                    }
+            s1 = [];
+            s2 = peg$currPos;
+            s3 = peg$parse_();
+            if (s3 !== peg$FAILED) {
+                s4 = peg$parseField();
+                if (s4 === peg$FAILED) {
+                    s4 = peg$parseComment();
                 }
-                else {
-                    peg$currPos = s4;
-                    s4 = peg$FAILED;
-                }
-                while (s4 !== peg$FAILED) {
-                    s3.push(s4);
-                    s4 = peg$currPos;
+                if (s4 !== peg$FAILED) {
                     s5 = peg$parse_();
                     if (s5 !== peg$FAILED) {
-                        s6 = peg$parseField();
-                        if (s6 !== peg$FAILED) {
-                            s5 = [s5, s6];
-                            s4 = s5;
-                        }
-                        else {
-                            peg$currPos = s4;
-                            s4 = peg$FAILED;
-                        }
+                        s3 = [s3, s4, s5];
+                        s2 = s3;
                     }
                     else {
-                        peg$currPos = s4;
-                        s4 = peg$FAILED;
+                        peg$currPos = s2;
+                        s2 = peg$FAILED;
                     }
                 }
-                if (s3 !== peg$FAILED) {
-                    s2 = [s2, s3];
-                    s1 = s2;
-                }
                 else {
-                    peg$currPos = s1;
-                    s1 = peg$FAILED;
+                    peg$currPos = s2;
+                    s2 = peg$FAILED;
                 }
             }
             else {
-                peg$currPos = s1;
-                s1 = peg$FAILED;
+                peg$currPos = s2;
+                s2 = peg$FAILED;
             }
-            if (s1 === peg$FAILED) {
-                s1 = null;
+            while (s2 !== peg$FAILED) {
+                s1.push(s2);
+                s2 = peg$currPos;
+                s3 = peg$parse_();
+                if (s3 !== peg$FAILED) {
+                    s4 = peg$parseField();
+                    if (s4 === peg$FAILED) {
+                        s4 = peg$parseComment();
+                    }
+                    if (s4 !== peg$FAILED) {
+                        s5 = peg$parse_();
+                        if (s5 !== peg$FAILED) {
+                            s3 = [s3, s4, s5];
+                            s2 = s3;
+                        }
+                        else {
+                            peg$currPos = s2;
+                            s2 = peg$FAILED;
+                        }
+                    }
+                    else {
+                        peg$currPos = s2;
+                        s2 = peg$FAILED;
+                    }
+                }
+                else {
+                    peg$currPos = s2;
+                    s2 = peg$FAILED;
+                }
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
@@ -6214,7 +6215,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + Utils_3.escapeHtml(value) + "</p>")[0], ["Stop", "OK"]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;
@@ -6233,7 +6234,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;
@@ -6252,7 +6253,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $(Utils_3.escapeHtml(value))[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;

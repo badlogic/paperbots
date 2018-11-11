@@ -78,14 +78,14 @@ Field
   }
 
 Fields
-  = fields:(Field (_ Field)*)?
+  = fields:(_(Field/Comment)_)*
   {
     if (fields == null) return [];
-    var head = fields[0];
-    fields = fields[1].map(function(element) {
+    fields = fields.map(function(element) {
       return element[1];
-    })
-  	fields.unshift(head);
+    }).filter(function(element) {
+      return element.kind != "comment";
+    });
     return fields;
   }
 

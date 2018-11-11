@@ -130,8 +130,6 @@ export class Debugger extends Widget {
 		});
 
 		this.stop.click(() => {
-			this.snapshot = null;
-			this.state = DebuggerState.Stopped;
 			this.bus.event(new events.Stop());
 		});
 
@@ -324,6 +322,9 @@ export class Debugger extends Widget {
 			this.callstack.empty();
 			this.vmState.empty();
 			this.dom.addClass("pb-collapsed");
+
+			this.snapshot = null;
+			this.state = DebuggerState.Stopped;
 		} else if (event instanceof events.Step) {
 			if (this.vm && this.vm.frames.length > 0) {
 				this.selectedFrame = this.vm.frames[this.vm.frames.length - 1];

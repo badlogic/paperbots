@@ -600,7 +600,16 @@ WIDGET STYLES
 	color: #eeeeee;
 	padding: 0.5em;
 	font-size: 14px;
-	white-space: pre;
+	min-width: 0px;
+}
+
+#pb-code-editor-running {
+	font-family: monospace;
+	overflow: auto;
+	background: #006f00;
+	color: #eeeeee;
+	padding: 0.5em;
+	font-size: 14px;
 	min-width: 0px;
 }
 

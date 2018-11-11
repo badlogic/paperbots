@@ -20,6 +20,7 @@ const DEFAULT_SOURCE = "";
 export class Editor extends Widget {
 	private editor: CodeMirror.Editor;
 	private error: JQuery;
+	private running: JQuery;
 	private markers = Array<TextMarker>();
 	private ext = new compiler.ExternalFunctionsTypesConstants();
 	private justLoaded = false;
@@ -33,6 +34,7 @@ export class Editor extends Widget {
 					</div>
 				</div>
 				<div id="pb-code-editor-error"></div>
+				<div id="pb-code-editor-running">Program running.</div>
 			</div>
 		`);
 		requestAnimationFrame(() => {
@@ -52,6 +54,7 @@ export class Editor extends Widget {
 			this.editor.on("change", (instance, change) => {
 				let module = this.compile();
 				this.bus.event(new events.SourceChanged(this.editor.getDoc().getValue(), module));
+				this.bus.event(new events.Stop());
 				if (this.justLoaded) {
 					this.justLoaded = false;
 				} else {
@@ -88,6 +91,8 @@ export class Editor extends Widget {
 		});
 		this.error = dom.find("#pb-code-editor-error");
 		this.error.hide();
+		this.running = dom.find("#pb-code-editor-running");
+		this.running.hide();
 		return dom[0];
 	}
 
@@ -209,13 +214,14 @@ export class Editor extends Widget {
 
 	onEvent(event: Event) {
 		if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
-			this.editor.setOption("readOnly", true);
 			this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+			this.running.show();
 		} else if (event instanceof events.Stop) {
 			this.editor.setOption("readOnly", false);
 			this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
 			this.lastLine = -1;
 			this.editor.focus();
+			this.running.hide();
 		} else if (event instanceof events.Step || event instanceof events.LineChange) {
 			this.setLine(event.line - 1);
 		} else if (event instanceof events.Select) {

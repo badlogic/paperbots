@@ -852,8 +852,6 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 requestAnimationFrame(_this.advanceVm);
             });
             this.stop.click(function () {
-                _this.snapshot = null;
-                _this.state = DebuggerState.Stopped;
                 _this.bus.event(new events.Stop());
             });
             var stepOverAsync = function () {
@@ -1031,6 +1029,8 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.callstack.empty();
                 this.vmState.empty();
                 this.dom.addClass("pb-collapsed");
+                this.snapshot = null;
+                this.state = DebuggerState.Stopped;
             }
             else if (event instanceof events.Step) {
                 if (this.vm && this.vm.frames.length > 0) {
@@ -7631,7 +7631,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         }
         Editor.prototype.render = function () {
             var _this = this;
-            var dom = $("\n\t\t\t<div id=\"pb-code-editor\">\n\t\t\t\t<div id=\"pb-code-editor-code-mirror-wrapper\">\n\t\t\t\t\t<div id=\"pb-code-editor-code-mirror\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-code-editor-error\"></div>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-code-editor\">\n\t\t\t\t<div id=\"pb-code-editor-code-mirror-wrapper\">\n\t\t\t\t\t<div id=\"pb-code-editor-code-mirror\">\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-code-editor-error\"></div>\n\t\t\t\t<div id=\"pb-code-editor-running\">Program running.</div>\n\t\t\t</div>\n\t\t");
             requestAnimationFrame(function () {
                 _this.editor = CodeMirror(dom.find("#pb-code-editor-code-mirror")[0], {
                     tabSize: 3,
@@ -7647,6 +7647,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                 _this.editor.on("change", function (instance, change) {
                     var module = _this.compile();
                     _this.bus.event(new events.SourceChanged(_this.editor.getDoc().getValue(), module));
+                    _this.bus.event(new events.Stop());
                     if (_this.justLoaded) {
                         _this.justLoaded = false;
                     }
@@ -7682,6 +7683,8 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             });
             this.error = dom.find("#pb-code-editor-error");
             this.error.hide();
+            this.running = dom.find("#pb-code-editor-running");
+            this.running.hide();
             return dom[0];
         };
         Editor.prototype.extractUrls = function (text) {
@@ -7782,14 +7785,15 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
         Editor.prototype.onEvent = function (event) {
             var _this = this;
             if (event instanceof events.Run || event instanceof events.Debug || event instanceof events.Resume) {
-                this.editor.setOption("readOnly", true);
                 this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
+                this.running.show();
             }
             else if (event instanceof events.Stop) {
                 this.editor.setOption("readOnly", false);
                 this.editor.removeLineClass(this.lastLine, "background", "pb-debugged-line");
                 this.lastLine = -1;
                 this.editor.focus();
+                this.running.hide();
             }
             else if (event instanceof events.Step || event instanceof events.LineChange) {
                 this.setLine(event.line - 1);

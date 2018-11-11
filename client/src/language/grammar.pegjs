@@ -272,12 +272,12 @@ MultiplyDivide
   }
 
 Unary
-  = op:("not" _?/ "-" _?)? factor:Factor
+  = op:("not " _? / "-" _?)? factor:Factor
   {
   	if (!op) return factor;
     return {
     	kind: "unaryOp",
-        operator: op[0],
+        operator: op[0].trim(),
         value: factor,
         location: location() // TODO should use location of op
     };

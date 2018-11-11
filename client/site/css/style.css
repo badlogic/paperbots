@@ -508,6 +508,7 @@ WIDGET STYLES
 	flex: 1;
 	overflow: auto;
 	margin: 1em 0 0 1em;
+	font-size: 12px;
 	font-family: monospace;
 	background: #252526;
 	color: #ffffff;

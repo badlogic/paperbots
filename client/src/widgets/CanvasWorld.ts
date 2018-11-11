@@ -74,7 +74,8 @@ export class CanvasWorld extends Widget {
 		{name: "radius", type: NumberType},
 		{name: "color", type: StringType}
 		], NothingType, false, (x, y, radius, color) =>{
-
+			if (radius <= 0) return;
+			if (!color) return;
 			let ctx = this.context;
 			ctx.beginPath();
 			ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
@@ -90,6 +91,7 @@ export class CanvasWorld extends Widget {
 			{name: "y2", type: NumberType},
 			{name: "color", type: StringType},
 		], NothingType, true, (x1, y1, x2, y2, color) => {
+			if (!color) return;
 			let ctx = this.context;
 			ctx.strokeStyle = color;
 			ctx.beginPath();
@@ -104,10 +106,13 @@ export class CanvasWorld extends Widget {
 			{name: "width", type: NumberType},
 			{name: "height", type: NumberType },
 			{name: "color", type: StringType}
-		], NothingType,false,(x,y,width,hegiht,color) =>{
+		], NothingType,false,(x,y,width,height,color) =>{
+			if (width <= 0) return;
+			if (height <= 0) return;
+			if (!color) return;
 			let ctx = this.context;
 			ctx.fillStyle = color;
-			ctx.fillRect(x, y, width, hegiht);
+			ctx.fillRect(x, y, width, height);
 		});
 
 		functionsAndTypes.addFunction("drawEllipse",[
@@ -117,6 +122,9 @@ export class CanvasWorld extends Widget {
 			{name: "radiusY", type: NumberType},
 			{name: "color", type: StringType}
 		], NothingType,false,(x, y, radiusX, radiusY, color) =>{
+			if (radiusX <= 0) return;
+			if (radiusY <= 0) return;
+			if (!color) return;
 			let ctx = this.context;
 			ctx.fillStyle = color;
 			ctx.beginPath();
@@ -132,6 +140,8 @@ export class CanvasWorld extends Widget {
 			{name: "fontFamily", type: StringType},
 			{name: "color", type: StringType}
 		], NothingType, false, (text,x,y,fontSize,fontFamily,color) =>{
+			if (!fontFamily) return;
+			if (!color) return;
 			let ctx = this.context;
 			ctx.font = fontSize.toString()+"px "+fontFamily;
 			ctx.fillStyle = color;
@@ -181,6 +191,9 @@ export class CanvasWorld extends Widget {
 			{name: "width", type: NumberType},
 			{name: "height", type: NumberType}
 		], NothingType, false, (image,x,y,width,height) =>{
+			if (!image) return;
+			if (width <= 0) return;
+			if (height <= 0) return;
 			let ctx = this.context;
 			if (!image[3]) return;
 			ctx.drawImage(image[3],x,y,width,height);

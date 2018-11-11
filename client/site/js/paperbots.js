@@ -8836,6 +8836,10 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "radius", type: Compiler_3.NumberType },
                 { name: "color", type: Compiler_3.StringType }
             ], Compiler_3.NothingType, false, function (x, y, radius, color) {
+                if (radius <= 0)
+                    return;
+                if (!color)
+                    return;
                 var ctx = _this.context;
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
@@ -8849,6 +8853,8 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "y2", type: Compiler_3.NumberType },
                 { name: "color", type: Compiler_3.StringType },
             ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
+                if (!color)
+                    return;
                 var ctx = _this.context;
                 ctx.strokeStyle = color;
                 ctx.beginPath();
@@ -8862,10 +8868,16 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "width", type: Compiler_3.NumberType },
                 { name: "height", type: Compiler_3.NumberType },
                 { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
+            ], Compiler_3.NothingType, false, function (x, y, width, height, color) {
+                if (width <= 0)
+                    return;
+                if (height <= 0)
+                    return;
+                if (!color)
+                    return;
                 var ctx = _this.context;
                 ctx.fillStyle = color;
-                ctx.fillRect(x, y, width, hegiht);
+                ctx.fillRect(x, y, width, height);
             });
             functionsAndTypes.addFunction("drawEllipse", [
                 { name: "x", type: Compiler_3.NumberType },
@@ -8874,6 +8886,12 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "radiusY", type: Compiler_3.NumberType },
                 { name: "color", type: Compiler_3.StringType }
             ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
+                if (radiusX <= 0)
+                    return;
+                if (radiusY <= 0)
+                    return;
+                if (!color)
+                    return;
                 var ctx = _this.context;
                 ctx.fillStyle = color;
                 ctx.beginPath();
@@ -8888,6 +8906,10 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "fontFamily", type: Compiler_3.StringType },
                 { name: "color", type: Compiler_3.StringType }
             ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
+                if (!fontFamily)
+                    return;
+                if (!color)
+                    return;
                 var ctx = _this.context;
                 ctx.font = fontSize.toString() + "px " + fontFamily;
                 ctx.fillStyle = color;
@@ -8935,6 +8957,12 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 { name: "width", type: Compiler_3.NumberType },
                 { name: "height", type: Compiler_3.NumberType }
             ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
+                if (!image)
+                    return;
+                if (width <= 0)
+                    return;
+                if (height <= 0)
+                    return;
                 var ctx = _this.context;
                 if (!image[3])
                     return;

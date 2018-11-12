@@ -31,6 +31,11 @@ a {
     background-color: transparent;
 }
 
+pre {
+	background: #333333;
+	overflow: auto;
+}
+
 code {
 	padding: 0.2em 0.4em;
     margin: 0;
@@ -111,7 +116,7 @@ SHARED COMPONENT STYLES
 .pb-dialog-content {
 	position: relative;
 	margin: auto;
-	width: 30%;
+	width: fit-content;
 	min-width: 400px;
 	padding: 20px;
 	background-color: #252526;
@@ -391,8 +396,16 @@ WIDGET STYLES
 }
 
 /* Canvas world widget styles */
+#pb-canvas-world {
+    max-width: 990px;
+    max-height: 510px;
+    width: 100%;
+    padding: 0 15px;
+}
 #pb-canvas-world canvas {
 	/*image-rendering: pixelated;*/
+	width: 100%;
+	background: black;
 }
 
 /** Docs styles */
@@ -632,7 +645,7 @@ WIDGET STYLES
 /*------------------------------------------------------------------------
 PAGE STYLES
 ------------------------------------------------------------------------*/
-#pb-index-page, #pb-learn-page, #pb-devs-page, #pb-user-page {
+#pb-index-page, #pb-learn-page, #pb-devs-page, #pb-user-page, #pb-admin-page {
 	width: 100%;
 	height: 100vh;
 	display: flex;

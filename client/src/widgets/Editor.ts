@@ -257,9 +257,11 @@ export class Editor extends Widget {
 			this.ext = event.functions;
 		} else if (event instanceof events.ProjectLoaded) {
 			this.justLoaded = true;
-			setTimeout(() => {
+			let setSource = () => {
+				if (!this.editor) requestAnimationFrame(setSource);
 				this.editor.getDoc().setValue(event.project.contentObject.code);
-			}, 100);
+			}
+			requestAnimationFrame(setSource);
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.contentObject.code = this.editor.getDoc().getValue()
 		}

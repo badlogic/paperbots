@@ -3,6 +3,8 @@ package io.paperbots;
 
 import java.io.File;
 import java.security.SecureRandom;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.validator.routines.EmailValidator;
@@ -337,6 +339,36 @@ public class Paperbots {
 				.createQuery(
 					"SELECT code, userName, title, type, lastModified, created, content FROM projects WHERE featured=1 AND public=1 ORDER BY lastModified DESC")
 				.mapToBean(Project.class).list();
+			return projects.toArray(new Project[projects.size()]);
+		});
+	}
+
+	//
+	// Admin functionality, requires a token from a user that is an admin.
+	//
+	public static enum Sorting {
+		Newest, Oldest, LastModified
+	}
+
+	public Project[] getProjectsAdmin (String token, Sorting sorting, String dateOffset) {
+		User user = getUserForToken(token);
+		if (user.getType() != UserType.admin) throw new PaperbotsException(PaperbotsError.InvalidUserName);
+		return jdbi.withHandle(handle -> {
+			String sqlSorting = "created DESC";
+			if (sorting == Sorting.Newest) {
+				sqlSorting = "created DESC";
+			} else if (sorting == Sorting.Oldest) {
+				sqlSorting = "created ASC";
+			} else if (sorting == Sorting.LastModified) {
+				sqlSorting = "lastModified DESC";
+			}
+			String offset = dateOffset;
+			if (offset == null) {
+				offset = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date());
+			}
+			List<Project> projects = handle.createQuery(
+				"SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE created < :dateOffset ORDER BY " + sqlSorting + " LIMIT 10")
+				.bind("dateOffset", offset).mapToBean(Project.class).list();
 			return projects.toArray(new Project[projects.size()]);
 		});
 	}

@@ -13,6 +13,7 @@ import io.javalin.staticfiles.Location;
 import io.javalin.websocket.WsHandler;
 import io.javalin.websocket.WsSession;
 import io.marioslab.basis.site.FileWatcher;
+import io.paperbots.Paperbots.Sorting;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.Project;
@@ -137,7 +138,7 @@ public class Server {
 		app.post("/api/saveproject", ctx -> {
 			Project request = ctx.bodyAsClass(Project.class);
 			String projectId = paperbots.saveProject(ctx.cookie("token"), request.getCode(), request.getTitle(), request.getDescription(), request.getContent(),
-				request.isPublic(), ProjectType.robot);
+				request.isPublic(), request.getType());
 			ctx.json(new ProjectRequest(projectId));
 		});
 
@@ -169,6 +170,12 @@ public class Server {
 			Log.info(e.getMessage(), e);
 			ctx.json(new ErrorResponse(PaperbotsError.ServerError));
 			ctx.status(500);
+		});
+
+		// Admin endpoints
+		app.post("/api/getprojectsadmin", ctx -> {
+			ProjectsRequest request = ctx.bodyAsClass(ProjectsRequest.class);
+			ctx.json(paperbots.getProjectsAdmin(ctx.cookie("token"), request.sorting, request.dateOffset));
 		});
 
 		// CSFR headers
@@ -249,6 +256,8 @@ public class Server {
 
 	public static class ProjectsRequest {
 		public String userName;
+		public Sorting sorting;
+		public String dateOffset;
 		public boolean worldData;
 
 		public ProjectsRequest () {

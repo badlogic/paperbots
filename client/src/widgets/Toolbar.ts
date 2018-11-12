@@ -55,7 +55,7 @@ export class Toolbar extends Widget {
 
 		this.new = dom.find("#pb-toolbar-new");
 		this.new.click(() => {
-			(window.location as any) = "/project.html";
+			this.newDialog();
 		});
 
 		this.save = dom.find("#pb-toolbar-save");
@@ -141,6 +141,38 @@ export class Toolbar extends Widget {
 			this.signup.show();
 			this.user.hide();
 		}
+	}
+
+	private newDialog () {
+		let content = $(/*html*/`
+		<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+			<p>Pick the typ of program you want to write!</p>
+			<div style="display: flex; flex-direction: row; width: 100%;">
+				<div id="pb-new-robot-program" style="cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; margin-right: 0.5em; position: relative">
+					<img src="/img/new-robot-world.png">
+					<span style="position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);">Robot program</span>
+				</div>
+				<div id="pb-new-canvas-program" style="cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; position: relative">
+					<img style="width: 100%;" src="/img/new-canvas-world.png">
+					<span style="position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);">Canvas program</span>
+				</div>
+			</div>
+		</div>`
+		);
+
+		content.find("#pb-new-robot-program").click(() => {
+			(window.location as any) = "/project.html";
+		});
+
+		content.find("#pb-new-canvas-program").click(() => {
+			(window.location as any) = "/project.html?type=canvas";
+		});
+
+		let dialog = new Dialog("New Project", content[0], ["Cancel"]);
+		dialog.buttons[0].click(() => {
+			dialog.hide();
+		});
+		dialog.show();
 	}
 
 	private loginDialog (email: string = "") {

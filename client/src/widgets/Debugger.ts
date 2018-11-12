@@ -413,7 +413,7 @@ export class Debugger extends Widget {
 					output += "\n";
 					lastLineInfoIndex = line.index;
 				}
-				output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+				output += index + ":\t" + (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
 			});
 			output += "\n";
 		});

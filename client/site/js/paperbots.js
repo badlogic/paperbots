@@ -59,6 +59,22 @@ define("Utils", ["require", "exports"], function (require, exports) {
                 }
             }, true);
             element.addEventListener("mouseup", function (ev) {
+                if (!_this.buttonDown)
+                    return;
+                if (ev instanceof MouseEvent) {
+                    var rect = element.getBoundingClientRect();
+                    var x = ev.clientX - rect.left;
+                    var y = ev.clientY - rect.top;
+                    var listeners = _this.listeners;
+                    for (var i = 0; i < listeners.length; i++) {
+                        listeners[i].up(x, y);
+                    }
+                    _this.lastX = x;
+                    _this.lastY = y;
+                    _this.buttonDown = false;
+                }
+            }, true);
+            element.addEventListener("mouseleave", function (ev) {
                 if (ev instanceof MouseEvent) {
                     var rect = element.getBoundingClientRect();
                     var x = ev.clientX - rect.left;
@@ -286,281 +302,6 @@ define("Utils", ["require", "exports"], function (require, exports) {
         return target.replace(new RegExp(search, 'g'), replacement);
     };
 });
-define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_1) {
-    "use strict";
-    exports.__esModule = true;
-    var Api = (function () {
-        function Api() {
-        }
-        Api.request = function (endpoint, data, success, error) {
-            $.ajax({
-                url: endpoint,
-                method: "POST",
-                contentType: "application/json; charset=utf-8",
-                processData: false,
-                data: JSON.stringify(data)
-            })
-                .done(function (response) {
-                success(response);
-            }).fail(function (e) {
-                console.log(e);
-                if (e.responseJSON)
-                    error(e.responseJSON);
-                else
-                    error({ error: "ServerError" });
-            });
-        };
-        Api.signup = function (email, name, success, error) {
-            this.request("api/signup", { email: email, name: name }, function (r) {
-                success();
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.login = function (emailOrUser, success, error) {
-            this.request("api/login", { email: emailOrUser }, function (r) {
-                success();
-            }, function (e) {
-                error(e.error == "UserDoesNotExist");
-            });
-        };
-        Api.verify = function (code, success, error) {
-            this.request("api/verify", { code: code }, function () {
-                success();
-            }, function (e) {
-                error(e.error == "CouldNotVerifyCode");
-            });
-        };
-        Api.logout = function (success, error) {
-            this.request("api/logout", {}, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.loadProject = function (projectId, success, error) {
-            this.request("api/getproject", { projectId: projectId }, function (project) {
-                try {
-                    project.contentObject = JSON.parse(project.content);
-                }
-                catch (e) {
-                    console.log(e);
-                    error({ error: "ServerError" });
-                }
-                success(project);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.saveProject = function (project, success, error) {
-            this.request("api/saveproject", project, function (r) {
-                success(r.projectId);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.deleteProject = function (projectId, success, error) {
-            this.request("api/deleteproject", { projectId: projectId }, function () {
-                success();
-            }, function (e) {
-                error();
-            });
-        };
-        Api.getUserProjects = function (userName, worldData, success, error) {
-            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getFeaturedProjects = function (success, error) {
-            this.request("api/getfeaturedprojects", {}, function (projects) {
-                projects.forEach(function (project) {
-                    try {
-                        project.contentObject = JSON.parse(project.content);
-                    }
-                    catch (e) {
-                        console.log(e);
-                        error({ error: "ServerError" });
-                    }
-                });
-                success(projects);
-            }, function (e) {
-                error(e);
-            });
-        };
-        Api.getUserName = function () {
-            return Utils_1.escapeHtml(this.getCookie("name"));
-        };
-        Api.getProjectId = function () {
-            return Utils_1.escapeHtml(this.getUrlParameter("id"));
-        };
-        Api.getUserId = function () {
-            return Utils_1.escapeHtml(this.getUrlParameter("id"));
-        };
-        Api.getUserUrl = function (name) {
-            return Utils_1.escapeHtml("/user.html?id=" + name);
-        };
-        Api.getProjectUrl = function (name) {
-            return Utils_1.escapeHtml("/project.html?id=" + name);
-        };
-        Api.getUrlParameter = function (name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            var results = regex.exec(location.search);
-            return Utils_1.escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
-        };
-        ;
-        Api.getCookie = function (key) {
-            if (!key) {
-                return null;
-            }
-            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
-        };
-        return Api;
-    }());
-    exports.Api = Api;
-});
-define("widgets/Events", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var SourceChanged = (function () {
-        function SourceChanged(source, module) {
-            this.source = source;
-            this.module = module;
-        }
-        return SourceChanged;
-    }());
-    exports.SourceChanged = SourceChanged;
-    var Run = (function () {
-        function Run() {
-        }
-        return Run;
-    }());
-    exports.Run = Run;
-    var Debug = (function () {
-        function Debug() {
-        }
-        return Debug;
-    }());
-    exports.Debug = Debug;
-    var Pause = (function () {
-        function Pause() {
-        }
-        return Pause;
-    }());
-    exports.Pause = Pause;
-    var Resume = (function () {
-        function Resume() {
-        }
-        return Resume;
-    }());
-    exports.Resume = Resume;
-    var Stop = (function () {
-        function Stop() {
-        }
-        return Stop;
-    }());
-    exports.Stop = Stop;
-    var Step = (function () {
-        function Step(line) {
-            this.line = line;
-        }
-        return Step;
-    }());
-    exports.Step = Step;
-    var LineChange = (function () {
-        function LineChange(line) {
-            this.line = line;
-        }
-        return LineChange;
-    }());
-    exports.LineChange = LineChange;
-    var Select = (function () {
-        function Select(startLine, startColumn, endLine, endColumn) {
-            this.startLine = startLine;
-            this.startColumn = startColumn;
-            this.endLine = endLine;
-            this.endColumn = endColumn;
-        }
-        return Select;
-    }());
-    exports.Select = Select;
-    var AnnounceExternalFunctions = (function () {
-        function AnnounceExternalFunctions(functions) {
-            this.functions = functions;
-        }
-        return AnnounceExternalFunctions;
-    }());
-    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
-    var BreakpointAdded = (function () {
-        function BreakpointAdded(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointAdded;
-    }());
-    exports.BreakpointAdded = BreakpointAdded;
-    var BreakpointRemoved = (function () {
-        function BreakpointRemoved(breakpoint) {
-            this.breakpoint = breakpoint;
-        }
-        return BreakpointRemoved;
-    }());
-    exports.BreakpointRemoved = BreakpointRemoved;
-    var LoggedIn = (function () {
-        function LoggedIn() {
-        }
-        return LoggedIn;
-    }());
-    exports.LoggedIn = LoggedIn;
-    ;
-    var LoggedOut = (function () {
-        function LoggedOut() {
-        }
-        return LoggedOut;
-    }());
-    exports.LoggedOut = LoggedOut;
-    ;
-    var ProjectLoaded = (function () {
-        function ProjectLoaded(project) {
-            this.project = project;
-        }
-        return ProjectLoaded;
-    }());
-    exports.ProjectLoaded = ProjectLoaded;
-    var BeforeSaveProject = (function () {
-        function BeforeSaveProject(project) {
-            this.project = project;
-        }
-        return BeforeSaveProject;
-    }());
-    exports.BeforeSaveProject = BeforeSaveProject;
-    var ProjectSaved = (function () {
-        function ProjectSaved() {
-        }
-        return ProjectSaved;
-    }());
-    exports.ProjectSaved = ProjectSaved;
-    var ProjectChanged = (function () {
-        function ProjectChanged() {
-        }
-        return ProjectChanged;
-    }());
-    exports.ProjectChanged = ProjectChanged;
-    var EventBus = (function () {
-        function EventBus() {
-            this.listeners = new Array();
-        }
-        EventBus.prototype.addListener = function (listener) {
-            this.listeners.push(listener);
-        };
-        EventBus.prototype.event = function (event) {
-            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
-        };
-        return EventBus;
-    }());
-    exports.EventBus = EventBus;
-});
 define("widgets/Widget", ["require", "exports"], function (require, exports) {
     "use strict";
     exports.__esModule = true;
@@ -572,7 +313,7 @@ define("widgets/Widget", ["require", "exports"], function (require, exports) {
     }());
     exports.Widget = Widget;
 });
-define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_2) {
+define("language/VirtualMachine", ["require", "exports", "language/Compiler", "Utils"], function (require, exports, Compiler_1, Utils_1) {
     "use strict";
     exports.__esModule = true;
     var Slot = (function () {
@@ -883,14 +624,14 @@ define("language/VirtualMachine", ["require", "exports", "language/Compiler", "U
                     break;
                 }
                 default:
-                    Utils_2.assertNever(ins);
+                    Utils_1.assertNever(ins);
             }
         };
         return VirtualMachine;
     }());
     exports.VirtualMachine = VirtualMachine;
 });
-define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_3, vm) {
+define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Events", "Utils", "language/VirtualMachine"], function (require, exports, Widget_1, events, Utils_2, vm) {
     "use strict";
     exports.__esModule = true;
     var DebuggerState;
@@ -1079,13 +820,13 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
             if (event instanceof events.SourceChanged) {
                 if (event.module) {
                     this.lastModule = event.module;
-                    Utils_3.setElementEnabled(this.run, true);
-                    Utils_3.setElementEnabled(this.debug, true);
+                    Utils_2.setElementEnabled(this.run, true);
+                    Utils_2.setElementEnabled(this.debug, true);
                 }
                 else {
                     this.lastModule = null;
-                    Utils_3.setElementEnabled(this.run, false);
-                    Utils_3.setElementEnabled(this.debug, false);
+                    Utils_2.setElementEnabled(this.run, false);
+                    Utils_2.setElementEnabled(this.debug, false);
                 }
             }
             else if (event instanceof events.Run) {
@@ -1094,11 +835,11 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.pause.show();
                 this.stop.show();
                 this.stepOver.show();
-                Utils_3.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
                 this.stepInto.show();
-                Utils_3.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Debug) {
@@ -1109,26 +850,26 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.show();
                 this.stepInto.show();
                 this.stepOut.show();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
                 this.setBreakpoints();
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Pause) {
                 this.resume.show();
                 this.pause.hide();
-                Utils_3.setElementEnabled(this.stepOver, true);
-                Utils_3.setElementEnabled(this.stepInto, true);
-                Utils_3.setElementEnabled(this.stepOut, true);
+                Utils_2.setElementEnabled(this.stepOver, true);
+                Utils_2.setElementEnabled(this.stepInto, true);
+                Utils_2.setElementEnabled(this.stepOut, true);
                 this.dom.removeClass("pb-collapsed");
             }
             else if (event instanceof events.Resume) {
                 this.pause.show();
                 this.resume.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.setBreakpoints();
             }
             else if (event instanceof events.Stop) {
@@ -1140,9 +881,9 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                 this.stepOver.hide();
                 this.stepInto.hide();
                 this.stepOut.hide();
-                Utils_3.setElementEnabled(this.stepOver, false);
-                Utils_3.setElementEnabled(this.stepInto, false);
-                Utils_3.setElementEnabled(this.stepOut, false);
+                Utils_2.setElementEnabled(this.stepOver, false);
+                Utils_2.setElementEnabled(this.stepInto, false);
+                Utils_2.setElementEnabled(this.stepOut, false);
                 this.locals.empty();
                 this.callstack.empty();
                 this.vmState.empty();
@@ -1227,7 +968,7 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                         output += "\n";
                         lastLineInfoIndex = line.index;
                     }
-                    output += (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
+                    output += index + ":\t" + (index == frame.pc ? " -> " : "    ") + JSON.stringify(ins) + " " + line.index + ":" + line.line + "\n";
                 });
                 output += "\n";
             });
@@ -1352,21 +1093,28 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         var peg$c6 = function () {
             return { kind: "comment", value: text(), location: location() };
         };
-        var peg$c7 = function (id) {
-            return { id: id };
+        var peg$c7 = "<";
+        var peg$c8 = peg$literalExpectation("<", false);
+        var peg$c9 = ">";
+        var peg$c10 = peg$literalExpectation(">", false);
+        var peg$c11 = function (id, elementType) {
+            return {
+                id: id,
+                elementType: elementType != null ? elementType[3] : null
+            };
         };
-        var peg$c8 = peg$otherExpectation("function");
-        var peg$c9 = "fun";
-        var peg$c10 = peg$literalExpectation("fun", false);
-        var peg$c11 = "(";
-        var peg$c12 = peg$literalExpectation("(", false);
-        var peg$c13 = ")";
-        var peg$c14 = peg$literalExpectation(")", false);
-        var peg$c15 = ":";
-        var peg$c16 = peg$literalExpectation(":", false);
-        var peg$c17 = "end";
-        var peg$c18 = peg$literalExpectation("end", false);
-        var peg$c19 = function (id, params, returnType, stmts) {
+        var peg$c12 = peg$otherExpectation("function");
+        var peg$c13 = "fun";
+        var peg$c14 = peg$literalExpectation("fun", false);
+        var peg$c15 = "(";
+        var peg$c16 = peg$literalExpectation("(", false);
+        var peg$c17 = ")";
+        var peg$c18 = peg$literalExpectation(")", false);
+        var peg$c19 = ":";
+        var peg$c20 = peg$literalExpectation(":", false);
+        var peg$c21 = "end";
+        var peg$c22 = peg$literalExpectation("end", false);
+        var peg$c23 = function (id, params, returnType, stmts) {
             return {
                 kind: "function",
                 name: id,
@@ -1376,15 +1124,15 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c20 = function (name, typeName) {
+        var peg$c24 = function (name, typeName) {
             return {
                 name: name,
                 typeName: typeName
             };
         };
-        var peg$c21 = ",";
-        var peg$c22 = peg$literalExpectation(",", false);
-        var peg$c23 = function (params) {
+        var peg$c25 = ",";
+        var peg$c26 = peg$literalExpectation(",", false);
+        var peg$c27 = function (params) {
             if (params == null)
                 return [];
             var head = params[0];
@@ -1394,9 +1142,9 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             params.unshift(head);
             return params;
         };
-        var peg$c24 = "record";
-        var peg$c25 = peg$literalExpectation("record", false);
-        var peg$c26 = function (name, fields) {
+        var peg$c28 = "record";
+        var peg$c29 = peg$literalExpectation("record", false);
+        var peg$c30 = function (name, fields) {
             return {
                 kind: "record",
                 name: name,
@@ -1404,7 +1152,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c27 = function (fields) {
+        var peg$c31 = function (fields) {
             if (fields == null)
                 return [];
             var head = fields[0];
@@ -1414,13 +1162,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             fields.unshift(head);
             return fields;
         };
-        var peg$c28 = "var";
-        var peg$c29 = peg$literalExpectation("var", false);
-        var peg$c30 = "=";
-        var peg$c31 = peg$literalExpectation("=", false);
-        var peg$c32 = "->";
-        var peg$c33 = peg$literalExpectation("->", false);
-        var peg$c34 = function (id, typeName, init) {
+        var peg$c32 = "var";
+        var peg$c33 = peg$literalExpectation("var", false);
+        var peg$c34 = "=";
+        var peg$c35 = peg$literalExpectation("=", false);
+        var peg$c36 = "->";
+        var peg$c37 = peg$literalExpectation("->", false);
+        var peg$c38 = function (id, typeName, init) {
             return {
                 kind: "variable",
                 name: id,
@@ -1429,7 +1177,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c35 = function (left, right) {
+        var peg$c39 = function (left, right) {
             return {
                 kind: "assignment",
                 left: left,
@@ -1437,11 +1185,11 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c36 = "repeat";
-        var peg$c37 = peg$literalExpectation("repeat", false);
-        var peg$c38 = "times";
-        var peg$c39 = peg$literalExpectation("times", false);
-        var peg$c40 = function (count, stmts) {
+        var peg$c40 = "repeat";
+        var peg$c41 = peg$literalExpectation("repeat", false);
+        var peg$c42 = "times";
+        var peg$c43 = peg$literalExpectation("times", false);
+        var peg$c44 = function (count, stmts) {
             return {
                 kind: "repeat",
                 count: count,
@@ -1449,11 +1197,11 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c41 = "while";
-        var peg$c42 = peg$literalExpectation("while", false);
-        var peg$c43 = "do";
-        var peg$c44 = peg$literalExpectation("do", false);
-        var peg$c45 = function (cond, stmts) {
+        var peg$c45 = "while";
+        var peg$c46 = peg$literalExpectation("while", false);
+        var peg$c47 = "do";
+        var peg$c48 = peg$literalExpectation("do", false);
+        var peg$c49 = function (cond, stmts) {
             return {
                 kind: "while",
                 condition: cond,
@@ -1461,18 +1209,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c46 = "if";
-        var peg$c47 = peg$literalExpectation("if", false);
-        var peg$c48 = "then";
-        var peg$c49 = peg$literalExpectation("then", false);
-        var peg$c50 = "elseif";
-        var peg$c51 = peg$literalExpectation("elseif", false);
-        var peg$c52 = "else";
-        var peg$c53 = peg$literalExpectation("else", false);
-        var peg$c54 = function (cond, trueBlock, elseIfs, falseBlock) {
-            if (elseIfs.length > 0) {
-                elseIfs[0] = 0;
-            }
+        var peg$c50 = "if";
+        var peg$c51 = peg$literalExpectation("if", false);
+        var peg$c52 = "then";
+        var peg$c53 = peg$literalExpectation("then", false);
+        var peg$c54 = "else";
+        var peg$c55 = peg$literalExpectation("else", false);
+        var peg$c56 = function (cond, trueBlock, elseIfs, falseBlock) {
             return {
                 kind: "if",
                 condition: cond,
@@ -1482,38 +1225,50 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c55 = "return";
-        var peg$c56 = peg$literalExpectation("return", false);
-        var peg$c57 = function (value) {
+        var peg$c57 = "elseif";
+        var peg$c58 = peg$literalExpectation("elseif", false);
+        var peg$c59 = function (cond, trueBlock) {
+            return {
+                kind: "if",
+                condition: cond,
+                trueBlock: trueBlock.map(function (element) { return element[1]; }),
+                elseIfs: [],
+                falseBlock: [],
+                location: location()
+            };
+        };
+        var peg$c60 = "return";
+        var peg$c61 = peg$literalExpectation("return", false);
+        var peg$c62 = function (value) {
             return {
                 kind: "return",
                 value: value,
                 location: location()
             };
         };
-        var peg$c58 = "break";
-        var peg$c59 = peg$literalExpectation("break", false);
-        var peg$c60 = function () {
+        var peg$c63 = "break";
+        var peg$c64 = peg$literalExpectation("break", false);
+        var peg$c65 = function () {
             return {
                 kind: "break",
                 location: location()
             };
         };
-        var peg$c61 = "continue";
-        var peg$c62 = peg$literalExpectation("continue", false);
-        var peg$c63 = function () {
+        var peg$c66 = "continue";
+        var peg$c67 = peg$literalExpectation("continue", false);
+        var peg$c68 = function () {
             return {
                 kind: "continue",
                 location: location()
             };
         };
-        var peg$c64 = "and";
-        var peg$c65 = peg$literalExpectation("and", false);
-        var peg$c66 = "or";
-        var peg$c67 = peg$literalExpectation("or", false);
-        var peg$c68 = "xor";
-        var peg$c69 = peg$literalExpectation("xor", false);
-        var peg$c70 = function (head, tail) {
+        var peg$c69 = "and";
+        var peg$c70 = peg$literalExpectation("and", false);
+        var peg$c71 = "or";
+        var peg$c72 = peg$literalExpectation("or", false);
+        var peg$c73 = "xor";
+        var peg$c74 = peg$literalExpectation("xor", false);
+        var peg$c75 = function (head, tail) {
             if (tail.length == 0)
                 return head;
             return tail.reduce(function (result, element) {
@@ -1526,31 +1281,27 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 };
             }, head);
         };
-        var peg$c71 = "<=";
-        var peg$c72 = peg$literalExpectation("<=", false);
-        var peg$c73 = ">=";
-        var peg$c74 = peg$literalExpectation(">=", false);
-        var peg$c75 = "<";
-        var peg$c76 = peg$literalExpectation("<", false);
-        var peg$c77 = ">";
-        var peg$c78 = peg$literalExpectation(">", false);
-        var peg$c79 = "==";
-        var peg$c80 = peg$literalExpectation("==", false);
-        var peg$c81 = "!=";
-        var peg$c82 = peg$literalExpectation("!=", false);
-        var peg$c83 = "+";
-        var peg$c84 = peg$literalExpectation("+", false);
-        var peg$c85 = "-";
-        var peg$c86 = peg$literalExpectation("-", false);
-        var peg$c87 = "..";
-        var peg$c88 = peg$literalExpectation("..", false);
-        var peg$c89 = "*";
-        var peg$c90 = peg$literalExpectation("*", false);
-        var peg$c91 = "/";
-        var peg$c92 = peg$literalExpectation("/", false);
-        var peg$c93 = "not";
-        var peg$c94 = peg$literalExpectation("not", false);
-        var peg$c95 = function (op, factor) {
+        var peg$c76 = "<=";
+        var peg$c77 = peg$literalExpectation("<=", false);
+        var peg$c78 = ">=";
+        var peg$c79 = peg$literalExpectation(">=", false);
+        var peg$c80 = "==";
+        var peg$c81 = peg$literalExpectation("==", false);
+        var peg$c82 = "!=";
+        var peg$c83 = peg$literalExpectation("!=", false);
+        var peg$c84 = "+";
+        var peg$c85 = peg$literalExpectation("+", false);
+        var peg$c86 = "-";
+        var peg$c87 = peg$literalExpectation("-", false);
+        var peg$c88 = "..";
+        var peg$c89 = peg$literalExpectation("..", false);
+        var peg$c90 = "*";
+        var peg$c91 = peg$literalExpectation("*", false);
+        var peg$c92 = "/";
+        var peg$c93 = peg$literalExpectation("/", false);
+        var peg$c94 = "not";
+        var peg$c95 = peg$literalExpectation("not", false);
+        var peg$c96 = function (op, factor) {
             if (!op)
                 return factor;
             return {
@@ -1560,9 +1311,9 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c96 = function (expr) { return expr; };
-        var peg$c97 = peg$otherExpectation("function call or variable name");
-        var peg$c98 = function (id, access) {
+        var peg$c97 = function (expr) { return expr; };
+        var peg$c98 = peg$otherExpectation("function call or variable name");
+        var peg$c99 = function (id, access) {
             if (access === null) {
                 return {
                     kind: "variableAccess",
@@ -1597,9 +1348,9 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 return parent;
             }
         };
-        var peg$c99 = ".";
-        var peg$c100 = peg$literalExpectation(".", false);
-        var peg$c101 = function (id) {
+        var peg$c100 = ".";
+        var peg$c101 = peg$literalExpectation(".", false);
+        var peg$c102 = function (id) {
             return {
                 kind: "fieldAccess",
                 record: null,
@@ -1607,11 +1358,11 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c102 = "[";
-        var peg$c103 = peg$literalExpectation("[", false);
-        var peg$c104 = "]";
-        var peg$c105 = peg$literalExpectation("]", false);
-        var peg$c106 = function (index) {
+        var peg$c103 = "[";
+        var peg$c104 = peg$literalExpectation("[", false);
+        var peg$c105 = "]";
+        var peg$c106 = peg$literalExpectation("]", false);
+        var peg$c107 = function (index) {
             return {
                 kind: "arrayAccess",
                 array: null,
@@ -1619,8 +1370,8 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 location: location()
             };
         };
-        var peg$c107 = peg$otherExpectation("arguments");
-        var peg$c108 = function (args) {
+        var peg$c108 = peg$otherExpectation("arguments");
+        var peg$c109 = function (args) {
             if (args == null)
                 return { kind: "arguments", args: [] };
             var head = args[0];
@@ -1633,78 +1384,93 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 args: args
             };
         };
-        var peg$c109 = peg$otherExpectation("number");
-        var peg$c110 = /^[0-9]/;
-        var peg$c111 = peg$classExpectation([["0", "9"]], false, false);
-        var peg$c112 = function () {
+        var peg$c110 = peg$otherExpectation("list");
+        var peg$c111 = function (args) {
+            if (args == null)
+                return { kind: "list", args: [], location: location() };
+            var head = args[0];
+            args = args[1].map(function (element) {
+                return element[3];
+            });
+            args.unshift(head);
+            return {
+                kind: "list",
+                values: args,
+                location: location()
+            };
+        };
+        var peg$c112 = peg$otherExpectation("number");
+        var peg$c113 = /^[0-9]/;
+        var peg$c114 = peg$classExpectation([["0", "9"]], false, false);
+        var peg$c115 = function () {
             return {
                 kind: "number",
                 value: parseFloat(text()),
                 location: location()
             };
         };
-        var peg$c113 = peg$otherExpectation("boolean");
-        var peg$c114 = "false";
-        var peg$c115 = peg$literalExpectation("false", false);
-        var peg$c116 = "true";
-        var peg$c117 = peg$literalExpectation("true", false);
-        var peg$c118 = function () {
+        var peg$c116 = peg$otherExpectation("boolean");
+        var peg$c117 = "false";
+        var peg$c118 = peg$literalExpectation("false", false);
+        var peg$c119 = "true";
+        var peg$c120 = peg$literalExpectation("true", false);
+        var peg$c121 = function () {
             return {
                 kind: "boolean",
                 value: text() == "true",
                 location: location()
             };
         };
-        var peg$c119 = peg$otherExpectation("string");
-        var peg$c120 = function (chars) {
+        var peg$c122 = peg$otherExpectation("string");
+        var peg$c123 = function (chars) {
             return {
                 kind: "string",
                 value: chars,
                 location: location()
             };
         };
-        var peg$c121 = "\"";
-        var peg$c122 = peg$literalExpectation("\"", false);
-        var peg$c123 = function (chars) { return chars.join(''); };
-        var peg$c124 = "'";
-        var peg$c125 = peg$literalExpectation("'", false);
-        var peg$c126 = "\\";
-        var peg$c127 = peg$literalExpectation("\\", false);
-        var peg$c128 = function (char) { return char; };
-        var peg$c129 = function (sequence) { return sequence; };
-        var peg$c130 = "b";
-        var peg$c131 = peg$literalExpectation("b", false);
-        var peg$c132 = function () { return "\b"; };
-        var peg$c133 = "f";
-        var peg$c134 = peg$literalExpectation("f", false);
-        var peg$c135 = function () { return "\f"; };
-        var peg$c136 = "n";
-        var peg$c137 = peg$literalExpectation("n", false);
-        var peg$c138 = function () { return "\n"; };
-        var peg$c139 = "r";
-        var peg$c140 = peg$literalExpectation("r", false);
-        var peg$c141 = function () { return "\r"; };
-        var peg$c142 = "t";
-        var peg$c143 = peg$literalExpectation("t", false);
-        var peg$c144 = function () { return "\t"; };
-        var peg$c145 = "v";
-        var peg$c146 = peg$literalExpectation("v", false);
-        var peg$c147 = function () { return "\x0B"; };
-        var peg$c148 = peg$otherExpectation("identifier");
-        var peg$c149 = function () {
+        var peg$c124 = "\"";
+        var peg$c125 = peg$literalExpectation("\"", false);
+        var peg$c126 = function (chars) { return chars.join(''); };
+        var peg$c127 = "'";
+        var peg$c128 = peg$literalExpectation("'", false);
+        var peg$c129 = "\\";
+        var peg$c130 = peg$literalExpectation("\\", false);
+        var peg$c131 = function (char) { return char; };
+        var peg$c132 = function (sequence) { return sequence; };
+        var peg$c133 = "b";
+        var peg$c134 = peg$literalExpectation("b", false);
+        var peg$c135 = function () { return "\b"; };
+        var peg$c136 = "f";
+        var peg$c137 = peg$literalExpectation("f", false);
+        var peg$c138 = function () { return "\f"; };
+        var peg$c139 = "n";
+        var peg$c140 = peg$literalExpectation("n", false);
+        var peg$c141 = function () { return "\n"; };
+        var peg$c142 = "r";
+        var peg$c143 = peg$literalExpectation("r", false);
+        var peg$c144 = function () { return "\r"; };
+        var peg$c145 = "t";
+        var peg$c146 = peg$literalExpectation("t", false);
+        var peg$c147 = function () { return "\t"; };
+        var peg$c148 = "v";
+        var peg$c149 = peg$literalExpectation("v", false);
+        var peg$c150 = function () { return "\x0B"; };
+        var peg$c151 = peg$otherExpectation("identifier");
+        var peg$c152 = function () {
             return {
                 location: location(),
                 value: text()
             };
         };
-        var peg$c150 = /^[a-zA-Z_]/;
-        var peg$c151 = peg$classExpectation([["a", "z"], ["A", "Z"], "_"], false, false);
-        var peg$c152 = /^[a-zA-Z_0-9]/;
-        var peg$c153 = peg$classExpectation([["a", "z"], ["A", "Z"], "_", ["0", "9"]], false, false);
-        var peg$c154 = peg$otherExpectation("whitespace");
-        var peg$c155 = /^[ \t\n\r]/;
-        var peg$c156 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false);
-        var peg$c157 = function () { return "whitespace"; };
+        var peg$c153 = /^[a-zA-Z_]/;
+        var peg$c154 = peg$classExpectation([["a", "z"], ["A", "Z"], "_"], false, false);
+        var peg$c155 = /^[a-zA-Z_0-9]/;
+        var peg$c156 = peg$classExpectation([["a", "z"], ["A", "Z"], "_", ["0", "9"]], false, false);
+        var peg$c157 = peg$otherExpectation("whitespace");
+        var peg$c158 = /^[ \t\n\r]/;
+        var peg$c159 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false);
+        var peg$c160 = function () { return "whitespace"; };
         var peg$currPos = 0;
         var peg$savedPos = 0;
         var peg$posDetailsCache = [{ line: 1, column: 1 }];
@@ -2068,28 +1834,104 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             return s0;
         }
         function peg$parseType() {
-            var s0, s1;
+            var s0, s1, s2, s3, s4, s5, s6, s7, s8;
             s0 = peg$currPos;
             s1 = peg$parseIdentifier();
             if (s1 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c7(s1);
+                s2 = peg$currPos;
+                s3 = peg$parse_();
+                if (s3 !== peg$FAILED) {
+                    if (input.charCodeAt(peg$currPos) === 60) {
+                        s4 = peg$c7;
+                        peg$currPos++;
+                    }
+                    else {
+                        s4 = peg$FAILED;
+                        if (peg$silentFails === 0) {
+                            peg$fail(peg$c8);
+                        }
+                    }
+                    if (s4 !== peg$FAILED) {
+                        s5 = peg$parse_();
+                        if (s5 !== peg$FAILED) {
+                            s6 = peg$parseType();
+                            if (s6 !== peg$FAILED) {
+                                s7 = peg$parse_();
+                                if (s7 !== peg$FAILED) {
+                                    if (input.charCodeAt(peg$currPos) === 62) {
+                                        s8 = peg$c9;
+                                        peg$currPos++;
+                                    }
+                                    else {
+                                        s8 = peg$FAILED;
+                                        if (peg$silentFails === 0) {
+                                            peg$fail(peg$c10);
+                                        }
+                                    }
+                                    if (s8 !== peg$FAILED) {
+                                        s3 = [s3, s4, s5, s6, s7, s8];
+                                        s2 = s3;
+                                    }
+                                    else {
+                                        peg$currPos = s2;
+                                        s2 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s2;
+                                    s2 = peg$FAILED;
+                                }
+                            }
+                            else {
+                                peg$currPos = s2;
+                                s2 = peg$FAILED;
+                            }
+                        }
+                        else {
+                            peg$currPos = s2;
+                            s2 = peg$FAILED;
+                        }
+                    }
+                    else {
+                        peg$currPos = s2;
+                        s2 = peg$FAILED;
+                    }
+                }
+                else {
+                    peg$currPos = s2;
+                    s2 = peg$FAILED;
+                }
+                if (s2 === peg$FAILED) {
+                    s2 = null;
+                }
+                if (s2 !== peg$FAILED) {
+                    peg$savedPos = s0;
+                    s1 = peg$c11(s1, s2);
+                    s0 = s1;
+                }
+                else {
+                    peg$currPos = s0;
+                    s0 = peg$FAILED;
+                }
             }
-            s0 = s1;
+            else {
+                peg$currPos = s0;
+                s0 = peg$FAILED;
+            }
             return s0;
         }
         function peg$parseFunction() {
             var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15;
             peg$silentFails++;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 3) === peg$c9) {
-                s1 = peg$c9;
+            if (input.substr(peg$currPos, 3) === peg$c13) {
+                s1 = peg$c13;
                 peg$currPos += 3;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c10);
+                    peg$fail(peg$c14);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -2100,26 +1942,26 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 40) {
-                                s5 = peg$c11;
+                                s5 = peg$c15;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c12);
+                                    peg$fail(peg$c16);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
                                 s6 = peg$parseParameters();
                                 if (s6 !== peg$FAILED) {
                                     if (input.charCodeAt(peg$currPos) === 41) {
-                                        s7 = peg$c13;
+                                        s7 = peg$c17;
                                         peg$currPos++;
                                     }
                                     else {
                                         s7 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c14);
+                                            peg$fail(peg$c18);
                                         }
                                     }
                                     if (s7 !== peg$FAILED) {
@@ -2127,13 +1969,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                         if (s8 !== peg$FAILED) {
                                             s9 = peg$currPos;
                                             if (input.charCodeAt(peg$currPos) === 58) {
-                                                s10 = peg$c15;
+                                                s10 = peg$c19;
                                                 peg$currPos++;
                                             }
                                             else {
                                                 s10 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c16);
+                                                    peg$fail(peg$c20);
                                                 }
                                             }
                                             if (s10 !== peg$FAILED) {
@@ -2226,19 +2068,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                                     if (s11 !== peg$FAILED) {
                                                         s12 = peg$parse_();
                                                         if (s12 !== peg$FAILED) {
-                                                            if (input.substr(peg$currPos, 3) === peg$c17) {
-                                                                s13 = peg$c17;
+                                                            if (input.substr(peg$currPos, 3) === peg$c21) {
+                                                                s13 = peg$c21;
                                                                 peg$currPos += 3;
                                                             }
                                                             else {
                                                                 s13 = peg$FAILED;
                                                                 if (peg$silentFails === 0) {
-                                                                    peg$fail(peg$c18);
+                                                                    peg$fail(peg$c22);
                                                                 }
                                                             }
                                                             if (s13 !== peg$FAILED) {
                                                                 peg$savedPos = s0;
-                                                                s1 = peg$c19(s3, s6, s9, s11);
+                                                                s1 = peg$c23(s3, s6, s9, s11);
                                                                 s0 = s1;
                                                             }
                                                             else {
@@ -2309,7 +2151,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c8);
+                    peg$fail(peg$c12);
                 }
             }
             return s0;
@@ -2322,13 +2164,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s2 = peg$parse_();
                 if (s2 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 58) {
-                        s3 = peg$c15;
+                        s3 = peg$c19;
                         peg$currPos++;
                     }
                     else {
                         s3 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c16);
+                            peg$fail(peg$c20);
                         }
                     }
                     if (s3 !== peg$FAILED) {
@@ -2337,7 +2179,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             s5 = peg$parseType();
                             if (s5 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c20(s1, s5);
+                                s1 = peg$c24(s1, s5);
                                 s0 = s1;
                             }
                             else {
@@ -2377,13 +2219,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s5 = peg$parse_();
                 if (s5 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 44) {
-                        s6 = peg$c21;
+                        s6 = peg$c25;
                         peg$currPos++;
                     }
                     else {
                         s6 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c22);
+                            peg$fail(peg$c26);
                         }
                     }
                     if (s6 !== peg$FAILED) {
@@ -2419,13 +2261,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     s5 = peg$parse_();
                     if (s5 !== peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 44) {
-                            s6 = peg$c21;
+                            s6 = peg$c25;
                             peg$currPos++;
                         }
                         else {
                             s6 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c22);
+                                peg$fail(peg$c26);
                             }
                         }
                         if (s6 !== peg$FAILED) {
@@ -2474,7 +2316,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c23(s1);
+                s1 = peg$c27(s1);
             }
             s0 = s1;
             return s0;
@@ -2482,14 +2324,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseRecord() {
             var s0, s1, s2, s3, s4, s5, s6, s7;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 6) === peg$c24) {
-                s1 = peg$c24;
+            if (input.substr(peg$currPos, 6) === peg$c28) {
+                s1 = peg$c28;
                 peg$currPos += 6;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c25);
+                    peg$fail(peg$c29);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -2503,19 +2345,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             if (s5 !== peg$FAILED) {
                                 s6 = peg$parse_();
                                 if (s6 !== peg$FAILED) {
-                                    if (input.substr(peg$currPos, 3) === peg$c17) {
-                                        s7 = peg$c17;
+                                    if (input.substr(peg$currPos, 3) === peg$c21) {
+                                        s7 = peg$c21;
                                         peg$currPos += 3;
                                     }
                                     else {
                                         s7 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c18);
+                                            peg$fail(peg$c22);
                                         }
                                     }
                                     if (s7 !== peg$FAILED) {
                                         peg$savedPos = s0;
-                                        s1 = peg$c26(s3, s5);
+                                        s1 = peg$c30(s3, s5);
                                         s0 = s1;
                                     }
                                     else {
@@ -2562,13 +2404,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s2 = peg$parse_();
                 if (s2 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 58) {
-                        s3 = peg$c15;
+                        s3 = peg$c19;
                         peg$currPos++;
                     }
                     else {
                         s3 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c16);
+                            peg$fail(peg$c20);
                         }
                     }
                     if (s3 !== peg$FAILED) {
@@ -2577,7 +2419,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             s5 = peg$parseType();
                             if (s5 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c20(s1, s5);
+                                s1 = peg$c24(s1, s5);
                                 s0 = s1;
                             }
                             else {
@@ -2668,7 +2510,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c27(s1);
+                s1 = peg$c31(s1);
             }
             s0 = s1;
             return s0;
@@ -2708,14 +2550,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseVariable() {
             var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 3) === peg$c28) {
-                s1 = peg$c28;
+            if (input.substr(peg$currPos, 3) === peg$c32) {
+                s1 = peg$c32;
                 peg$currPos += 3;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c29);
+                    peg$fail(peg$c33);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -2727,13 +2569,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                         if (s4 !== peg$FAILED) {
                             s5 = peg$currPos;
                             if (input.charCodeAt(peg$currPos) === 58) {
-                                s6 = peg$c15;
+                                s6 = peg$c19;
                                 peg$currPos++;
                             }
                             else {
                                 s6 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c16);
+                                    peg$fail(peg$c20);
                                 }
                             }
                             if (s6 !== peg$FAILED) {
@@ -2770,24 +2612,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             }
                             if (s5 !== peg$FAILED) {
                                 if (input.charCodeAt(peg$currPos) === 61) {
-                                    s6 = peg$c30;
+                                    s6 = peg$c34;
                                     peg$currPos++;
                                 }
                                 else {
                                     s6 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c31);
+                                        peg$fail(peg$c35);
                                     }
                                 }
                                 if (s6 === peg$FAILED) {
-                                    if (input.substr(peg$currPos, 2) === peg$c32) {
-                                        s6 = peg$c32;
+                                    if (input.substr(peg$currPos, 2) === peg$c36) {
+                                        s6 = peg$c36;
                                         peg$currPos += 2;
                                     }
                                     else {
                                         s6 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c33);
+                                            peg$fail(peg$c37);
                                         }
                                     }
                                 }
@@ -2797,7 +2639,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                         s8 = peg$parseExpression();
                                         if (s8 !== peg$FAILED) {
                                             peg$savedPos = s0;
-                                            s1 = peg$c34(s3, s5, s8);
+                                            s1 = peg$c38(s3, s5, s8);
                                             s0 = s1;
                                         }
                                         else {
@@ -2849,24 +2691,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s2 = peg$parse_();
                 if (s2 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 61) {
-                        s3 = peg$c30;
+                        s3 = peg$c34;
                         peg$currPos++;
                     }
                     else {
                         s3 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c31);
+                            peg$fail(peg$c35);
                         }
                     }
                     if (s3 === peg$FAILED) {
-                        if (input.substr(peg$currPos, 2) === peg$c32) {
-                            s3 = peg$c32;
+                        if (input.substr(peg$currPos, 2) === peg$c36) {
+                            s3 = peg$c36;
                             peg$currPos += 2;
                         }
                         else {
                             s3 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c33);
+                                peg$fail(peg$c37);
                             }
                         }
                     }
@@ -2876,7 +2718,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             s5 = peg$parseExpression();
                             if (s5 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c35(s1, s5);
+                                s1 = peg$c39(s1, s5);
                                 s0 = s1;
                             }
                             else {
@@ -2908,14 +2750,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseRepeat() {
             var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 6) === peg$c36) {
-                s1 = peg$c36;
+            if (input.substr(peg$currPos, 6) === peg$c40) {
+                s1 = peg$c40;
                 peg$currPos += 6;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c37);
+                    peg$fail(peg$c41);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -2925,14 +2767,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     if (s3 !== peg$FAILED) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
-                            if (input.substr(peg$currPos, 5) === peg$c38) {
-                                s5 = peg$c38;
+                            if (input.substr(peg$currPos, 5) === peg$c42) {
+                                s5 = peg$c42;
                                 peg$currPos += 5;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c39);
+                                    peg$fail(peg$c43);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
@@ -2993,19 +2835,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                     if (s7 !== peg$FAILED) {
                                         s8 = peg$parse_();
                                         if (s8 !== peg$FAILED) {
-                                            if (input.substr(peg$currPos, 3) === peg$c17) {
-                                                s9 = peg$c17;
+                                            if (input.substr(peg$currPos, 3) === peg$c21) {
+                                                s9 = peg$c21;
                                                 peg$currPos += 3;
                                             }
                                             else {
                                                 s9 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c18);
+                                                    peg$fail(peg$c22);
                                                 }
                                             }
                                             if (s9 !== peg$FAILED) {
                                                 peg$savedPos = s0;
-                                                s1 = peg$c40(s3, s7);
+                                                s1 = peg$c44(s3, s7);
                                                 s0 = s1;
                                             }
                                             else {
@@ -3057,14 +2899,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseWhile() {
             var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 5) === peg$c41) {
-                s1 = peg$c41;
+            if (input.substr(peg$currPos, 5) === peg$c45) {
+                s1 = peg$c45;
                 peg$currPos += 5;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c42);
+                    peg$fail(peg$c46);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -3074,14 +2916,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     if (s3 !== peg$FAILED) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
-                            if (input.substr(peg$currPos, 2) === peg$c43) {
-                                s5 = peg$c43;
+                            if (input.substr(peg$currPos, 2) === peg$c47) {
+                                s5 = peg$c47;
                                 peg$currPos += 2;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c44);
+                                    peg$fail(peg$c48);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
@@ -3142,19 +2984,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                     if (s7 !== peg$FAILED) {
                                         s8 = peg$parse_();
                                         if (s8 !== peg$FAILED) {
-                                            if (input.substr(peg$currPos, 3) === peg$c17) {
-                                                s9 = peg$c17;
+                                            if (input.substr(peg$currPos, 3) === peg$c21) {
+                                                s9 = peg$c21;
                                                 peg$currPos += 3;
                                             }
                                             else {
                                                 s9 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c18);
+                                                    peg$fail(peg$c22);
                                                 }
                                             }
                                             if (s9 !== peg$FAILED) {
                                                 peg$savedPos = s0;
-                                                s1 = peg$c45(s3, s7);
+                                                s1 = peg$c49(s3, s7);
                                                 s0 = s1;
                                             }
                                             else {
@@ -3204,16 +3046,16 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             return s0;
         }
         function peg$parseIf() {
-            var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21;
+            var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 2) === peg$c46) {
-                s1 = peg$c46;
+            if (input.substr(peg$currPos, 2) === peg$c50) {
+                s1 = peg$c50;
                 peg$currPos += 2;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c47);
+                    peg$fail(peg$c51);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -3223,14 +3065,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     if (s3 !== peg$FAILED) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
-                            if (input.substr(peg$currPos, 4) === peg$c48) {
-                                s5 = peg$c48;
+                            if (input.substr(peg$currPos, 4) === peg$c52) {
+                                s5 = peg$c52;
                                 peg$currPos += 4;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c49);
+                                    peg$fail(peg$c53);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
@@ -3292,263 +3134,23 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                         s8 = peg$parse_();
                                         if (s8 !== peg$FAILED) {
                                             s9 = [];
-                                            s10 = peg$currPos;
-                                            if (input.substr(peg$currPos, 6) === peg$c50) {
-                                                s11 = peg$c50;
-                                                peg$currPos += 6;
-                                            }
-                                            else {
-                                                s11 = peg$FAILED;
-                                                if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c51);
-                                                }
-                                            }
-                                            if (s11 !== peg$FAILED) {
-                                                s12 = peg$parse_();
-                                                if (s12 !== peg$FAILED) {
-                                                    s13 = peg$parseExpression();
-                                                    if (s13 !== peg$FAILED) {
-                                                        s14 = peg$parse_();
-                                                        if (s14 !== peg$FAILED) {
-                                                            if (input.substr(peg$currPos, 4) === peg$c48) {
-                                                                s15 = peg$c48;
-                                                                peg$currPos += 4;
-                                                            }
-                                                            else {
-                                                                s15 = peg$FAILED;
-                                                                if (peg$silentFails === 0) {
-                                                                    peg$fail(peg$c49);
-                                                                }
-                                                            }
-                                                            if (s15 !== peg$FAILED) {
-                                                                s16 = peg$parse_();
-                                                                if (s16 !== peg$FAILED) {
-                                                                    s17 = [];
-                                                                    s18 = peg$currPos;
-                                                                    s19 = peg$parse_();
-                                                                    if (s19 !== peg$FAILED) {
-                                                                        s20 = peg$parseStatement();
-                                                                        if (s20 !== peg$FAILED) {
-                                                                            s21 = peg$parse_();
-                                                                            if (s21 !== peg$FAILED) {
-                                                                                s19 = [s19, s20, s21];
-                                                                                s18 = s19;
-                                                                            }
-                                                                            else {
-                                                                                peg$currPos = s18;
-                                                                                s18 = peg$FAILED;
-                                                                            }
-                                                                        }
-                                                                        else {
-                                                                            peg$currPos = s18;
-                                                                            s18 = peg$FAILED;
-                                                                        }
-                                                                    }
-                                                                    else {
-                                                                        peg$currPos = s18;
-                                                                        s18 = peg$FAILED;
-                                                                    }
-                                                                    while (s18 !== peg$FAILED) {
-                                                                        s17.push(s18);
-                                                                        s18 = peg$currPos;
-                                                                        s19 = peg$parse_();
-                                                                        if (s19 !== peg$FAILED) {
-                                                                            s20 = peg$parseStatement();
-                                                                            if (s20 !== peg$FAILED) {
-                                                                                s21 = peg$parse_();
-                                                                                if (s21 !== peg$FAILED) {
-                                                                                    s19 = [s19, s20, s21];
-                                                                                    s18 = s19;
-                                                                                }
-                                                                                else {
-                                                                                    peg$currPos = s18;
-                                                                                    s18 = peg$FAILED;
-                                                                                }
-                                                                            }
-                                                                            else {
-                                                                                peg$currPos = s18;
-                                                                                s18 = peg$FAILED;
-                                                                            }
-                                                                        }
-                                                                        else {
-                                                                            peg$currPos = s18;
-                                                                            s18 = peg$FAILED;
-                                                                        }
-                                                                    }
-                                                                    if (s17 !== peg$FAILED) {
-                                                                        s11 = [s11, s12, s13, s14, s15, s16, s17];
-                                                                        s10 = s11;
-                                                                    }
-                                                                    else {
-                                                                        peg$currPos = s10;
-                                                                        s10 = peg$FAILED;
-                                                                    }
-                                                                }
-                                                                else {
-                                                                    peg$currPos = s10;
-                                                                    s10 = peg$FAILED;
-                                                                }
-                                                            }
-                                                            else {
-                                                                peg$currPos = s10;
-                                                                s10 = peg$FAILED;
-                                                            }
-                                                        }
-                                                        else {
-                                                            peg$currPos = s10;
-                                                            s10 = peg$FAILED;
-                                                        }
-                                                    }
-                                                    else {
-                                                        peg$currPos = s10;
-                                                        s10 = peg$FAILED;
-                                                    }
-                                                }
-                                                else {
-                                                    peg$currPos = s10;
-                                                    s10 = peg$FAILED;
-                                                }
-                                            }
-                                            else {
-                                                peg$currPos = s10;
-                                                s10 = peg$FAILED;
-                                            }
+                                            s10 = peg$parseElseIf();
                                             while (s10 !== peg$FAILED) {
                                                 s9.push(s10);
-                                                s10 = peg$currPos;
-                                                if (input.substr(peg$currPos, 6) === peg$c50) {
-                                                    s11 = peg$c50;
-                                                    peg$currPos += 6;
-                                                }
-                                                else {
-                                                    s11 = peg$FAILED;
-                                                    if (peg$silentFails === 0) {
-                                                        peg$fail(peg$c51);
-                                                    }
-                                                }
-                                                if (s11 !== peg$FAILED) {
-                                                    s12 = peg$parse_();
-                                                    if (s12 !== peg$FAILED) {
-                                                        s13 = peg$parseExpression();
-                                                        if (s13 !== peg$FAILED) {
-                                                            s14 = peg$parse_();
-                                                            if (s14 !== peg$FAILED) {
-                                                                if (input.substr(peg$currPos, 4) === peg$c48) {
-                                                                    s15 = peg$c48;
-                                                                    peg$currPos += 4;
-                                                                }
-                                                                else {
-                                                                    s15 = peg$FAILED;
-                                                                    if (peg$silentFails === 0) {
-                                                                        peg$fail(peg$c49);
-                                                                    }
-                                                                }
-                                                                if (s15 !== peg$FAILED) {
-                                                                    s16 = peg$parse_();
-                                                                    if (s16 !== peg$FAILED) {
-                                                                        s17 = [];
-                                                                        s18 = peg$currPos;
-                                                                        s19 = peg$parse_();
-                                                                        if (s19 !== peg$FAILED) {
-                                                                            s20 = peg$parseStatement();
-                                                                            if (s20 !== peg$FAILED) {
-                                                                                s21 = peg$parse_();
-                                                                                if (s21 !== peg$FAILED) {
-                                                                                    s19 = [s19, s20, s21];
-                                                                                    s18 = s19;
-                                                                                }
-                                                                                else {
-                                                                                    peg$currPos = s18;
-                                                                                    s18 = peg$FAILED;
-                                                                                }
-                                                                            }
-                                                                            else {
-                                                                                peg$currPos = s18;
-                                                                                s18 = peg$FAILED;
-                                                                            }
-                                                                        }
-                                                                        else {
-                                                                            peg$currPos = s18;
-                                                                            s18 = peg$FAILED;
-                                                                        }
-                                                                        while (s18 !== peg$FAILED) {
-                                                                            s17.push(s18);
-                                                                            s18 = peg$currPos;
-                                                                            s19 = peg$parse_();
-                                                                            if (s19 !== peg$FAILED) {
-                                                                                s20 = peg$parseStatement();
-                                                                                if (s20 !== peg$FAILED) {
-                                                                                    s21 = peg$parse_();
-                                                                                    if (s21 !== peg$FAILED) {
-                                                                                        s19 = [s19, s20, s21];
-                                                                                        s18 = s19;
-                                                                                    }
-                                                                                    else {
-                                                                                        peg$currPos = s18;
-                                                                                        s18 = peg$FAILED;
-                                                                                    }
-                                                                                }
-                                                                                else {
-                                                                                    peg$currPos = s18;
-                                                                                    s18 = peg$FAILED;
-                                                                                }
-                                                                            }
-                                                                            else {
-                                                                                peg$currPos = s18;
-                                                                                s18 = peg$FAILED;
-                                                                            }
-                                                                        }
-                                                                        if (s17 !== peg$FAILED) {
-                                                                            s11 = [s11, s12, s13, s14, s15, s16, s17];
-                                                                            s10 = s11;
-                                                                        }
-                                                                        else {
-                                                                            peg$currPos = s10;
-                                                                            s10 = peg$FAILED;
-                                                                        }
-                                                                    }
-                                                                    else {
-                                                                        peg$currPos = s10;
-                                                                        s10 = peg$FAILED;
-                                                                    }
-                                                                }
-                                                                else {
-                                                                    peg$currPos = s10;
-                                                                    s10 = peg$FAILED;
-                                                                }
-                                                            }
-                                                            else {
-                                                                peg$currPos = s10;
-                                                                s10 = peg$FAILED;
-                                                            }
-                                                        }
-                                                        else {
-                                                            peg$currPos = s10;
-                                                            s10 = peg$FAILED;
-                                                        }
-                                                    }
-                                                    else {
-                                                        peg$currPos = s10;
-                                                        s10 = peg$FAILED;
-                                                    }
-                                                }
-                                                else {
-                                                    peg$currPos = s10;
-                                                    s10 = peg$FAILED;
-                                                }
+                                                s10 = peg$parseElseIf();
                                             }
                                             if (s9 !== peg$FAILED) {
                                                 s10 = peg$parse_();
                                                 if (s10 !== peg$FAILED) {
                                                     s11 = peg$currPos;
-                                                    if (input.substr(peg$currPos, 4) === peg$c52) {
-                                                        s12 = peg$c52;
+                                                    if (input.substr(peg$currPos, 4) === peg$c54) {
+                                                        s12 = peg$c54;
                                                         peg$currPos += 4;
                                                     }
                                                     else {
                                                         s12 = peg$FAILED;
                                                         if (peg$silentFails === 0) {
-                                                            peg$fail(peg$c53);
+                                                            peg$fail(peg$c55);
                                                         }
                                                     }
                                                     if (s12 !== peg$FAILED) {
@@ -3630,19 +3232,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                                                     if (s11 !== peg$FAILED) {
                                                         s12 = peg$parse_();
                                                         if (s12 !== peg$FAILED) {
-                                                            if (input.substr(peg$currPos, 3) === peg$c17) {
-                                                                s13 = peg$c17;
+                                                            if (input.substr(peg$currPos, 3) === peg$c21) {
+                                                                s13 = peg$c21;
                                                                 peg$currPos += 3;
                                                             }
                                                             else {
                                                                 s13 = peg$FAILED;
                                                                 if (peg$silentFails === 0) {
-                                                                    peg$fail(peg$c18);
+                                                                    peg$fail(peg$c22);
                                                                 }
                                                             }
                                                             if (s13 !== peg$FAILED) {
                                                                 peg$savedPos = s0;
-                                                                s1 = peg$c54(s3, s7, s9, s11);
+                                                                s1 = peg$c56(s3, s7, s9, s11);
                                                                 s0 = s1;
                                                             }
                                                             else {
@@ -3711,17 +3313,143 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             }
             return s0;
         }
-        function peg$parseReturn() {
-            var s0, s1, s2, s3, s4;
+        function peg$parseElseIf() {
+            var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 6) === peg$c55) {
-                s1 = peg$c55;
+            if (input.substr(peg$currPos, 6) === peg$c57) {
+                s1 = peg$c57;
                 peg$currPos += 6;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c56);
+                    peg$fail(peg$c58);
+                }
+            }
+            if (s1 !== peg$FAILED) {
+                s2 = peg$parse_();
+                if (s2 !== peg$FAILED) {
+                    s3 = peg$parseExpression();
+                    if (s3 !== peg$FAILED) {
+                        s4 = peg$parse_();
+                        if (s4 !== peg$FAILED) {
+                            if (input.substr(peg$currPos, 4) === peg$c52) {
+                                s5 = peg$c52;
+                                peg$currPos += 4;
+                            }
+                            else {
+                                s5 = peg$FAILED;
+                                if (peg$silentFails === 0) {
+                                    peg$fail(peg$c53);
+                                }
+                            }
+                            if (s5 !== peg$FAILED) {
+                                s6 = peg$parse_();
+                                if (s6 !== peg$FAILED) {
+                                    s7 = [];
+                                    s8 = peg$currPos;
+                                    s9 = peg$parse_();
+                                    if (s9 !== peg$FAILED) {
+                                        s10 = peg$parseStatement();
+                                        if (s10 !== peg$FAILED) {
+                                            s11 = peg$parse_();
+                                            if (s11 !== peg$FAILED) {
+                                                s9 = [s9, s10, s11];
+                                                s8 = s9;
+                                            }
+                                            else {
+                                                peg$currPos = s8;
+                                                s8 = peg$FAILED;
+                                            }
+                                        }
+                                        else {
+                                            peg$currPos = s8;
+                                            s8 = peg$FAILED;
+                                        }
+                                    }
+                                    else {
+                                        peg$currPos = s8;
+                                        s8 = peg$FAILED;
+                                    }
+                                    while (s8 !== peg$FAILED) {
+                                        s7.push(s8);
+                                        s8 = peg$currPos;
+                                        s9 = peg$parse_();
+                                        if (s9 !== peg$FAILED) {
+                                            s10 = peg$parseStatement();
+                                            if (s10 !== peg$FAILED) {
+                                                s11 = peg$parse_();
+                                                if (s11 !== peg$FAILED) {
+                                                    s9 = [s9, s10, s11];
+                                                    s8 = s9;
+                                                }
+                                                else {
+                                                    peg$currPos = s8;
+                                                    s8 = peg$FAILED;
+                                                }
+                                            }
+                                            else {
+                                                peg$currPos = s8;
+                                                s8 = peg$FAILED;
+                                            }
+                                        }
+                                        else {
+                                            peg$currPos = s8;
+                                            s8 = peg$FAILED;
+                                        }
+                                    }
+                                    if (s7 !== peg$FAILED) {
+                                        peg$savedPos = s0;
+                                        s1 = peg$c59(s3, s7);
+                                        s0 = s1;
+                                    }
+                                    else {
+                                        peg$currPos = s0;
+                                        s0 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s0;
+                                    s0 = peg$FAILED;
+                                }
+                            }
+                            else {
+                                peg$currPos = s0;
+                                s0 = peg$FAILED;
+                            }
+                        }
+                        else {
+                            peg$currPos = s0;
+                            s0 = peg$FAILED;
+                        }
+                    }
+                    else {
+                        peg$currPos = s0;
+                        s0 = peg$FAILED;
+                    }
+                }
+                else {
+                    peg$currPos = s0;
+                    s0 = peg$FAILED;
+                }
+            }
+            else {
+                peg$currPos = s0;
+                s0 = peg$FAILED;
+            }
+            return s0;
+        }
+        function peg$parseReturn() {
+            var s0, s1, s2, s3, s4;
+            s0 = peg$currPos;
+            if (input.substr(peg$currPos, 6) === peg$c60) {
+                s1 = peg$c60;
+                peg$currPos += 6;
+            }
+            else {
+                s1 = peg$FAILED;
+                if (peg$silentFails === 0) {
+                    peg$fail(peg$c61);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -3735,7 +3463,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
                             peg$savedPos = s0;
-                            s1 = peg$c57(s3);
+                            s1 = peg$c62(s3);
                             s0 = s1;
                         }
                         else {
@@ -3762,19 +3490,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseBreak() {
             var s0, s1;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 5) === peg$c58) {
-                s1 = peg$c58;
+            if (input.substr(peg$currPos, 5) === peg$c63) {
+                s1 = peg$c63;
                 peg$currPos += 5;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c59);
+                    peg$fail(peg$c64);
                 }
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c60();
+                s1 = peg$c65();
             }
             s0 = s1;
             return s0;
@@ -3782,19 +3510,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseContinue() {
             var s0, s1;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 8) === peg$c61) {
-                s1 = peg$c61;
+            if (input.substr(peg$currPos, 8) === peg$c66) {
+                s1 = peg$c66;
                 peg$currPos += 8;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c62);
+                    peg$fail(peg$c67);
                 }
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c63();
+                s1 = peg$c68();
             }
             s0 = s1;
             return s0;
@@ -3808,36 +3536,36 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s3 = peg$currPos;
                 s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
-                    if (input.substr(peg$currPos, 3) === peg$c64) {
-                        s5 = peg$c64;
+                    if (input.substr(peg$currPos, 3) === peg$c69) {
+                        s5 = peg$c69;
                         peg$currPos += 3;
                     }
                     else {
                         s5 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c65);
+                            peg$fail(peg$c70);
                         }
                     }
                     if (s5 === peg$FAILED) {
-                        if (input.substr(peg$currPos, 2) === peg$c66) {
-                            s5 = peg$c66;
+                        if (input.substr(peg$currPos, 2) === peg$c71) {
+                            s5 = peg$c71;
                             peg$currPos += 2;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c67);
+                                peg$fail(peg$c72);
                             }
                         }
                         if (s5 === peg$FAILED) {
-                            if (input.substr(peg$currPos, 3) === peg$c68) {
-                                s5 = peg$c68;
+                            if (input.substr(peg$currPos, 3) === peg$c73) {
+                                s5 = peg$c73;
                                 peg$currPos += 3;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c69);
+                                    peg$fail(peg$c74);
                                 }
                             }
                         }
@@ -3874,36 +3602,36 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     s3 = peg$currPos;
                     s4 = peg$parse_();
                     if (s4 !== peg$FAILED) {
-                        if (input.substr(peg$currPos, 3) === peg$c64) {
-                            s5 = peg$c64;
+                        if (input.substr(peg$currPos, 3) === peg$c69) {
+                            s5 = peg$c69;
                             peg$currPos += 3;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c65);
+                                peg$fail(peg$c70);
                             }
                         }
                         if (s5 === peg$FAILED) {
-                            if (input.substr(peg$currPos, 2) === peg$c66) {
-                                s5 = peg$c66;
+                            if (input.substr(peg$currPos, 2) === peg$c71) {
+                                s5 = peg$c71;
                                 peg$currPos += 2;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c67);
+                                    peg$fail(peg$c72);
                                 }
                             }
                             if (s5 === peg$FAILED) {
-                                if (input.substr(peg$currPos, 3) === peg$c68) {
-                                    s5 = peg$c68;
+                                if (input.substr(peg$currPos, 3) === peg$c73) {
+                                    s5 = peg$c73;
                                     peg$currPos += 3;
                                 }
                                 else {
                                     s5 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c69);
+                                        peg$fail(peg$c74);
                                     }
                                 }
                             }
@@ -3938,7 +3666,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c70(s1, s2);
+                    s1 = peg$c75(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -3961,69 +3689,69 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s3 = peg$currPos;
                 s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
-                    if (input.substr(peg$currPos, 2) === peg$c71) {
-                        s5 = peg$c71;
+                    if (input.substr(peg$currPos, 2) === peg$c76) {
+                        s5 = peg$c76;
                         peg$currPos += 2;
                     }
                     else {
                         s5 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c72);
+                            peg$fail(peg$c77);
                         }
                     }
                     if (s5 === peg$FAILED) {
-                        if (input.substr(peg$currPos, 2) === peg$c73) {
-                            s5 = peg$c73;
+                        if (input.substr(peg$currPos, 2) === peg$c78) {
+                            s5 = peg$c78;
                             peg$currPos += 2;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c74);
+                                peg$fail(peg$c79);
                             }
                         }
                         if (s5 === peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 60) {
-                                s5 = peg$c75;
+                                s5 = peg$c7;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c76);
+                                    peg$fail(peg$c8);
                                 }
                             }
                             if (s5 === peg$FAILED) {
                                 if (input.charCodeAt(peg$currPos) === 62) {
-                                    s5 = peg$c77;
+                                    s5 = peg$c9;
                                     peg$currPos++;
                                 }
                                 else {
                                     s5 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c78);
+                                        peg$fail(peg$c10);
                                     }
                                 }
                                 if (s5 === peg$FAILED) {
-                                    if (input.substr(peg$currPos, 2) === peg$c79) {
-                                        s5 = peg$c79;
+                                    if (input.substr(peg$currPos, 2) === peg$c80) {
+                                        s5 = peg$c80;
                                         peg$currPos += 2;
                                     }
                                     else {
                                         s5 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c80);
+                                            peg$fail(peg$c81);
                                         }
                                     }
                                     if (s5 === peg$FAILED) {
-                                        if (input.substr(peg$currPos, 2) === peg$c81) {
-                                            s5 = peg$c81;
+                                        if (input.substr(peg$currPos, 2) === peg$c82) {
+                                            s5 = peg$c82;
                                             peg$currPos += 2;
                                         }
                                         else {
                                             s5 = peg$FAILED;
                                             if (peg$silentFails === 0) {
-                                                peg$fail(peg$c82);
+                                                peg$fail(peg$c83);
                                             }
                                         }
                                     }
@@ -4063,69 +3791,69 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     s3 = peg$currPos;
                     s4 = peg$parse_();
                     if (s4 !== peg$FAILED) {
-                        if (input.substr(peg$currPos, 2) === peg$c71) {
-                            s5 = peg$c71;
+                        if (input.substr(peg$currPos, 2) === peg$c76) {
+                            s5 = peg$c76;
                             peg$currPos += 2;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c72);
+                                peg$fail(peg$c77);
                             }
                         }
                         if (s5 === peg$FAILED) {
-                            if (input.substr(peg$currPos, 2) === peg$c73) {
-                                s5 = peg$c73;
+                            if (input.substr(peg$currPos, 2) === peg$c78) {
+                                s5 = peg$c78;
                                 peg$currPos += 2;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c74);
+                                    peg$fail(peg$c79);
                                 }
                             }
                             if (s5 === peg$FAILED) {
                                 if (input.charCodeAt(peg$currPos) === 60) {
-                                    s5 = peg$c75;
+                                    s5 = peg$c7;
                                     peg$currPos++;
                                 }
                                 else {
                                     s5 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c76);
+                                        peg$fail(peg$c8);
                                     }
                                 }
                                 if (s5 === peg$FAILED) {
                                     if (input.charCodeAt(peg$currPos) === 62) {
-                                        s5 = peg$c77;
+                                        s5 = peg$c9;
                                         peg$currPos++;
                                     }
                                     else {
                                         s5 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c78);
+                                            peg$fail(peg$c10);
                                         }
                                     }
                                     if (s5 === peg$FAILED) {
-                                        if (input.substr(peg$currPos, 2) === peg$c79) {
-                                            s5 = peg$c79;
+                                        if (input.substr(peg$currPos, 2) === peg$c80) {
+                                            s5 = peg$c80;
                                             peg$currPos += 2;
                                         }
                                         else {
                                             s5 = peg$FAILED;
                                             if (peg$silentFails === 0) {
-                                                peg$fail(peg$c80);
+                                                peg$fail(peg$c81);
                                             }
                                         }
                                         if (s5 === peg$FAILED) {
-                                            if (input.substr(peg$currPos, 2) === peg$c81) {
-                                                s5 = peg$c81;
+                                            if (input.substr(peg$currPos, 2) === peg$c82) {
+                                                s5 = peg$c82;
                                                 peg$currPos += 2;
                                             }
                                             else {
                                                 s5 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c82);
+                                                    peg$fail(peg$c83);
                                                 }
                                             }
                                         }
@@ -4163,7 +3891,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c70(s1, s2);
+                    s1 = peg$c75(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -4187,35 +3915,35 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 43) {
-                        s5 = peg$c83;
+                        s5 = peg$c84;
                         peg$currPos++;
                     }
                     else {
                         s5 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c84);
+                            peg$fail(peg$c85);
                         }
                     }
                     if (s5 === peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 45) {
-                            s5 = peg$c85;
+                            s5 = peg$c86;
                             peg$currPos++;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c86);
+                                peg$fail(peg$c87);
                             }
                         }
                         if (s5 === peg$FAILED) {
-                            if (input.substr(peg$currPos, 2) === peg$c87) {
-                                s5 = peg$c87;
+                            if (input.substr(peg$currPos, 2) === peg$c88) {
+                                s5 = peg$c88;
                                 peg$currPos += 2;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c88);
+                                    peg$fail(peg$c89);
                                 }
                             }
                         }
@@ -4253,35 +3981,35 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     s4 = peg$parse_();
                     if (s4 !== peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 43) {
-                            s5 = peg$c83;
+                            s5 = peg$c84;
                             peg$currPos++;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c84);
+                                peg$fail(peg$c85);
                             }
                         }
                         if (s5 === peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 45) {
-                                s5 = peg$c85;
+                                s5 = peg$c86;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c86);
+                                    peg$fail(peg$c87);
                                 }
                             }
                             if (s5 === peg$FAILED) {
-                                if (input.substr(peg$currPos, 2) === peg$c87) {
-                                    s5 = peg$c87;
+                                if (input.substr(peg$currPos, 2) === peg$c88) {
+                                    s5 = peg$c88;
                                     peg$currPos += 2;
                                 }
                                 else {
                                     s5 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c88);
+                                        peg$fail(peg$c89);
                                     }
                                 }
                             }
@@ -4316,7 +4044,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c70(s1, s2);
+                    s1 = peg$c75(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -4340,24 +4068,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s4 = peg$parse_();
                 if (s4 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 42) {
-                        s5 = peg$c89;
+                        s5 = peg$c90;
                         peg$currPos++;
                     }
                     else {
                         s5 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c90);
+                            peg$fail(peg$c91);
                         }
                     }
                     if (s5 === peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 47) {
-                            s5 = peg$c91;
+                            s5 = peg$c92;
                             peg$currPos++;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c92);
+                                peg$fail(peg$c93);
                             }
                         }
                     }
@@ -4394,24 +4122,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     s4 = peg$parse_();
                     if (s4 !== peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 42) {
-                            s5 = peg$c89;
+                            s5 = peg$c90;
                             peg$currPos++;
                         }
                         else {
                             s5 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c90);
+                                peg$fail(peg$c91);
                             }
                         }
                         if (s5 === peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 47) {
-                                s5 = peg$c91;
+                                s5 = peg$c92;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c92);
+                                    peg$fail(peg$c93);
                                 }
                             }
                         }
@@ -4445,7 +4173,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c70(s1, s2);
+                    s1 = peg$c75(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -4463,14 +4191,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             var s0, s1, s2, s3;
             s0 = peg$currPos;
             s1 = peg$currPos;
-            if (input.substr(peg$currPos, 3) === peg$c93) {
-                s2 = peg$c93;
+            if (input.substr(peg$currPos, 3) === peg$c94) {
+                s2 = peg$c94;
                 peg$currPos += 3;
             }
             else {
                 s2 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c94);
+                    peg$fail(peg$c95);
                 }
             }
             if (s2 !== peg$FAILED) {
@@ -4494,13 +4222,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s1 === peg$FAILED) {
                 s1 = peg$currPos;
                 if (input.charCodeAt(peg$currPos) === 45) {
-                    s2 = peg$c85;
+                    s2 = peg$c86;
                     peg$currPos++;
                 }
                 else {
                     s2 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c86);
+                        peg$fail(peg$c87);
                     }
                 }
                 if (s2 !== peg$FAILED) {
@@ -4529,7 +4257,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s2 = peg$parseFactor();
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c95(s1, s2);
+                    s1 = peg$c96(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -4547,13 +4275,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             var s0, s1, s2, s3, s4, s5;
             s0 = peg$currPos;
             if (input.charCodeAt(peg$currPos) === 40) {
-                s1 = peg$c11;
+                s1 = peg$c15;
                 peg$currPos++;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c12);
+                    peg$fail(peg$c16);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -4564,18 +4292,18 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 41) {
-                                s5 = peg$c13;
+                                s5 = peg$c17;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c14);
+                                    peg$fail(peg$c18);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c96(s3);
+                                s1 = peg$c97(s3);
                                 s0 = s1;
                             }
                             else {
@@ -4603,13 +4331,16 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 s0 = peg$FAILED;
             }
             if (s0 === peg$FAILED) {
-                s0 = peg$parseNumber();
+                s0 = peg$parseList();
                 if (s0 === peg$FAILED) {
-                    s0 = peg$parseBoolean();
+                    s0 = peg$parseNumber();
                     if (s0 === peg$FAILED) {
-                        s0 = peg$parseString();
+                        s0 = peg$parseBoolean();
                         if (s0 === peg$FAILED) {
-                            s0 = peg$parseVariableAccessOrFunctionCall();
+                            s0 = peg$parseString();
+                            if (s0 === peg$FAILED) {
+                                s0 = peg$parseVariableAccessOrFunctionCall();
+                            }
                         }
                     }
                 }
@@ -4642,7 +4373,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c98(s1, s2);
+                    s1 = peg$c99(s1, s2);
                     s0 = s1;
                 }
                 else {
@@ -4658,7 +4389,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c97);
+                    peg$fail(peg$c98);
                 }
             }
             return s0;
@@ -4667,20 +4398,20 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             var s0, s1, s2;
             s0 = peg$currPos;
             if (input.charCodeAt(peg$currPos) === 46) {
-                s1 = peg$c99;
+                s1 = peg$c100;
                 peg$currPos++;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c100);
+                    peg$fail(peg$c101);
                 }
             }
             if (s1 !== peg$FAILED) {
                 s2 = peg$parseIdentifier();
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c101(s2);
+                    s1 = peg$c102(s2);
                     s0 = s1;
                 }
                 else {
@@ -4695,39 +4426,53 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             return s0;
         }
         function peg$parseArrayAccess() {
-            var s0, s1, s2, s3, s4, s5;
+            var s0, s1, s2, s3, s4, s5, s6, s7;
             s0 = peg$currPos;
-            if (input.charCodeAt(peg$currPos) === 91) {
-                s1 = peg$c102;
-                peg$currPos++;
-            }
-            else {
-                s1 = peg$FAILED;
-                if (peg$silentFails === 0) {
-                    peg$fail(peg$c103);
-                }
-            }
+            s1 = peg$parse_();
             if (s1 !== peg$FAILED) {
-                s2 = peg$parse_();
+                if (input.charCodeAt(peg$currPos) === 91) {
+                    s2 = peg$c103;
+                    peg$currPos++;
+                }
+                else {
+                    s2 = peg$FAILED;
+                    if (peg$silentFails === 0) {
+                        peg$fail(peg$c104);
+                    }
+                }
                 if (s2 !== peg$FAILED) {
-                    s3 = peg$parseExpression();
+                    s3 = peg$parse_();
                     if (s3 !== peg$FAILED) {
-                        s4 = peg$parse_();
+                        s4 = peg$parseExpression();
                         if (s4 !== peg$FAILED) {
-                            if (input.charCodeAt(peg$currPos) === 93) {
-                                s5 = peg$c104;
-                                peg$currPos++;
-                            }
-                            else {
-                                s5 = peg$FAILED;
-                                if (peg$silentFails === 0) {
-                                    peg$fail(peg$c105);
-                                }
-                            }
+                            s5 = peg$parse_();
                             if (s5 !== peg$FAILED) {
-                                peg$savedPos = s0;
-                                s1 = peg$c106(s3);
-                                s0 = s1;
+                                if (input.charCodeAt(peg$currPos) === 93) {
+                                    s6 = peg$c105;
+                                    peg$currPos++;
+                                }
+                                else {
+                                    s6 = peg$FAILED;
+                                    if (peg$silentFails === 0) {
+                                        peg$fail(peg$c106);
+                                    }
+                                }
+                                if (s6 !== peg$FAILED) {
+                                    s7 = peg$parse_();
+                                    if (s7 !== peg$FAILED) {
+                                        peg$savedPos = s0;
+                                        s1 = peg$c107(s4);
+                                        s0 = s1;
+                                    }
+                                    else {
+                                        peg$currPos = s0;
+                                        s0 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s0;
+                                    s0 = peg$FAILED;
+                                }
                             }
                             else {
                                 peg$currPos = s0;
@@ -4756,17 +4501,202 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             return s0;
         }
         function peg$parseArguments() {
+            var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
+            peg$silentFails++;
+            s0 = peg$currPos;
+            s1 = peg$parse_();
+            if (s1 !== peg$FAILED) {
+                if (input.charCodeAt(peg$currPos) === 40) {
+                    s2 = peg$c15;
+                    peg$currPos++;
+                }
+                else {
+                    s2 = peg$FAILED;
+                    if (peg$silentFails === 0) {
+                        peg$fail(peg$c16);
+                    }
+                }
+                if (s2 !== peg$FAILED) {
+                    s3 = peg$parse_();
+                    if (s3 !== peg$FAILED) {
+                        s4 = peg$currPos;
+                        s5 = peg$parseExpression();
+                        if (s5 !== peg$FAILED) {
+                            s6 = [];
+                            s7 = peg$currPos;
+                            s8 = peg$parse_();
+                            if (s8 !== peg$FAILED) {
+                                if (input.charCodeAt(peg$currPos) === 44) {
+                                    s9 = peg$c25;
+                                    peg$currPos++;
+                                }
+                                else {
+                                    s9 = peg$FAILED;
+                                    if (peg$silentFails === 0) {
+                                        peg$fail(peg$c26);
+                                    }
+                                }
+                                if (s9 !== peg$FAILED) {
+                                    s10 = peg$parse_();
+                                    if (s10 !== peg$FAILED) {
+                                        s11 = peg$parseExpression();
+                                        if (s11 !== peg$FAILED) {
+                                            s8 = [s8, s9, s10, s11];
+                                            s7 = s8;
+                                        }
+                                        else {
+                                            peg$currPos = s7;
+                                            s7 = peg$FAILED;
+                                        }
+                                    }
+                                    else {
+                                        peg$currPos = s7;
+                                        s7 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s7;
+                                    s7 = peg$FAILED;
+                                }
+                            }
+                            else {
+                                peg$currPos = s7;
+                                s7 = peg$FAILED;
+                            }
+                            while (s7 !== peg$FAILED) {
+                                s6.push(s7);
+                                s7 = peg$currPos;
+                                s8 = peg$parse_();
+                                if (s8 !== peg$FAILED) {
+                                    if (input.charCodeAt(peg$currPos) === 44) {
+                                        s9 = peg$c25;
+                                        peg$currPos++;
+                                    }
+                                    else {
+                                        s9 = peg$FAILED;
+                                        if (peg$silentFails === 0) {
+                                            peg$fail(peg$c26);
+                                        }
+                                    }
+                                    if (s9 !== peg$FAILED) {
+                                        s10 = peg$parse_();
+                                        if (s10 !== peg$FAILED) {
+                                            s11 = peg$parseExpression();
+                                            if (s11 !== peg$FAILED) {
+                                                s8 = [s8, s9, s10, s11];
+                                                s7 = s8;
+                                            }
+                                            else {
+                                                peg$currPos = s7;
+                                                s7 = peg$FAILED;
+                                            }
+                                        }
+                                        else {
+                                            peg$currPos = s7;
+                                            s7 = peg$FAILED;
+                                        }
+                                    }
+                                    else {
+                                        peg$currPos = s7;
+                                        s7 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s7;
+                                    s7 = peg$FAILED;
+                                }
+                            }
+                            if (s6 !== peg$FAILED) {
+                                s5 = [s5, s6];
+                                s4 = s5;
+                            }
+                            else {
+                                peg$currPos = s4;
+                                s4 = peg$FAILED;
+                            }
+                        }
+                        else {
+                            peg$currPos = s4;
+                            s4 = peg$FAILED;
+                        }
+                        if (s4 === peg$FAILED) {
+                            s4 = null;
+                        }
+                        if (s4 !== peg$FAILED) {
+                            s5 = peg$parse_();
+                            if (s5 !== peg$FAILED) {
+                                if (input.charCodeAt(peg$currPos) === 41) {
+                                    s6 = peg$c17;
+                                    peg$currPos++;
+                                }
+                                else {
+                                    s6 = peg$FAILED;
+                                    if (peg$silentFails === 0) {
+                                        peg$fail(peg$c18);
+                                    }
+                                }
+                                if (s6 !== peg$FAILED) {
+                                    s7 = peg$parse_();
+                                    if (s7 !== peg$FAILED) {
+                                        peg$savedPos = s0;
+                                        s1 = peg$c109(s4);
+                                        s0 = s1;
+                                    }
+                                    else {
+                                        peg$currPos = s0;
+                                        s0 = peg$FAILED;
+                                    }
+                                }
+                                else {
+                                    peg$currPos = s0;
+                                    s0 = peg$FAILED;
+                                }
+                            }
+                            else {
+                                peg$currPos = s0;
+                                s0 = peg$FAILED;
+                            }
+                        }
+                        else {
+                            peg$currPos = s0;
+                            s0 = peg$FAILED;
+                        }
+                    }
+                    else {
+                        peg$currPos = s0;
+                        s0 = peg$FAILED;
+                    }
+                }
+                else {
+                    peg$currPos = s0;
+                    s0 = peg$FAILED;
+                }
+            }
+            else {
+                peg$currPos = s0;
+                s0 = peg$FAILED;
+            }
+            peg$silentFails--;
+            if (s0 === peg$FAILED) {
+                s1 = peg$FAILED;
+                if (peg$silentFails === 0) {
+                    peg$fail(peg$c108);
+                }
+            }
+            return s0;
+        }
+        function peg$parseList() {
             var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
             peg$silentFails++;
             s0 = peg$currPos;
-            if (input.charCodeAt(peg$currPos) === 40) {
-                s1 = peg$c11;
+            if (input.charCodeAt(peg$currPos) === 91) {
+                s1 = peg$c103;
                 peg$currPos++;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c12);
+                    peg$fail(peg$c104);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -4780,13 +4710,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                         s7 = peg$parse_();
                         if (s7 !== peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 44) {
-                                s8 = peg$c21;
+                                s8 = peg$c25;
                                 peg$currPos++;
                             }
                             else {
                                 s8 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c22);
+                                    peg$fail(peg$c26);
                                 }
                             }
                             if (s8 !== peg$FAILED) {
@@ -4822,13 +4752,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                             s7 = peg$parse_();
                             if (s7 !== peg$FAILED) {
                                 if (input.charCodeAt(peg$currPos) === 44) {
-                                    s8 = peg$c21;
+                                    s8 = peg$c25;
                                     peg$currPos++;
                                 }
                                 else {
                                     s8 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c22);
+                                        peg$fail(peg$c26);
                                     }
                                 }
                                 if (s8 !== peg$FAILED) {
@@ -4878,19 +4808,19 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     if (s3 !== peg$FAILED) {
                         s4 = peg$parse_();
                         if (s4 !== peg$FAILED) {
-                            if (input.charCodeAt(peg$currPos) === 41) {
-                                s5 = peg$c13;
+                            if (input.charCodeAt(peg$currPos) === 93) {
+                                s5 = peg$c105;
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c14);
+                                    peg$fail(peg$c106);
                                 }
                             }
                             if (s5 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c108(s3);
+                                s1 = peg$c111(s3);
                                 s0 = s1;
                             }
                             else {
@@ -4921,7 +4851,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c107);
+                    peg$fail(peg$c110);
                 }
             }
             return s0;
@@ -4931,27 +4861,27 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             peg$silentFails++;
             s0 = peg$currPos;
             s1 = [];
-            if (peg$c110.test(input.charAt(peg$currPos))) {
+            if (peg$c113.test(input.charAt(peg$currPos))) {
                 s2 = input.charAt(peg$currPos);
                 peg$currPos++;
             }
             else {
                 s2 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c111);
+                    peg$fail(peg$c114);
                 }
             }
             if (s2 !== peg$FAILED) {
                 while (s2 !== peg$FAILED) {
                     s1.push(s2);
-                    if (peg$c110.test(input.charAt(peg$currPos))) {
+                    if (peg$c113.test(input.charAt(peg$currPos))) {
                         s2 = input.charAt(peg$currPos);
                         peg$currPos++;
                     }
                     else {
                         s2 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c111);
+                            peg$fail(peg$c114);
                         }
                     }
                 }
@@ -4962,38 +4892,38 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s1 !== peg$FAILED) {
                 s2 = peg$currPos;
                 if (input.charCodeAt(peg$currPos) === 46) {
-                    s3 = peg$c99;
+                    s3 = peg$c100;
                     peg$currPos++;
                 }
                 else {
                     s3 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c100);
+                        peg$fail(peg$c101);
                     }
                 }
                 if (s3 !== peg$FAILED) {
                     s4 = [];
-                    if (peg$c110.test(input.charAt(peg$currPos))) {
+                    if (peg$c113.test(input.charAt(peg$currPos))) {
                         s5 = input.charAt(peg$currPos);
                         peg$currPos++;
                     }
                     else {
                         s5 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c111);
+                            peg$fail(peg$c114);
                         }
                     }
                     if (s5 !== peg$FAILED) {
                         while (s5 !== peg$FAILED) {
                             s4.push(s5);
-                            if (peg$c110.test(input.charAt(peg$currPos))) {
+                            if (peg$c113.test(input.charAt(peg$currPos))) {
                                 s5 = input.charAt(peg$currPos);
                                 peg$currPos++;
                             }
                             else {
                                 s5 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c111);
+                                    peg$fail(peg$c114);
                                 }
                             }
                         }
@@ -5019,7 +4949,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c112();
+                    s1 = peg$c115();
                     s0 = s1;
                 }
                 else {
@@ -5035,7 +4965,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c109);
+                    peg$fail(peg$c112);
                 }
             }
             return s0;
@@ -5044,38 +4974,38 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             var s0, s1;
             peg$silentFails++;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 5) === peg$c114) {
-                s1 = peg$c114;
+            if (input.substr(peg$currPos, 5) === peg$c117) {
+                s1 = peg$c117;
                 peg$currPos += 5;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c115);
+                    peg$fail(peg$c118);
                 }
             }
             if (s1 === peg$FAILED) {
-                if (input.substr(peg$currPos, 4) === peg$c116) {
-                    s1 = peg$c116;
+                if (input.substr(peg$currPos, 4) === peg$c119) {
+                    s1 = peg$c119;
                     peg$currPos += 4;
                 }
                 else {
                     s1 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c117);
+                        peg$fail(peg$c120);
                     }
                 }
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c118();
+                s1 = peg$c121();
             }
             s0 = s1;
             peg$silentFails--;
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c113);
+                    peg$fail(peg$c116);
                 }
             }
             return s0;
@@ -5087,14 +5017,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             s1 = peg$parseStringValue();
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c120(s1);
+                s1 = peg$c123(s1);
             }
             s0 = s1;
             peg$silentFails--;
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c119);
+                    peg$fail(peg$c122);
                 }
             }
             return s0;
@@ -5103,13 +5033,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             var s0, s1, s2, s3;
             s0 = peg$currPos;
             if (input.charCodeAt(peg$currPos) === 34) {
-                s1 = peg$c121;
+                s1 = peg$c124;
                 peg$currPos++;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c122);
+                    peg$fail(peg$c125);
                 }
             }
             if (s1 !== peg$FAILED) {
@@ -5121,18 +5051,18 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 34) {
-                        s3 = peg$c121;
+                        s3 = peg$c124;
                         peg$currPos++;
                     }
                     else {
                         s3 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c122);
+                            peg$fail(peg$c125);
                         }
                     }
                     if (s3 !== peg$FAILED) {
                         peg$savedPos = s0;
-                        s1 = peg$c123(s2);
+                        s1 = peg$c126(s2);
                         s0 = s1;
                     }
                     else {
@@ -5152,13 +5082,13 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s0 = peg$currPos;
                 if (input.charCodeAt(peg$currPos) === 39) {
-                    s1 = peg$c124;
+                    s1 = peg$c127;
                     peg$currPos++;
                 }
                 else {
                     s1 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c125);
+                        peg$fail(peg$c128);
                     }
                 }
                 if (s1 !== peg$FAILED) {
@@ -5170,18 +5100,18 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     }
                     if (s2 !== peg$FAILED) {
                         if (input.charCodeAt(peg$currPos) === 39) {
-                            s3 = peg$c124;
+                            s3 = peg$c127;
                             peg$currPos++;
                         }
                         else {
                             s3 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c125);
+                                peg$fail(peg$c128);
                             }
                         }
                         if (s3 !== peg$FAILED) {
                             peg$savedPos = s0;
-                            s1 = peg$c123(s2);
+                            s1 = peg$c126(s2);
                             s0 = s1;
                         }
                         else {
@@ -5207,24 +5137,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             s1 = peg$currPos;
             peg$silentFails++;
             if (input.charCodeAt(peg$currPos) === 34) {
-                s2 = peg$c121;
+                s2 = peg$c124;
                 peg$currPos++;
             }
             else {
                 s2 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c122);
+                    peg$fail(peg$c125);
                 }
             }
             if (s2 === peg$FAILED) {
                 if (input.charCodeAt(peg$currPos) === 92) {
-                    s2 = peg$c126;
+                    s2 = peg$c129;
                     peg$currPos++;
                 }
                 else {
                     s2 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c127);
+                        peg$fail(peg$c130);
                     }
                 }
             }
@@ -5249,7 +5179,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c128(s2);
+                    s1 = peg$c131(s2);
                     s0 = s1;
                 }
                 else {
@@ -5264,20 +5194,20 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s0 = peg$currPos;
                 if (input.charCodeAt(peg$currPos) === 92) {
-                    s1 = peg$c126;
+                    s1 = peg$c129;
                     peg$currPos++;
                 }
                 else {
                     s1 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c127);
+                        peg$fail(peg$c130);
                     }
                 }
                 if (s1 !== peg$FAILED) {
                     s2 = peg$parseEscapeSequence();
                     if (s2 !== peg$FAILED) {
                         peg$savedPos = s0;
-                        s1 = peg$c129(s2);
+                        s1 = peg$c132(s2);
                         s0 = s1;
                     }
                     else {
@@ -5298,24 +5228,24 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             s1 = peg$currPos;
             peg$silentFails++;
             if (input.charCodeAt(peg$currPos) === 39) {
-                s2 = peg$c124;
+                s2 = peg$c127;
                 peg$currPos++;
             }
             else {
                 s2 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c125);
+                    peg$fail(peg$c128);
                 }
             }
             if (s2 === peg$FAILED) {
                 if (input.charCodeAt(peg$currPos) === 92) {
-                    s2 = peg$c126;
+                    s2 = peg$c129;
                     peg$currPos++;
                 }
                 else {
                     s2 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c127);
+                        peg$fail(peg$c130);
                     }
                 }
             }
@@ -5340,7 +5270,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                 }
                 if (s2 !== peg$FAILED) {
                     peg$savedPos = s0;
-                    s1 = peg$c128(s2);
+                    s1 = peg$c131(s2);
                     s0 = s1;
                 }
                 else {
@@ -5355,20 +5285,20 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s0 = peg$currPos;
                 if (input.charCodeAt(peg$currPos) === 92) {
-                    s1 = peg$c126;
+                    s1 = peg$c129;
                     peg$currPos++;
                 }
                 else {
                     s1 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c127);
+                        peg$fail(peg$c130);
                     }
                 }
                 if (s1 !== peg$FAILED) {
                     s2 = peg$parseEscapeSequence();
                     if (s2 !== peg$FAILED) {
                         peg$savedPos = s0;
-                        s1 = peg$c129(s2);
+                        s1 = peg$c132(s2);
                         s0 = s1;
                     }
                     else {
@@ -5386,137 +5316,137 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseEscapeSequence() {
             var s0, s1;
             if (input.charCodeAt(peg$currPos) === 39) {
-                s0 = peg$c124;
+                s0 = peg$c127;
                 peg$currPos++;
             }
             else {
                 s0 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c125);
+                    peg$fail(peg$c128);
                 }
             }
             if (s0 === peg$FAILED) {
                 if (input.charCodeAt(peg$currPos) === 34) {
-                    s0 = peg$c121;
+                    s0 = peg$c124;
                     peg$currPos++;
                 }
                 else {
                     s0 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c122);
+                        peg$fail(peg$c125);
                     }
                 }
                 if (s0 === peg$FAILED) {
                     if (input.charCodeAt(peg$currPos) === 92) {
-                        s0 = peg$c126;
+                        s0 = peg$c129;
                         peg$currPos++;
                     }
                     else {
                         s0 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c127);
+                            peg$fail(peg$c130);
                         }
                     }
                     if (s0 === peg$FAILED) {
                         s0 = peg$currPos;
                         if (input.charCodeAt(peg$currPos) === 98) {
-                            s1 = peg$c130;
+                            s1 = peg$c133;
                             peg$currPos++;
                         }
                         else {
                             s1 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c131);
+                                peg$fail(peg$c134);
                             }
                         }
                         if (s1 !== peg$FAILED) {
                             peg$savedPos = s0;
-                            s1 = peg$c132();
+                            s1 = peg$c135();
                         }
                         s0 = s1;
                         if (s0 === peg$FAILED) {
                             s0 = peg$currPos;
                             if (input.charCodeAt(peg$currPos) === 102) {
-                                s1 = peg$c133;
+                                s1 = peg$c136;
                                 peg$currPos++;
                             }
                             else {
                                 s1 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c134);
+                                    peg$fail(peg$c137);
                                 }
                             }
                             if (s1 !== peg$FAILED) {
                                 peg$savedPos = s0;
-                                s1 = peg$c135();
+                                s1 = peg$c138();
                             }
                             s0 = s1;
                             if (s0 === peg$FAILED) {
                                 s0 = peg$currPos;
                                 if (input.charCodeAt(peg$currPos) === 110) {
-                                    s1 = peg$c136;
+                                    s1 = peg$c139;
                                     peg$currPos++;
                                 }
                                 else {
                                     s1 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c137);
+                                        peg$fail(peg$c140);
                                     }
                                 }
                                 if (s1 !== peg$FAILED) {
                                     peg$savedPos = s0;
-                                    s1 = peg$c138();
+                                    s1 = peg$c141();
                                 }
                                 s0 = s1;
                                 if (s0 === peg$FAILED) {
                                     s0 = peg$currPos;
                                     if (input.charCodeAt(peg$currPos) === 114) {
-                                        s1 = peg$c139;
+                                        s1 = peg$c142;
                                         peg$currPos++;
                                     }
                                     else {
                                         s1 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c140);
+                                            peg$fail(peg$c143);
                                         }
                                     }
                                     if (s1 !== peg$FAILED) {
                                         peg$savedPos = s0;
-                                        s1 = peg$c141();
+                                        s1 = peg$c144();
                                     }
                                     s0 = s1;
                                     if (s0 === peg$FAILED) {
                                         s0 = peg$currPos;
                                         if (input.charCodeAt(peg$currPos) === 116) {
-                                            s1 = peg$c142;
+                                            s1 = peg$c145;
                                             peg$currPos++;
                                         }
                                         else {
                                             s1 = peg$FAILED;
                                             if (peg$silentFails === 0) {
-                                                peg$fail(peg$c143);
+                                                peg$fail(peg$c146);
                                             }
                                         }
                                         if (s1 !== peg$FAILED) {
                                             peg$savedPos = s0;
-                                            s1 = peg$c144();
+                                            s1 = peg$c147();
                                         }
                                         s0 = s1;
                                         if (s0 === peg$FAILED) {
                                             s0 = peg$currPos;
                                             if (input.charCodeAt(peg$currPos) === 118) {
-                                                s1 = peg$c145;
+                                                s1 = peg$c148;
                                                 peg$currPos++;
                                             }
                                             else {
                                                 s1 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c146);
+                                                    peg$fail(peg$c149);
                                                 }
                                             }
                                             if (s1 !== peg$FAILED) {
                                                 peg$savedPos = s0;
-                                                s1 = peg$c147();
+                                                s1 = peg$c150();
                                             }
                                             s0 = s1;
                                         }
@@ -5555,7 +5485,7 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
                     }
                     if (s3 !== peg$FAILED) {
                         peg$savedPos = s0;
-                        s1 = peg$c149();
+                        s1 = peg$c152();
                         s0 = s1;
                     }
                     else {
@@ -5576,35 +5506,35 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c148);
+                    peg$fail(peg$c151);
                 }
             }
             return s0;
         }
         function peg$parseIdentifierStart() {
             var s0;
-            if (peg$c150.test(input.charAt(peg$currPos))) {
+            if (peg$c153.test(input.charAt(peg$currPos))) {
                 s0 = input.charAt(peg$currPos);
                 peg$currPos++;
             }
             else {
                 s0 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c151);
+                    peg$fail(peg$c154);
                 }
             }
             return s0;
         }
         function peg$parseIdentifierPart() {
             var s0;
-            if (peg$c152.test(input.charAt(peg$currPos))) {
+            if (peg$c155.test(input.charAt(peg$currPos))) {
                 s0 = input.charAt(peg$currPos);
                 peg$currPos++;
             }
             else {
                 s0 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c153);
+                    peg$fail(peg$c156);
                 }
             }
             return s0;
@@ -5612,223 +5542,223 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
         function peg$parseReserved() {
             var s0, s1, s2, s3;
             s0 = peg$currPos;
-            if (input.substr(peg$currPos, 3) === peg$c28) {
-                s1 = peg$c28;
+            if (input.substr(peg$currPos, 3) === peg$c32) {
+                s1 = peg$c32;
                 peg$currPos += 3;
             }
             else {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c29);
+                    peg$fail(peg$c33);
                 }
             }
             if (s1 === peg$FAILED) {
-                if (input.substr(peg$currPos, 3) === peg$c9) {
-                    s1 = peg$c9;
+                if (input.substr(peg$currPos, 3) === peg$c13) {
+                    s1 = peg$c13;
                     peg$currPos += 3;
                 }
                 else {
                     s1 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c10);
+                        peg$fail(peg$c14);
                     }
                 }
                 if (s1 === peg$FAILED) {
-                    if (input.substr(peg$currPos, 6) === peg$c50) {
-                        s1 = peg$c50;
+                    if (input.substr(peg$currPos, 6) === peg$c57) {
+                        s1 = peg$c57;
                         peg$currPos += 6;
                     }
                     else {
                         s1 = peg$FAILED;
                         if (peg$silentFails === 0) {
-                            peg$fail(peg$c51);
+                            peg$fail(peg$c58);
                         }
                     }
                     if (s1 === peg$FAILED) {
-                        if (input.substr(peg$currPos, 6) === peg$c36) {
-                            s1 = peg$c36;
+                        if (input.substr(peg$currPos, 6) === peg$c40) {
+                            s1 = peg$c40;
                             peg$currPos += 6;
                         }
                         else {
                             s1 = peg$FAILED;
                             if (peg$silentFails === 0) {
-                                peg$fail(peg$c37);
+                                peg$fail(peg$c41);
                             }
                         }
                         if (s1 === peg$FAILED) {
-                            if (input.substr(peg$currPos, 5) === peg$c41) {
-                                s1 = peg$c41;
+                            if (input.substr(peg$currPos, 5) === peg$c45) {
+                                s1 = peg$c45;
                                 peg$currPos += 5;
                             }
                             else {
                                 s1 = peg$FAILED;
                                 if (peg$silentFails === 0) {
-                                    peg$fail(peg$c42);
+                                    peg$fail(peg$c46);
                                 }
                             }
                             if (s1 === peg$FAILED) {
-                                if (input.substr(peg$currPos, 2) === peg$c46) {
-                                    s1 = peg$c46;
+                                if (input.substr(peg$currPos, 2) === peg$c50) {
+                                    s1 = peg$c50;
                                     peg$currPos += 2;
                                 }
                                 else {
                                     s1 = peg$FAILED;
                                     if (peg$silentFails === 0) {
-                                        peg$fail(peg$c47);
+                                        peg$fail(peg$c51);
                                     }
                                 }
                                 if (s1 === peg$FAILED) {
-                                    if (input.substr(peg$currPos, 4) === peg$c48) {
-                                        s1 = peg$c48;
+                                    if (input.substr(peg$currPos, 4) === peg$c52) {
+                                        s1 = peg$c52;
                                         peg$currPos += 4;
                                     }
                                     else {
                                         s1 = peg$FAILED;
                                         if (peg$silentFails === 0) {
-                                            peg$fail(peg$c49);
+                                            peg$fail(peg$c53);
                                         }
                                     }
                                     if (s1 === peg$FAILED) {
-                                        if (input.substr(peg$currPos, 4) === peg$c52) {
-                                            s1 = peg$c52;
+                                        if (input.substr(peg$currPos, 4) === peg$c54) {
+                                            s1 = peg$c54;
                                             peg$currPos += 4;
                                         }
                                         else {
                                             s1 = peg$FAILED;
                                             if (peg$silentFails === 0) {
-                                                peg$fail(peg$c53);
+                                                peg$fail(peg$c55);
                                             }
                                         }
                                         if (s1 === peg$FAILED) {
-                                            if (input.substr(peg$currPos, 5) === peg$c38) {
-                                                s1 = peg$c38;
+                                            if (input.substr(peg$currPos, 5) === peg$c42) {
+                                                s1 = peg$c42;
                                                 peg$currPos += 5;
                                             }
                                             else {
                                                 s1 = peg$FAILED;
                                                 if (peg$silentFails === 0) {
-                                                    peg$fail(peg$c39);
+                                                    peg$fail(peg$c43);
                                                 }
                                             }
                                             if (s1 === peg$FAILED) {
-                                                if (input.substr(peg$currPos, 4) === peg$c116) {
-                                                    s1 = peg$c116;
+                                                if (input.substr(peg$currPos, 4) === peg$c119) {
+                                                    s1 = peg$c119;
                                                     peg$currPos += 4;
                                                 }
                                                 else {
                                                     s1 = peg$FAILED;
                                                     if (peg$silentFails === 0) {
-                                                        peg$fail(peg$c117);
+                                                        peg$fail(peg$c120);
                                                     }
                                                 }
                                                 if (s1 === peg$FAILED) {
-                                                    if (input.substr(peg$currPos, 5) === peg$c114) {
-                                                        s1 = peg$c114;
+                                                    if (input.substr(peg$currPos, 5) === peg$c117) {
+                                                        s1 = peg$c117;
                                                         peg$currPos += 5;
                                                     }
                                                     else {
                                                         s1 = peg$FAILED;
                                                         if (peg$silentFails === 0) {
-                                                            peg$fail(peg$c115);
+                                                            peg$fail(peg$c118);
                                                         }
                                                     }
                                                     if (s1 === peg$FAILED) {
-                                                        if (input.substr(peg$currPos, 3) === peg$c68) {
-                                                            s1 = peg$c68;
+                                                        if (input.substr(peg$currPos, 3) === peg$c73) {
+                                                            s1 = peg$c73;
                                                             peg$currPos += 3;
                                                         }
                                                         else {
                                                             s1 = peg$FAILED;
                                                             if (peg$silentFails === 0) {
-                                                                peg$fail(peg$c69);
+                                                                peg$fail(peg$c74);
                                                             }
                                                         }
                                                         if (s1 === peg$FAILED) {
-                                                            if (input.substr(peg$currPos, 3) === peg$c64) {
-                                                                s1 = peg$c64;
+                                                            if (input.substr(peg$currPos, 3) === peg$c69) {
+                                                                s1 = peg$c69;
                                                                 peg$currPos += 3;
                                                             }
                                                             else {
                                                                 s1 = peg$FAILED;
                                                                 if (peg$silentFails === 0) {
-                                                                    peg$fail(peg$c65);
+                                                                    peg$fail(peg$c70);
                                                                 }
                                                             }
                                                             if (s1 === peg$FAILED) {
-                                                                if (input.substr(peg$currPos, 2) === peg$c66) {
-                                                                    s1 = peg$c66;
+                                                                if (input.substr(peg$currPos, 2) === peg$c71) {
+                                                                    s1 = peg$c71;
                                                                     peg$currPos += 2;
                                                                 }
                                                                 else {
                                                                     s1 = peg$FAILED;
                                                                     if (peg$silentFails === 0) {
-                                                                        peg$fail(peg$c67);
+                                                                        peg$fail(peg$c72);
                                                                     }
                                                                 }
                                                                 if (s1 === peg$FAILED) {
-                                                                    if (input.substr(peg$currPos, 3) === peg$c17) {
-                                                                        s1 = peg$c17;
+                                                                    if (input.substr(peg$currPos, 3) === peg$c21) {
+                                                                        s1 = peg$c21;
                                                                         peg$currPos += 3;
                                                                     }
                                                                     else {
                                                                         s1 = peg$FAILED;
                                                                         if (peg$silentFails === 0) {
-                                                                            peg$fail(peg$c18);
+                                                                            peg$fail(peg$c22);
                                                                         }
                                                                     }
                                                                     if (s1 === peg$FAILED) {
-                                                                        if (input.substr(peg$currPos, 6) === peg$c55) {
-                                                                            s1 = peg$c55;
+                                                                        if (input.substr(peg$currPos, 6) === peg$c60) {
+                                                                            s1 = peg$c60;
                                                                             peg$currPos += 6;
                                                                         }
                                                                         else {
                                                                             s1 = peg$FAILED;
                                                                             if (peg$silentFails === 0) {
-                                                                                peg$fail(peg$c56);
+                                                                                peg$fail(peg$c61);
                                                                             }
                                                                         }
                                                                         if (s1 === peg$FAILED) {
-                                                                            if (input.substr(peg$currPos, 5) === peg$c58) {
-                                                                                s1 = peg$c58;
+                                                                            if (input.substr(peg$currPos, 5) === peg$c63) {
+                                                                                s1 = peg$c63;
                                                                                 peg$currPos += 5;
                                                                             }
                                                                             else {
                                                                                 s1 = peg$FAILED;
                                                                                 if (peg$silentFails === 0) {
-                                                                                    peg$fail(peg$c59);
+                                                                                    peg$fail(peg$c64);
                                                                                 }
                                                                             }
                                                                             if (s1 === peg$FAILED) {
-                                                                                if (input.substr(peg$currPos, 8) === peg$c61) {
-                                                                                    s1 = peg$c61;
+                                                                                if (input.substr(peg$currPos, 8) === peg$c66) {
+                                                                                    s1 = peg$c66;
                                                                                     peg$currPos += 8;
                                                                                 }
                                                                                 else {
                                                                                     s1 = peg$FAILED;
                                                                                     if (peg$silentFails === 0) {
-                                                                                        peg$fail(peg$c62);
+                                                                                        peg$fail(peg$c67);
                                                                                     }
                                                                                 }
                                                                                 if (s1 === peg$FAILED) {
-                                                                                    if (input.substr(peg$currPos, 3) === peg$c93) {
-                                                                                        s1 = peg$c93;
+                                                                                    if (input.substr(peg$currPos, 3) === peg$c94) {
+                                                                                        s1 = peg$c94;
                                                                                         peg$currPos += 3;
                                                                                     }
                                                                                     else {
                                                                                         s1 = peg$FAILED;
                                                                                         if (peg$silentFails === 0) {
-                                                                                            peg$fail(peg$c94);
+                                                                                            peg$fail(peg$c95);
                                                                                         }
                                                                                     }
                                                                                     if (s1 === peg$FAILED) {
-                                                                                        if (input.substr(peg$currPos, 6) === peg$c24) {
-                                                                                            s1 = peg$c24;
+                                                                                        if (input.substr(peg$currPos, 6) === peg$c28) {
+                                                                                            s1 = peg$c28;
                                                                                             peg$currPos += 6;
                                                                                         }
                                                                                         else {
                                                                                             s1 = peg$FAILED;
                                                                                             if (peg$silentFails === 0) {
-                                                                                                peg$fail(peg$c25);
+                                                                                                peg$fail(peg$c29);
                                                                                             }
                                                                                         }
                                                                                     }
@@ -5882,39 +5812,39 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
             peg$silentFails++;
             s0 = peg$currPos;
             s1 = [];
-            if (peg$c155.test(input.charAt(peg$currPos))) {
+            if (peg$c158.test(input.charAt(peg$currPos))) {
                 s2 = input.charAt(peg$currPos);
                 peg$currPos++;
             }
             else {
                 s2 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c156);
+                    peg$fail(peg$c159);
                 }
             }
             while (s2 !== peg$FAILED) {
                 s1.push(s2);
-                if (peg$c155.test(input.charAt(peg$currPos))) {
+                if (peg$c158.test(input.charAt(peg$currPos))) {
                     s2 = input.charAt(peg$currPos);
                     peg$currPos++;
                 }
                 else {
                     s2 = peg$FAILED;
                     if (peg$silentFails === 0) {
-                        peg$fail(peg$c156);
+                        peg$fail(peg$c159);
                     }
                 }
             }
             if (s1 !== peg$FAILED) {
                 peg$savedPos = s0;
-                s1 = peg$c157();
+                s1 = peg$c160();
             }
             s0 = s1;
             peg$silentFails--;
             if (s0 === peg$FAILED) {
                 s1 = peg$FAILED;
                 if (peg$silentFails === 0) {
-                    peg$fail(peg$c154);
+                    peg$fail(peg$c157);
                 }
             }
             return s0;
@@ -5934,14 +5864,14 @@ define("language/Parser", ["require", "exports"], function (require, exports) {
     }
     exports.parse = peg$parse;
 });
-define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_4, Parser_1) {
+define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], function (require, exports, Utils_3, Parser_1) {
     "use strict";
     exports.__esModule = true;
     var CompilerError = (function () {
         function CompilerError(message, location) {
             this.message = message;
             this.location = location;
-            message = Utils_4.escapeHtml(message);
+            message = Utils_3.escapeHtml(message);
         }
         return CompilerError;
     }());
@@ -6028,6 +5958,28 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             });
             sig += ")";
             return sig;
+        };
+        Types.typeNameSignature = function (typeName) {
+            if (!typeName.elementType)
+                return typeName.id.value;
+            var signature = "list<";
+            var elementType = typeName.elementType;
+            var nestingLevel = 1;
+            while (true) {
+                signature += "list<";
+                if (elementType.elementType) {
+                    elementType = elementType.elementType;
+                }
+                else {
+                    break;
+                }
+            }
+            signature += elementType.id.value;
+            while (nestingLevel > 0) {
+                signature += ">";
+                nestingLevel--;
+            }
+            return signature;
         };
         return Types;
     }());
@@ -6122,7 +6074,16 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 { name: "index", type: exports.NumberType }
             ], exports.StringType, false, function (value, index) { return value.charAt(index); });
             externals.addFunction("random", [], exports.NumberType, false, function () { return Math.random(); });
+            externals.addFunction("abs", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.abs(value); });
             externals.addFunction("truncate", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return value | 0; });
+            externals.addFunction("round", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.round(value); });
+            externals.addFunction("floor", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.floor(value); });
+            externals.addFunction("ceiling", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.ceil(value); });
+            externals.addFunction("sqrt", [{ name: "value", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.sqrt(value); });
+            externals.addFunction("pow", [{ name: "value", type: exports.NumberType }, { name: "power", type: exports.NumberType }], exports.NumberType, false, function (value, power) { return Math.pow(value, power); });
+            externals.addFunction("cos", [{ name: "radians", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.cos(value); });
+            externals.addFunction("sin", [{ name: "radians", type: exports.NumberType }], exports.NumberType, false, function (value) { return Math.sin(value); });
+            externals.addFunction("atan2", [{ name: "x", type: exports.NumberType }, { name: "y", type: exports.NumberType }], exports.NumberType, false, function (x, y) { return Math.atan2(x, y); });
             externals.addFunction("time", [], exports.NumberType, false, function () { return performance.now() / 1000; });
             externals.addFunction("pause", [{ name: "milliSeconds", type: exports.NumberType }], exports.NumberType, true, function (milliSeconds) {
                 var promise = {
@@ -6157,13 +6118,15 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         };
         ExternalFunctionsTypesConstants.prototype.copy = function () {
             var copy = new ExternalFunctionsTypesConstants();
+            copy.functions.length = 0;
+            copy.functionLookup = {};
             for (var i = 0; i < this.functions.length; i++) {
                 var f = this.functions[i];
                 copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
             }
             for (var i = 0; i < this.records.length; i++) {
                 var r = this.records[i];
-                copy.addType(r.signature, r.fields);
+                copy.addType(r.signature, r.fields, r.generateConstructor);
             }
             return copy;
         };
@@ -6257,7 +6220,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             var type = {
                 kind: "record",
                 fields: [],
-                generateConstructor: false,
+                generateConstructor: true,
                 declarationNode: rec,
                 signature: rec.name.value
             };
@@ -6294,13 +6257,30 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             });
         });
         records.forEach(function (rec) {
-            if (!rec.type.generateConstructor)
-                return;
             var params = [];
             rec.fields.forEach(function (field) {
                 return params.push({ name: field.name.value, type: field.type });
             });
             externalFunctions.addFunction(rec.name.value, params, rec.type, false, function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                var value = [];
+                for (var i = 0; i < args.length; i++) {
+                    value[i] = args[i];
+                }
+                return value;
+            });
+        });
+        externalFunctions.records.forEach(function (rec) {
+            if (!rec.generateConstructor)
+                return;
+            var params = [];
+            rec.fields.forEach(function (field) {
+                return params.push({ name: field.name, type: field.type });
+            });
+            externalFunctions.addFunction(rec.signature, params, rec, false, function () {
                 var args = [];
                 for (var _i = 0; _i < arguments.length; _i++) {
                     args[_i] = arguments[_i];
@@ -6370,6 +6350,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "string":
                 node.type = exports.StringType;
                 break;
+            case "list":
+                throw new CompilerError("List literals not implemented yet.", node.location);
             case "unaryOp":
                 typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 switch (node.operator) {
@@ -6444,6 +6426,14 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 scopes.push();
                 node.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
+                node.elseIfs.forEach(function (elseIf) {
+                    typeCheckRec(elseIf.condition, types, scopes, enclosingFun, enclosingLoop);
+                    if (elseIf.condition.type != exports.BooleanType)
+                        throw new CompilerError("Condition of elseif statement must be a 'boolean', but is a '" + elseIf.condition.type.signature, elseIf.condition.location);
+                    scopes.push();
+                    elseIf.trueBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
+                    scopes.pop();
+                });
                 scopes.push();
                 node.falseBlock.forEach(function (child) { return typeCheckRec(child, types, scopes, enclosingFun, enclosingLoop); });
                 scopes.pop();
@@ -6467,7 +6457,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "variable":
                 typeCheckRec(node.value, types, scopes, enclosingFun, enclosingLoop);
                 if (node.typeName) {
-                    var type = types.get(node.typeName.id.value);
+                    var type = types.get(Types.typeNameSignature(node.typeName));
                     if (!type)
                         throw new CompilerError("Unknown type '" + node.typeName.id.value + "' for variable '" + node.name.value + "'.", node.typeName.id.location);
                     if (type != node.value.type)
@@ -6570,7 +6560,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access not implemented yet.", node.location);
             default:
-                Utils_4.assertNever(node);
+                Utils_3.assertNever(node);
         }
     }
     var EmitterContext = (function () {
@@ -6636,6 +6626,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         statements.forEach(function (stmt) {
             emitAstNode(stmt, context, true);
             switch (stmt.kind) {
+                case "list":
+                    throw new CompilerError("List literals not implemented yet.", stmt.location);
                 case "number":
                 case "boolean":
                 case "string":
@@ -6681,7 +6673,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                 case "comment":
                     break;
                 default:
-                    Utils_4.assertNever(stmt);
+                    Utils_3.assertNever(stmt);
             }
         });
     }
@@ -6710,6 +6702,8 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         var lastInsIndex = instructions.length;
         var lineInfos = fun.lineInfos;
         switch (node.kind) {
+            case "list":
+                throw new CompilerError("List literals not implemented yet.", node.location);
             case "number":
             case "boolean":
             case "string":
@@ -6791,25 +6785,31 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
                     emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
                 break;
             case "if":
-                emitAstNode(node.condition, context, false);
-                var jumpToFalse = { kind: "jumpIfFalse", offset: 0 };
-                var jumpPastFalse = { kind: "jump", offset: 0 };
-                instructions.push(jumpToFalse);
-                emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
-                context.lineInfoIndex++;
-                scopes.push();
-                emitStatementList(node.trueBlock, context);
-                scopes.pop();
-                assignScopeInfoEndPc(node.trueBlock, instructions.length - 1);
-                instructions.push(jumpPastFalse);
-                lineInfos.push(lineInfos[lineInfos.length - 1]);
-                context.lineInfoIndex++;
-                jumpToFalse.offset = instructions.length;
+                var jumpPastIf_1 = { kind: "jump", offset: 0 };
+                var ifChecks_1 = [];
+                ifChecks_1.push(node);
+                node.elseIfs.forEach(function (elseIf) { return ifChecks_1.push(elseIf); });
+                ifChecks_1.forEach(function (ifCheck) {
+                    emitAstNode(ifCheck.condition, context, false);
+                    var jumpToFalse = { kind: "jumpIfFalse", offset: 0 };
+                    instructions.push(jumpToFalse);
+                    emitLineInfo(lineInfos, context.lineInfoIndex, ifCheck.location.start.line, instructions.length - lastInsIndex);
+                    context.lineInfoIndex++;
+                    scopes.push();
+                    emitStatementList(ifCheck.trueBlock, context);
+                    scopes.pop();
+                    assignScopeInfoEndPc(ifCheck.trueBlock, instructions.length - 1);
+                    instructions.push(jumpPastIf_1);
+                    lineInfos.push(lineInfos[lineInfos.length - 1]);
+                    context.lineInfoIndex++;
+                    jumpToFalse.offset = instructions.length;
+                    lastInsIndex = instructions.length;
+                });
                 scopes.push();
                 emitStatementList(node.falseBlock, context);
                 scopes.pop();
                 assignScopeInfoEndPc(node.falseBlock, instructions.length - 1);
-                jumpPastFalse.offset = instructions.length;
+                jumpPastIf_1.offset = instructions.length;
                 break;
             case "while":
                 var conditionIndex_1 = instructions.length;
@@ -6898,7 +6898,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
             case "arrayAccess":
                 throw new CompilerError("Array access emission not implemented yet.", node.location);
             default:
-                Utils_4.assertNever(node);
+                Utils_3.assertNever(node);
         }
         if (isStatement)
             context.lineInfoIndex++;
@@ -6910,73 +6910,591 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser"], 
         }
     }
 });
-define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/VirtualMachine"], function (require, exports, Compiler_2, VirtualMachine_1) {
+define("Api", ["require", "exports", "Utils"], function (require, exports, Utils_4) {
     "use strict";
     exports.__esModule = true;
-    var BenchmarkPage = (function () {
-        function BenchmarkPage(parent) {
-            this.addBenchmark(parent, "Fibonacci", "\nfun fib (n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\nfib(30)\n");
+    var Api = (function () {
+        function Api() {
         }
-        BenchmarkPage.prototype.addBenchmark = function (parent, title, source) {
-            var _this = this;
-            source = source.trim();
-            var dom = $("\n\t\t\t<div class=\"pb-benchmark\">\n\t\t\t\t<h1>" + title + "</h1>\n\t\t\t\t<div class=\"pb-benchmark-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-vm-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-result\">No benchmark results yet.</div>\n\t\t\t\t<button id=\"pb-benchmark-run\">Run</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            setTimeout(function () {
-                var editor = _this.editor = CodeMirror(dom.find(".pb-benchmark-code")[0], {
-                    tabSize: 3,
-                    indentUnit: 3,
-                    indentWithTabs: true,
-                    lineNumbers: true,
-                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
-                    fixedGutter: true,
-                    extraKeys: {
-                        "Tab": "indentAuto"
-                    },
-                    theme: "monokai"
-                });
-                editor.on("change", function () {
-                    var module = null;
-                    try {
-                        module = Compiler_2.compile(editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
-                    }
-                    catch (e) {
-                        alert("Error in " + title + ": " + e.message);
-                        return;
-                    }
-                    dom.find(".pb-benchmark-vm-code").text(Compiler_2.moduleToString(module));
-                });
-                editor.setValue(source);
-            }, 400);
-            dom.find("#pb-benchmark-run").click(function () {
-                var module = null;
+        Api.request = function (endpoint, data, success, error) {
+            $.ajax({
+                url: endpoint,
+                method: "POST",
+                contentType: "application/json; charset=utf-8",
+                processData: false,
+                data: JSON.stringify(data)
+            })
+                .done(function (response) {
+                success(response);
+            }).fail(function (e) {
+                console.log(e);
+                if (e.responseJSON)
+                    error(e.responseJSON);
+                else
+                    error({ error: "ServerError" });
+            });
+        };
+        Api.signup = function (email, name, success, error) {
+            this.request("api/signup", { email: email, name: name }, function (r) {
+                success();
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.login = function (emailOrUser, success, error) {
+            this.request("api/login", { email: emailOrUser }, function (r) {
+                success();
+            }, function (e) {
+                error(e.error == "UserDoesNotExist");
+            });
+        };
+        Api.verify = function (code, success, error) {
+            this.request("api/verify", { code: code }, function () {
+                success();
+            }, function (e) {
+                error(e.error == "CouldNotVerifyCode");
+            });
+        };
+        Api.logout = function (success, error) {
+            this.request("api/logout", {}, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.loadProject = function (projectId, success, error) {
+            this.request("api/getproject", { projectId: projectId }, function (project) {
                 try {
-                    module = Compiler_2.compile(_this.editor.getValue(), new Compiler_2.ExternalFunctionsTypesConstants());
+                    project.contentObject = JSON.parse(project.content);
                 }
                 catch (e) {
-                    alert("Error in " + title + ": " + e.message);
-                    return;
+                    console.log(e);
+                    error({ error: "ServerError" });
                 }
-                var result = dom.find(".pb-benchmark-result");
-                result.text("Benchmark running...");
-                var vm = new VirtualMachine_1.VirtualMachine(module.functions, module.externalFunctions);
-                var start = performance.now();
-                for (var runs = 0; runs < 5; runs++) {
-                    while (vm.state != VirtualMachine_1.VirtualMachineState.Completed) {
-                        vm.run(10000);
-                    }
-                    vm.restart();
-                }
-                var total = (performance.now() - start) / 1000;
-                var perRun = total / 5;
-                result.text("Total: " + total + " secs, " + perRun + " secs/run");
+                success(project);
+            }, function (e) {
+                error(e);
             });
-            parent.append(dom);
         };
-        return BenchmarkPage;
+        Api.saveProject = function (project, success, error) {
+            this.request("api/saveproject", project, function (r) {
+                success(r.projectId);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.deleteProject = function (projectId, success, error) {
+            this.request("api/deleteproject", { projectId: projectId }, function () {
+                success();
+            }, function (e) {
+                error();
+            });
+        };
+        Api.getUserProjects = function (userName, worldData, success, error) {
+            this.request("api/getprojects", { userName: userName, worldData: worldData }, function (projects) {
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getProjectsAdmin = function (sorting, dateOffset, success, error) {
+            this.request("/api/getprojectsadmin", { sorting: sorting, dateOffset: dateOffset }, function (projects) {
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getFeaturedProjects = function (success, error) {
+            this.request("api/getfeaturedprojects", {}, function (projects) {
+                projects.forEach(function (project) {
+                    try {
+                        project.contentObject = JSON.parse(project.content);
+                    }
+                    catch (e) {
+                        console.log(e);
+                        error({ error: "ServerError" });
+                    }
+                });
+                success(projects);
+            }, function (e) {
+                error(e);
+            });
+        };
+        Api.getUserName = function () {
+            return Utils_4.escapeHtml(this.getCookie("name"));
+        };
+        Api.getProjectId = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getProjectType = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("type"));
+        };
+        Api.getUserId = function () {
+            return Utils_4.escapeHtml(this.getUrlParameter("id"));
+        };
+        Api.getUserUrl = function (name) {
+            return Utils_4.escapeHtml("/user.html?id=" + name);
+        };
+        Api.getProjectUrl = function (name) {
+            return Utils_4.escapeHtml("/project.html?id=" + name);
+        };
+        Api.getUrlParameter = function (name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return Utils_4.escapeHtml(results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' ')));
+        };
+        ;
+        Api.getCookie = function (key) {
+            if (!key) {
+                return null;
+            }
+            return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+        };
+        return Api;
     }());
-    exports.BenchmarkPage = BenchmarkPage;
+    exports.Api = Api;
 });
-define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_2, events, compiler, Utils_5) {
+define("widgets/Docs", ["require", "exports", "widgets/Widget", "widgets/Events"], function (require, exports, Widget_2, Events_1) {
+    "use strict";
+    exports.__esModule = true;
+    var DOCS = [
+        {
+            name: "Built-in functions",
+            desc: "These functions are built into the programming language and available to programs of any type.",
+            entries: [
+                {
+                    name: "<code>alert(message: string)</code>",
+                    anchor: "lang-alert-string",
+                    desc: "Opens a dialog that displays the text given in <code>message</code>."
+                },
+                {
+                    name: "<code>alert(value: number)</code>",
+                    anchor: "lang-alert-number",
+                    desc: "Opens a dialog that displays the number given in <code>value</code>."
+                },
+                {
+                    name: "<code>alert(value: boolean)</code>",
+                    anchor: "lang-alert-boolean",
+                    desc: "Opens a dialog that displays the boolean given in <code>value</code>."
+                },
+                {
+                    name: "<code>toString(value: number): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
+                },
+                {
+                    name: "<code>toString(value: boolean): string</code>",
+                    anchor: "lang-to-string-number",
+                    desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
+                },
+                {
+                    name: "<code>length(text: string): number</code>",
+                    anchor: "lang-length-string",
+                    desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
+                },
+                {
+                    name: "<code>charAt(text: string, index: number): string</code>",
+                    anchor: "lang-char-at-string-number",
+                    desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
+                },
+                {
+                    name: "<code>pause(milliSeconds: number)</code>",
+                    anchor: "lang-wait",
+                    desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
+                },
+                {
+                    name: "<code>time(): number</code>",
+                    anchor: "lang-time",
+                    desc: "Returns the time in seconds since the web site started to load."
+                },
+                {
+                    name: "<code>random(): number</code>",
+                    anchor: "lang-random",
+                    desc: "Returns a random number between <code>0<code> and <code>1</code>."
+                },
+                {
+                    name: "<code>abs(value: number): number</code>",
+                    anchor: "lang-abs",
+                    desc: "Returns the absolute <code>value</code>, i.e. negative numbers turn positive, positive numbers stay positive."
+                },
+                {
+                    name: "<code>truncate(value: number): number</code>",
+                    anchor: "lang-truncate",
+                    desc: "Removes the decimal places of the <code>value</code>, i.e. <code>truncate(-23.433)</code> returns <code>-23</code>."
+                },
+                {
+                    name: "<code>round(value: number): number</code>",
+                    anchor: "lang-round",
+                    desc: "Rounds the <code>value</code> the nearest integer, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
+                },
+                {
+                    name: "<code>floor(value: number): number</code>",
+                    anchor: "lang-floor",
+                    desc: "Rounds the <code>value</code> the nearest integer that is smaller, i.e. <code>round(-23.433)</code> returns <code>-24</code>, <code>round(0.6)</code> returns <code>0</code>."
+                },
+                {
+                    name: "<code>ceiling(value: number): number</code>",
+                    anchor: "lang-ceiling",
+                    desc: "Rounds the <code>value</code> the nearest integer that is bigger, i.e. <code>round(-23.433)</code> returns <code>-23</code>, <code>round(0.6)</code> returns <code>1</code>."
+                },
+                {
+                    name: "<code>sqrt(value: number): number</code>",
+                    anchor: "lang-sqrt",
+                    desc: "Returns the square root of the <code>value</code>. Negative values are not allowed."
+                },
+                {
+                    name: "<code>pow(value: number, power: number): number</code>",
+                    anchor: "lang-pow",
+                    desc: "Returns the <code>value</code> to the <code>power</code>, i.e. <code>pow(2, 3) return 2 to the power of 3."
+                },
+                {
+                    name: "<code>cos(radians: number): number</code>",
+                    anchor: "lang-cos",
+                    desc: "Returns the cosine of the angle given in <code>radians</code>."
+                },
+                {
+                    name: "<code>sin(radians: number): number</code>",
+                    anchor: "lang-sin",
+                    desc: "Returns the sine of the angle given in <code>radians</code>."
+                },
+                {
+                    name: "<code>atan2(x: number, y: number): number</code>",
+                    anchor: "lang-atan2",
+                    desc: "Returns the arc tangent of <code>x</code> and <code>y</code>."
+                }
+            ],
+            subCategories: []
+        },
+        {
+            name: "Statements",
+            desc: "",
+            entries: [],
+            subCategories: [
+                {
+                    name: "Variables",
+                    desc: "Variables are really cool.",
+                    entries: [
+                        {
+                            name: "<code>var name = value</code>",
+                            anchor: "statement-var-decl",
+                            desc: "Foo bar."
+                        },
+                        {
+                            name: "<code>name = value</code>",
+                            anchor: "statement-assignment",
+                            desc: "Foo bar."
+                        }
+                    ],
+                    subCategories: []
+                },
+            ]
+        }
+    ];
+    var Docs = (function (_super) {
+        __extends(Docs, _super);
+        function Docs(bus) {
+            return _super.call(this, bus) || this;
+        }
+        Docs.prototype.render = function () {
+            this.dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
+            return this.dom[0];
+        };
+        Docs.prototype.onEvent = function (event) {
+            if (event instanceof Events_1.AnnounceDocumentation) {
+                DOCS.unshift(event.docs);
+                this.generateDocs(this.dom);
+            }
+        };
+        Docs.prototype.generateDocs = function (container) {
+            var _this = this;
+            this.dom.empty();
+            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
+            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
+            container.append(toc);
+            container.append(content);
+            DOCS.forEach(function (cat) {
+                _this.generateCategory(cat, container, toc, content, 2);
+            });
+        };
+        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
+            var _this = this;
+            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
+            cat.entries.forEach(function (entry) {
+                var link = $("<a>" + entry.name + "</a>");
+                link.click(function () {
+                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
+                    container[0].scrollTop = target.offsetTop;
+                });
+                var li = $("<li></li>");
+                li.append(link);
+                entries.append(li);
+            });
+            toc.append(entries);
+            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
+            content.append($(this.block(cat.desc)));
+            cat.entries.forEach(function (entry) {
+                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
+            });
+            cat.subCategories.forEach(function (childCat) {
+                _this.generateCategory(childCat, container, toc, content, depth + 1);
+            });
+        };
+        Docs.prototype.block = function (desc) {
+            if (desc.trim() == "")
+                return "";
+            try {
+                $(desc);
+                return desc;
+            }
+            catch (e) {
+                return "<p>" + desc + "</p>";
+            }
+        };
+        return Docs;
+    }(Widget_2.Widget));
+    exports.Docs = Docs;
+});
+define("widgets/Events", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var SourceChanged = (function () {
+        function SourceChanged(source, module) {
+            this.source = source;
+            this.module = module;
+        }
+        return SourceChanged;
+    }());
+    exports.SourceChanged = SourceChanged;
+    var Run = (function () {
+        function Run() {
+        }
+        return Run;
+    }());
+    exports.Run = Run;
+    var Debug = (function () {
+        function Debug() {
+        }
+        return Debug;
+    }());
+    exports.Debug = Debug;
+    var Pause = (function () {
+        function Pause() {
+        }
+        return Pause;
+    }());
+    exports.Pause = Pause;
+    var Resume = (function () {
+        function Resume() {
+        }
+        return Resume;
+    }());
+    exports.Resume = Resume;
+    var Stop = (function () {
+        function Stop() {
+        }
+        return Stop;
+    }());
+    exports.Stop = Stop;
+    var Step = (function () {
+        function Step(line) {
+            this.line = line;
+        }
+        return Step;
+    }());
+    exports.Step = Step;
+    var LineChange = (function () {
+        function LineChange(line) {
+            this.line = line;
+        }
+        return LineChange;
+    }());
+    exports.LineChange = LineChange;
+    var Select = (function () {
+        function Select(startLine, startColumn, endLine, endColumn) {
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
+        }
+        return Select;
+    }());
+    exports.Select = Select;
+    var AnnounceExternalFunctions = (function () {
+        function AnnounceExternalFunctions(functions) {
+            this.functions = functions;
+        }
+        return AnnounceExternalFunctions;
+    }());
+    exports.AnnounceExternalFunctions = AnnounceExternalFunctions;
+    var AnnounceDocumentation = (function () {
+        function AnnounceDocumentation(docs) {
+            this.docs = docs;
+        }
+        return AnnounceDocumentation;
+    }());
+    exports.AnnounceDocumentation = AnnounceDocumentation;
+    var BreakpointAdded = (function () {
+        function BreakpointAdded(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointAdded;
+    }());
+    exports.BreakpointAdded = BreakpointAdded;
+    var BreakpointRemoved = (function () {
+        function BreakpointRemoved(breakpoint) {
+            this.breakpoint = breakpoint;
+        }
+        return BreakpointRemoved;
+    }());
+    exports.BreakpointRemoved = BreakpointRemoved;
+    var LoggedIn = (function () {
+        function LoggedIn() {
+        }
+        return LoggedIn;
+    }());
+    exports.LoggedIn = LoggedIn;
+    ;
+    var LoggedOut = (function () {
+        function LoggedOut() {
+        }
+        return LoggedOut;
+    }());
+    exports.LoggedOut = LoggedOut;
+    ;
+    var ProjectLoaded = (function () {
+        function ProjectLoaded(project) {
+            this.project = project;
+        }
+        return ProjectLoaded;
+    }());
+    exports.ProjectLoaded = ProjectLoaded;
+    var BeforeSaveProject = (function () {
+        function BeforeSaveProject(project) {
+            this.project = project;
+        }
+        return BeforeSaveProject;
+    }());
+    exports.BeforeSaveProject = BeforeSaveProject;
+    var ProjectSaved = (function () {
+        function ProjectSaved() {
+        }
+        return ProjectSaved;
+    }());
+    exports.ProjectSaved = ProjectSaved;
+    var ProjectChanged = (function () {
+        function ProjectChanged() {
+        }
+        return ProjectChanged;
+    }());
+    exports.ProjectChanged = ProjectChanged;
+    var EventBus = (function () {
+        function EventBus() {
+            this.listeners = new Array();
+        }
+        EventBus.prototype.addListener = function (listener) {
+            this.listeners.push(listener);
+        };
+        EventBus.prototype.event = function (event) {
+            this.listeners.forEach(function (listener) { return listener.onEvent(event); });
+        };
+        return EventBus;
+    }());
+    exports.EventBus = EventBus;
+});
+define("widgets/Dialog", ["require", "exports"], function (require, exports) {
+    "use strict";
+    exports.__esModule = true;
+    var Dialog = (function () {
+        function Dialog(title, content, buttons) {
+            this.buttons = Array();
+            this.dom = this.renderDialog(title, content, buttons);
+        }
+        Dialog.prototype.show = function () {
+            document.body.appendChild(this.dom[0]);
+        };
+        Dialog.prototype.hide = function () {
+            this.dom.remove();
+        };
+        Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
+            dom.find(".pb-dialog-body").append(content);
+            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
+            for (var i = 0; i < buttons.length; i++) {
+                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                this.buttons.push(button);
+                buttonsDiv.append(button);
+            }
+            dom.find(".pb-dialog-footer").append(buttonsDiv);
+            return dom;
+        };
+        Dialog.alert = function (title, message) {
+            var dialog = new Dialog(title, message[0], ["OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.focus();
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 13)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        Dialog.confirm = function (title, message, confirmed) {
+            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed();
+            });
+            dialog.dom.attr("tabindex", "1");
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+                if (ev.keyCode == 13)
+                    dialog.buttons[1].click();
+            });
+            document.body.appendChild(dialog.dom[0]);
+            dialog.dom.focus();
+            return dialog;
+        };
+        Dialog.prompt = function (title, value, confirmed, cancled) {
+            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
+            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            dialog.buttons[0].click(function () {
+                dialog.dom.remove();
+                cancled();
+            });
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
+                confirmed(textField.val());
+            });
+            document.body.appendChild(dialog.dom[0]);
+            textField.focus();
+            textField.select();
+            textField.keyup(function (event) {
+                if (event.keyCode == 13) {
+                    dialog.buttons[1].click();
+                }
+            });
+            dialog.dom.keyup(function (ev) {
+                if (ev.keyCode == 27)
+                    dialog.buttons[0].click();
+            });
+            return dialog;
+        };
+        return Dialog;
+    }());
+    exports.Dialog = Dialog;
+});
+define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Events", "language/Compiler", "Utils"], function (require, exports, Widget_3, events, compiler, Utils_5) {
     "use strict";
     exports.__esModule = true;
     var CodeMirrorBreakpoint = (function () {
@@ -7180,9 +7698,12 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             }
             else if (event instanceof events.ProjectLoaded) {
                 this.justLoaded = true;
-                setTimeout(function () {
+                var setSource_1 = function () {
+                    if (!_this.editor)
+                        requestAnimationFrame(setSource_1);
                     _this.editor.getDoc().setValue(event.project.contentObject.code);
-                }, 100);
+                };
+                requestAnimationFrame(setSource_1);
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.contentObject.code = this.editor.getDoc().getValue();
@@ -7196,715 +7717,10 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
             this.embedUrls();
         };
         return Editor;
-    }(Widget_2.Widget));
+    }(Widget_3.Widget));
     exports.Editor = Editor;
 });
-define("widgets/Docs", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_3) {
-    "use strict";
-    exports.__esModule = true;
-    var DOCS = [
-        {
-            name: "Functions",
-            desc: "Use the below functions to create your program.",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Robot movement",
-                    desc: "Make the robot move with these functions.",
-                    entries: [
-                        {
-                            name: "<code>forward()</code>",
-                            anchor: "robot-forward",
-                            desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>backward()</code>",
-                            anchor: "robot-backward",
-                            desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
-                        },
-                        {
-                            name: "<code>turnLeft()</code>",
-                            anchor: "robot-turn-left",
-                            desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
-                        },
-                        {
-                            name: "<code>turnRight()</code>",
-                            anchor: "robot-turn-right",
-                            desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot input",
-                    desc: "Let the robot read information from its environment.",
-                    entries: [
-                        {
-                            name: "<code>scanNumber(): number</code>",
-                            anchor: "robot-scan-number",
-                            desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
-                        },
-                        {
-                            name: "<code>scanLetter(): string</code>",
-                            anchor: "robot-scan-letter",
-                            desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
-                        },
-                        {
-                            name: "<code>isWallAhead(): boolean</code>",
-                            anchor: "robot-is-wall-ahead",
-                            desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isNumberAhead(): boolean</code>",
-                            anchor: "robot-is-number-ahead",
-                            desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>isLetterAhead(): boolean</code>",
-                            anchor: "robot-is-letter-ahead",
-                            desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
-                        },
-                        {
-                            name: "<code>distanceToWall(): number</code>",
-                            anchor: "robot-distance-to-wall",
-                            desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot output",
-                    desc: "Have the robot build and print stuff on the grid.",
-                    entries: [
-                        {
-                            name: "<code>print(value: number)</code>",
-                            anchor: "robot-print-number",
-                            desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
-                        },
-                        {
-                            name: "<code>print(letter: string)</code>",
-                            anchor: "robot-print-letter",
-                            desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
-                        },
-                        {
-                            name: "<code>buildWall()</code>",
-                            anchor: "robot-build-wall",
-                            desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
-                        },
-                        {
-                            name: "<code>destroyWall()</code>",
-                            anchor: "robot-destroy-wall",
-                            desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Robot status",
-                    desc: "Check the status of the robot.",
-                    entries: [
-                        {
-                            name: "<code>getDirection(): number</code>",
-                            anchor: "robot-get-direction",
-                            desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
-                        },
-                        {
-                            name: "<code>getX(): number</code>",
-                            anchor: "robot-get-x",
-                            desc: "Returns the robot's x coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getY(): number</code>",
-                            anchor: "robot-get-y",
-                            desc: "Returns the robot's y coordinate on the grid."
-                        },
-                        {
-                            name: "<code>getSpeed(): number</code>",
-                            anchor: "robot-get-speed",
-                            desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>setSpeed(cellsPerSecond: number)</code>",
-                            anchor: "robot-set-speed",
-                            desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
-                        },
-                        {
-                            name: "<code>getTurningSpeed(): number</code>",
-                            anchor: "robot-get-turning-speed",
-                            desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
-                        },
-                        {
-                            name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
-                            anchor: "robot-set-turning-speed",
-                            desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
-                        }
-                    ],
-                    subCategories: []
-                },
-                {
-                    name: "Built-in",
-                    desc: "Functions to work with different data and for communicating with the user.",
-                    entries: [
-                        {
-                            name: "<code>alert(message: string)</code>",
-                            anchor: "lang-alert-string",
-                            desc: "Opens a dialog that displays the text given in <code>message</code>."
-                        },
-                        {
-                            name: "<code>alert(value: number)</code>",
-                            anchor: "lang-alert-number",
-                            desc: "Opens a dialog that displays the number given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>alert(value: boolean)</code>",
-                            anchor: "lang-alert-boolean",
-                            desc: "Opens a dialog that displays the boolean given in <code>value</code>."
-                        },
-                        {
-                            name: "<code>toString(value: number): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the number in <code>value</code> to a string. E.g. <code>123</code> becomes \"123\"."
-                        },
-                        {
-                            name: "<code>toString(value: boolean): string</code>",
-                            anchor: "lang-to-string-number",
-                            desc: "Convers the boolean in <code>value</code> to a string. E.g. <code>true</code> becomes \"true\"."
-                        },
-                        {
-                            name: "<code>length(text: string): number</code>",
-                            anchor: "lang-length-string",
-                            desc: "Returns the number of characters in the string <code>text</code>. Returns <code>0</code> for empty strings."
-                        },
-                        {
-                            name: "<code>charAt(text: string, index: number): string</code>",
-                            anchor: "lang-char-at-string-number",
-                            desc: "Returns the character at the <code>index</code> from the string. Returns an empty string if the index is smaller than <code>0</code> or greater or equal to the length of the string."
-                        },
-                        {
-                            name: "<code>pause(milliSeconds: number)</code>",
-                            anchor: "lang-wait",
-                            desc: "Pauses the program for the number of milliseconds given in <code>milliSeconds</code>, then continues."
-                        },
-                    ],
-                    subCategories: []
-                }
-            ]
-        },
-        {
-            name: "Statements",
-            desc: "",
-            entries: [],
-            subCategories: [
-                {
-                    name: "Variables",
-                    desc: "Variables are really cool.",
-                    entries: [
-                        {
-                            name: "<code>var name = value</code>",
-                            anchor: "statement-var-decl",
-                            desc: "Foo bar."
-                        },
-                        {
-                            name: "<code>name = value</code>",
-                            anchor: "statement-assignment",
-                            desc: "Foo bar."
-                        }
-                    ],
-                    subCategories: []
-                },
-            ]
-        }
-    ];
-    var Docs = (function (_super) {
-        __extends(Docs, _super);
-        function Docs(bus) {
-            return _super.call(this, bus) || this;
-        }
-        Docs.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-docs\">\n\t\t\t</div>\n\t\t");
-            this.generateDocs(dom);
-            return dom[0];
-        };
-        Docs.prototype.onEvent = function (event) {
-        };
-        Docs.prototype.generateDocs = function (container) {
-            var _this = this;
-            var toc = $("\n\t\t\t<div id=\"pb-docs-toc\"></div>\n\t\t");
-            var content = $("\n\t\t\t<div id=\"pb-docs-content\"></div>\n\t\t");
-            container.append(toc);
-            container.append(content);
-            DOCS.forEach(function (cat) {
-                _this.generateCategory(cat, container, toc, content, 2);
-            });
-        };
-        Docs.prototype.generateCategory = function (cat, container, toc, content, depth) {
-            var _this = this;
-            toc.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            var entries = $("<ul class=\"pb-docs-toc-list\"></ul>");
-            cat.entries.forEach(function (entry) {
-                var link = $("<a>" + entry.name + "</a>");
-                link.click(function () {
-                    var target = document.getElementById("pb-docs-anchor-" + entry.anchor);
-                    container[0].scrollTop = target.offsetTop;
-                });
-                var li = $("<li></li>");
-                li.append(link);
-                entries.append(li);
-            });
-            toc.append(entries);
-            content.append("<h" + depth + ">" + cat.name + "</h" + depth + ">");
-            content.append($(this.block(cat.desc)));
-            cat.entries.forEach(function (entry) {
-                content.append("\n\t\t\t\t<h" + (depth + 1) + " id=\"pb-docs-anchor-" + entry.anchor + "\">" + entry.name + "</h" + (depth + 1) + ">\n\t\t\t\t" + _this.block(entry.desc) + "\n\t\t\t\t<hr>\n\t\t\t");
-            });
-            cat.subCategories.forEach(function (childCat) {
-                _this.generateCategory(childCat, container, toc, content, depth + 1);
-            });
-        };
-        Docs.prototype.block = function (desc) {
-            if (desc.trim() == "")
-                return "";
-            try {
-                $(desc);
-                return desc;
-            }
-            catch (e) {
-                return "<p>" + desc + "</p>";
-            }
-        };
-        return Docs;
-    }(Widget_3.Widget));
-    exports.Docs = Docs;
-});
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_3) {
-    "use strict";
-    exports.__esModule = true;
-    var CanvasWorld = (function (_super) {
-        __extends(CanvasWorld, _super);
-        function CanvasWorld(bus) {
-            return _super.call(this, bus) || this;
-        }
-        CanvasWorld.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
-            var canvas = dom.find("canvas");
-            this.canvas = canvas[0];
-            this.context = this.canvas.getContext('2d');
-            var canvasResize = function () {
-                var canvas = dom.find("canvas");
-                var width = canvas.width();
-                var height = width / 16 * 9;
-                if (height == canvas.height()) {
-                    requestAnimationFrame(canvasResize);
-                    return;
-                }
-                canvas.height(height);
-                var el = canvas[0];
-                if (el.width != 960) {
-                    el.width = 960;
-                    el.height = 510;
-                }
-                requestAnimationFrame(canvasResize);
-            };
-            canvasResize();
-            this.announceExternalFunctions();
-            return dom[0];
-        };
-        CanvasWorld.prototype.announceExternalFunctions = function () {
-            var _this = this;
-            var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
-            functionsAndTypes.addFunction("clear", [
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
-            });
-            functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
-                var asyncResult = {
-                    completed: false,
-                    value: null
-                };
-                requestAnimationFrame(function () { asyncResult.completed = true; });
-                return asyncResult;
-            });
-            functionsAndTypes.addFunction("drawCircle", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "radius", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, radius, color) {
-                var ctx = _this.context;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-                ctx.fillStyle = color;
-                ctx.fill();
-            });
-            functionsAndTypes.addFunction("drawLine", [
-                { name: "x1", type: Compiler_3.NumberType },
-                { name: "y1", type: Compiler_3.NumberType },
-                { name: "x2", type: Compiler_3.NumberType },
-                { name: "y2", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType },
-            ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
-                var ctx = _this.context;
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            });
-            functionsAndTypes.addFunction("drawRectangle", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.fillRect(x, y, width, hegiht);
-            });
-            functionsAndTypes.addFunction("drawEllipse", [
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "radiusX", type: Compiler_3.NumberType },
-                { name: "radiusY", type: Compiler_3.NumberType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
-                var ctx = _this.context;
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.ellipse(x, y, radiusX, radiusY, 0 * Math.PI / 180, 0, 2 * Math.PI);
-                ctx.fill();
-            });
-            functionsAndTypes.addFunction("drawText", [
-                { name: "text", type: Compiler_3.StringType },
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "fontSize", type: Compiler_3.NumberType },
-                { name: "fontFamily", type: Compiler_3.StringType },
-                { name: "color", type: Compiler_3.StringType }
-            ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
-                var ctx = _this.context;
-                ctx.font = fontSize.toString() + "px " + fontFamily;
-                ctx.fillStyle = color;
-                ctx.fillText(text, x, y);
-            });
-            var imageType = functionsAndTypes.addType("image", [
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType },
-                { name: "url", type: Compiler_3.StringType }
-            ], false);
-            functionsAndTypes.addFunction("loadImage", [
-                { name: "url", type: Compiler_3.StringType }
-            ], imageType, true, function (url) {
-                var image = new Image();
-                var asyncResult = {
-                    completed: false,
-                    value: null
-                };
-                image.onload = function () {
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = image.width;
-                    record[1] = image.height;
-                    record[2] = url;
-                    record[3] = image;
-                    asyncResult.value = record;
-                };
-                image.onerror = function () {
-                    alert("Couldn't load image " + url);
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = image.width;
-                    record[1] = image.height;
-                    record[2] = url;
-                    record[3] = new Image();
-                    asyncResult.value = record;
-                };
-                image.src = url;
-                return asyncResult;
-            });
-            functionsAndTypes.addFunction("drawImage", [
-                { name: "image", type: imageType },
-                { name: "x", type: Compiler_3.NumberType },
-                { name: "y", type: Compiler_3.NumberType },
-                { name: "width", type: Compiler_3.NumberType },
-                { name: "height", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
-                var ctx = _this.context;
-                if (!image[3])
-                    return;
-                ctx.drawImage(image[3], x, y, width, height);
-            });
-            var mouseX = 0;
-            var mouseY = 0;
-            var mouseButtonDown = false;
-            var input = new Utils_6.Input(this.canvas);
-            var canvas = this.canvas;
-            input.addListener({
-                down: function (x, y) {
-                    mouseButtonDown = true;
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                up: function (x, y) {
-                    mouseButtonDown = false;
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                moved: function (x, y) {
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                },
-                dragged: function (x, y) {
-                    mouseX = x / $(canvas).width() * canvas.width;
-                    mouseY = y / $(canvas).height() * canvas.height;
-                }
-            });
-            functionsAndTypes.addFunction("getMouseX", [], Compiler_3.NumberType, false, function () {
-                return mouseX;
-            });
-            functionsAndTypes.addFunction("getMouseY", [], Compiler_3.NumberType, false, function () {
-                return mouseY;
-            });
-            functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
-                return mouseButtonDown;
-            });
-            functionsAndTypes.addFunction("rgb", [
-                { name: "red", type: Compiler_3.NumberType },
-                { name: "green", type: Compiler_3.NumberType },
-                { name: "blue", type: Compiler_3.NumberType }
-            ], Compiler_3.StringType, false, function (red, green, blue) {
-                red = Math.max(0, Math.min(255, red));
-                green = Math.max(0, Math.min(255, green));
-                blue = Math.max(0, Math.min(255, blue));
-                return "rgb(" + red + ", " + green + ", " + blue + ")";
-            });
-            functionsAndTypes.addFunction("rgba", [
-                { name: "red", type: Compiler_3.NumberType },
-                { name: "green", type: Compiler_3.NumberType },
-                { name: "blue", type: Compiler_3.NumberType },
-                { name: "alpha", type: Compiler_3.NumberType }
-            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
-                red = Math.max(0, Math.min(255, red));
-                green = Math.max(0, Math.min(255, green));
-                blue = Math.max(0, Math.min(255, blue)) / 255;
-                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
-            });
-            var soundType = functionsAndTypes.addType("sound", [
-                { name: "url", type: Compiler_3.StringType },
-                { name: "duration", type: Compiler_3.NumberType },
-                { name: "volume", type: Compiler_3.NumberType },
-                { name: "rate", type: Compiler_3.NumberType }
-            ], false);
-            functionsAndTypes.addFunction("loadSound", [
-                { name: "url", type: Compiler_3.StringType }
-            ], soundType, true, function (url) {
-                var sound = new Howl({
-                    src: [url, url]
-                });
-                var asyncResult = {
-                    completed: false,
-                    value: null
-                };
-                sound.on("load", function () {
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = url;
-                    record[1] = sound.duration;
-                    record[2] = sound.volume;
-                    record[3] = sound.rate;
-                    record[4] = sound;
-                    asyncResult.value = record;
-                });
-                sound.on("loaderror", function () {
-                    alert("Couldn't load sound " + url);
-                    asyncResult.completed = true;
-                    var record = [];
-                    record[0] = url;
-                    record[1] = sound.duration;
-                    record[2] = sound.volume;
-                    record[3] = sound.rate;
-                    record[4] = new Howl({
-                        src: [url, url]
-                    });
-                    asyncResult.value = record;
-                });
-                return asyncResult;
-            });
-            functionsAndTypes.addFunction("playSound", [
-                { name: "sound", type: soundType }
-            ], Compiler_3.NumberType, false, function (sound) {
-                return sound[sound.length - 1].play();
-            });
-            functionsAndTypes.addFunction("stopSound", [
-                { name: "sound", type: soundType },
-                { name: "soundId", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (sound, soundId) {
-                sound[sound.length - 1].stop(soundId);
-            });
-            functionsAndTypes.addFunction("pauseSound", [
-                { name: "sound", type: soundType },
-                { name: "soundId", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (sound, soundId) {
-                sound[sound.length - 1].pause(soundId);
-            });
-            functionsAndTypes.addFunction("setVolume", [
-                { name: "volume", type: Compiler_3.NumberType },
-                { name: "sound", type: soundType },
-                { name: "soundId", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (volume, sound, soundId) {
-                sound[sound.length - 1].volume(volume, soundId);
-            });
-            functionsAndTypes.addFunction("setRate", [
-                { name: "rate", type: Compiler_3.NumberType },
-                { name: "sound", type: soundType },
-                { name: "soundId", type: Compiler_3.NumberType }
-            ], Compiler_3.NothingType, false, function (rate, sound, soundId) {
-                sound[sound.length - 1].rate(rate, soundId);
-            });
-            this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
-        };
-        CanvasWorld.prototype.onEvent = function (event) {
-            if (event instanceof events.Run) {
-                var ctx = this.context;
-                ctx.fillStyle = "black";
-                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            }
-            else if (event instanceof events.BeforeSaveProject) {
-                event.project.type = "canvas";
-            }
-        };
-        return CanvasWorld;
-    }(Widget_4.Widget));
-    exports.CanvasWorld = CanvasWorld;
-});
-define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_1, Editor_1, Debugger_1, CanvasWorld_1) {
-    "use strict";
-    exports.__esModule = true;
-    var CanvasPage = (function () {
-        function CanvasPage(parent) {
-            this.eventBus = new Events_1.EventBus();
-            this.editor = new Editor_1.Editor(this.eventBus);
-            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
-            this.canvas = new CanvasWorld_1.CanvasWorld(this.eventBus);
-            this.sentSource = false;
-            this.eventBus.addListener(this);
-            this.eventBus.addListener(this.editor);
-            this.eventBus.addListener(this["debugger"]);
-            this.eventBus.addListener(this.canvas);
-            var dom = $("\n\t\t\t<div id=\"pb-canvas-page\">\n\t\t\t</div>\n\t\t");
-            dom.append(this["debugger"].render());
-            dom.append(this.editor.render());
-            dom.append(this.canvas.render());
-            this.editor.setEmbedURls(false);
-            parent.append(dom);
-        }
-        CanvasPage.prototype.onEvent = function (event) {
-            var _this = this;
-            if (event instanceof Events_1.SourceChanged) {
-                if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\n\t\t\tvar sound = loadSound(\"http://mo.flussbuero.at/music/hochgeladenes/do.mp3\")\n\t\t\tvar id  = playSound(sound)\n\t\t\tpause(5000)\n\t\t\tsetVolume(0.5,sound,id)\n\t\t\tpause(5000)\n\t\t\tsetVolume(1,sound,id)\n\t\t\tsetRate(2,sound,id)\n\t\t\tstopSound(sound,id)"); });
-                this.sentSource = true;
-            }
-        };
-        return CanvasPage;
-    }());
-    exports.CanvasPage = CanvasPage;
-});
-define("widgets/Dialog", ["require", "exports"], function (require, exports) {
-    "use strict";
-    exports.__esModule = true;
-    var Dialog = (function () {
-        function Dialog(title, content, buttons) {
-            this.buttons = Array();
-            this.dom = this.renderDialog(title, content, buttons);
-        }
-        Dialog.prototype.show = function () {
-            document.body.appendChild(this.dom[0]);
-        };
-        Dialog.prototype.hide = function () {
-            this.dom.remove();
-        };
-        Dialog.prototype.renderDialog = function (title, content, buttons) {
-            var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
-            dom.find(".pb-dialog-body").append(content);
-            var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
-            for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
-                this.buttons.push(button);
-                buttonsDiv.append(button);
-            }
-            dom.find(".pb-dialog-footer").append(buttonsDiv);
-            return dom;
-        };
-        Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.focus();
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed();
-            });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
-            return dialog;
-        };
-        Dialog.prompt = function (title, value, confirmed, cancled) {
-            var textField = $("<input type=\"text\" value=\"" + value + "\" style=\"width: 100%; box-sizing: border-box;\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
-            dialog.buttons[0].click(function () {
-                dialog.dom.remove();
-                cancled();
-            });
-            dialog.buttons[1].click(function () {
-                dialog.dom.remove();
-                confirmed(textField.val());
-            });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
-            textField.keyup(function (event) {
-                if (event.keyCode == 13) {
-                    dialog.buttons[1].click();
-                }
-            });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-            });
-            return dialog;
-        };
-        return Dialog;
-    }());
-    exports.Dialog = Dialog;
-});
-define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_5, Utils_7, compiler, Compiler_4) {
+define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_4, Utils_6, compiler, Compiler_2) {
     "use strict";
     exports.__esModule = true;
     function assertNever(x) {
@@ -7915,12 +7731,12 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
         function RobotWorld(bus, noTools) {
             if (noTools === void 0) { noTools = false; }
             var _this = _super.call(this, bus) || this;
-            _this.assets = new Utils_7.AssetManager();
+            _this.assets = new Utils_6.AssetManager();
             _this.selectedTool = "Robot";
             _this.lastWidth = 0;
             _this.cellSize = 0;
             _this.drawingSize = 0;
-            _this.time = new Utils_7.TimeKeeper();
+            _this.time = new Utils_6.TimeKeeper();
             _this.isRunning = false;
             _this.noTools = false;
             _this.lastFrameTime = -1;
@@ -7952,7 +7768,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     _this.selectedTool = value;
                 });
             }
-            this.input = new Utils_7.Input(this.canvas);
+            this.input = new Utils_6.Input(this.canvas);
             var dragged = false;
             this.toolsHandler = {
                 down: function (x, y) {
@@ -8058,13 +7874,14 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             if (!this.noTools)
                 this.input.addListener(this.toolsHandler);
             this.announceExternals();
+            this.announceDocs();
             requestAnimationFrame(function () { _this.draw(0); });
             return this.container[0];
         };
         RobotWorld.prototype.announceExternals = function () {
             var _this = this;
             var ext = new compiler.ExternalFunctionsTypesConstants();
-            ext.addFunction("forward", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("forward", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Forward);
                 var asyncResult = {
                     completed: false,
@@ -8080,7 +7897,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("backward", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("backward", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.Backward);
                 var asyncResult = {
                     completed: false,
@@ -8096,7 +7913,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnLeft", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("turnLeft", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnLeft);
                 var asyncResult = {
                     completed: false,
@@ -8112,7 +7929,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("turnRight", [], Compiler_4.NothingType, true, function () {
+            ext.addFunction("turnRight", [], Compiler_2.NothingType, true, function () {
                 _this.world.robot.setAction(_this.world, RobotAction.TurnRight);
                 var asyncResult = {
                     completed: false,
@@ -8128,7 +7945,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [{ name: "value", type: Compiler_4.NumberType }], Compiler_4.NothingType, true, function (number) {
+            ext.addFunction("print", [{ name: "value", type: Compiler_2.NumberType }], Compiler_2.NothingType, true, function (number) {
                 if (number < 0 || number > 99 || isNaN(number)) {
                     alert("The number must be between 0-99.");
                     return {
@@ -8157,7 +7974,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("print", [{ name: "letter", type: Compiler_4.StringType }], Compiler_4.NothingType, true, function (letter) {
+            ext.addFunction("print", [{ name: "letter", type: Compiler_2.StringType }], Compiler_2.NothingType, true, function (letter) {
                 if (letter.trim().length == 0) {
                     return {
                         completed: true,
@@ -8193,7 +8010,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("scanNumber", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("scanNumber", [], Compiler_2.NumberType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8204,7 +8021,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("scanLetter", [], Compiler_4.StringType, false, function () {
+            ext.addFunction("scanLetter", [], Compiler_2.StringType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8215,25 +8032,25 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return tile.value;
                 }
             });
-            ext.addFunction("isWallAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isWallAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "wall";
             });
-            ext.addFunction("isNumberAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isNumberAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "number";
             });
-            ext.addFunction("isLetterAhead", [], Compiler_4.BooleanType, false, function () {
+            ext.addFunction("isLetterAhead", [], Compiler_2.BooleanType, false, function () {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
                 return tile != null && tile.kind == "letter";
             });
-            ext.addFunction("distanceToWall", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("distanceToWall", [], Compiler_2.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 var x = _this.world.robot.data.x + dirX;
@@ -8250,7 +8067,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
                 return distance;
             });
-            ext.addFunction("getDirection", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getDirection", [], Compiler_2.NumberType, false, function () {
                 var dirX = _this.world.robot.data.dirX;
                 var dirY = _this.world.robot.data.dirY;
                 if (dirX == 1 && dirY == 0)
@@ -8263,33 +8080,33 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     return 3;
                 return 0;
             });
-            ext.addFunction("getX", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getX", [], Compiler_2.NumberType, false, function () {
                 return _this.world.robot.data.x;
             });
-            ext.addFunction("getY", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getY", [], Compiler_2.NumberType, false, function () {
                 return _this.world.robot.data.y;
             });
-            ext.addFunction("getSpeed", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getSpeed", [], Compiler_2.NumberType, false, function () {
                 return 1 / _this.world.robot.moveDuration;
             });
-            ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (speed) {
+            ext.addFunction("setSpeed", [{ name: "speed", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (speed) {
                 if (speed < 0) {
                     alert("The robot's speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.moveDuration = 1 / speed;
             });
-            ext.addFunction("getTurningSpeed", [], Compiler_4.NumberType, false, function () {
+            ext.addFunction("getTurningSpeed", [], Compiler_2.NumberType, false, function () {
                 return 90 / _this.world.robot.turnDuration;
             });
-            ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_4.NumberType }], Compiler_4.NothingType, false, function (degrees) {
+            ext.addFunction("setTurningSpeed", [{ name: "degrees", type: Compiler_2.NumberType }], Compiler_2.NothingType, false, function (degrees) {
                 if (degrees < 0) {
                     alert("The robot's turning speed must be >= 0.");
                     return;
                 }
                 _this.world.robot.turnDuration = 1 / degrees * 90;
             });
-            ext.addFunction("buildWall", [], Compiler_4.NothingType, true, function (speed) {
+            ext.addFunction("buildWall", [], Compiler_2.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 _this.world.setTile(x, y, World.newWall());
@@ -8308,7 +8125,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(check);
                 return asyncResult;
             });
-            ext.addFunction("destroyWall", [], Compiler_4.NothingType, true, function (speed) {
+            ext.addFunction("destroyWall", [], Compiler_2.NothingType, true, function (speed) {
                 var x = _this.world.robot.data.x + _this.world.robot.data.dirX;
                 var y = _this.world.robot.data.y + _this.world.robot.data.dirY;
                 var tile = _this.world.getTile(x, y);
@@ -8331,12 +8148,155 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             });
             this.bus.event(new events.AnnounceExternalFunctions(ext));
         };
+        RobotWorld.prototype.announceDocs = function () {
+            var docs = {
+                name: "Robot program functions",
+                desc: "Use the below functions to create the program for your robot.",
+                entries: [],
+                subCategories: [
+                    {
+                        name: "Robot movement",
+                        desc: "Make the robot move with these functions.",
+                        entries: [
+                            {
+                                name: "<code>forward()</code>",
+                                anchor: "robot-forward",
+                                desc: "Moves the robot forward by one cell in the direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                            },
+                            {
+                                name: "<code>backward()</code>",
+                                anchor: "robot-backward",
+                                desc: "Moves the robot backward by one cell in the oposite direction it is facing. If the grid cell is blocked by a wall, the robot does not move."
+                            },
+                            {
+                                name: "<code>turnLeft()</code>",
+                                anchor: "robot-turn-left",
+                                desc: "Rotates the robot in-place to the left by 90 degrees (counter-clock-wise)."
+                            },
+                            {
+                                name: "<code>turnRight()</code>",
+                                anchor: "robot-turn-right",
+                                desc: "Rotates the robot in-place to the right by 90 degrees (clock-wise)."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot input",
+                        desc: "Let the robot read information from its environment.",
+                        entries: [
+                            {
+                                name: "<code>scanNumber(): number</code>",
+                                anchor: "robot-scan-number",
+                                desc: "Scans the number in the cell in front of the robot and returns it. If there is no number, <code>-1</code> is returned."
+                            },
+                            {
+                                name: "<code>scanLetter(): string</code>",
+                                anchor: "robot-scan-letter",
+                                desc: "Scans the letter in the cell in front of the robot and returns it. If there is no letter, and empty string <code>\"\"</code> is returned."
+                            },
+                            {
+                                name: "<code>isWallAhead(): boolean</code>",
+                                anchor: "robot-is-wall-ahead",
+                                desc: "Returns <code>true</code> if there is a wall in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>isNumberAhead(): boolean</code>",
+                                anchor: "robot-is-number-ahead",
+                                desc: "Returns <code>true</code> if there is a number in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>isLetterAhead(): boolean</code>",
+                                anchor: "robot-is-letter-ahead",
+                                desc: "Returns <code>true</code> if there is a letter in the cell ahead of the robot. Returns <code>false</code> otherwise."
+                            },
+                            {
+                                name: "<code>distanceToWall(): number</code>",
+                                anchor: "robot-distance-to-wall",
+                                desc: "Returns the number of cells between the robot and the next wall in the direction the robot is facing."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot output",
+                        desc: "Have the robot build and print stuff on the grid.",
+                        entries: [
+                            {
+                                name: "<code>print(value: number)</code>",
+                                anchor: "robot-print-number",
+                                desc: "Prints the number given in <code>value</code> to the cell in front of the robot. The number must be between <code>0</code> and <code>99</code>. If the number is outside that range, or there is a wall in the cell, nothing is printed. If the number has decimal places, they will be truncated."
+                            },
+                            {
+                                name: "<code>print(letter: string)</code>",
+                                anchor: "robot-print-letter",
+                                desc: "Prints the letter given in <code>value</code> to the cell in front of the robot. The <code>string</code> must be exactly 1 letter long. If there is a wall in the cell, nothing is printed."
+                            },
+                            {
+                                name: "<code>buildWall()</code>",
+                                anchor: "robot-build-wall",
+                                desc: "Builds a wall in the cell in front of the robot. Does nothing if there is a wall already."
+                            },
+                            {
+                                name: "<code>destroyWall()</code>",
+                                anchor: "robot-destroy-wall",
+                                desc: "Destroys a wall in the cell in front of the robot. Does nothing if there is no wall."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Robot status",
+                        desc: "Check the status of the robot.",
+                        entries: [
+                            {
+                                name: "<code>getDirection(): number</code>",
+                                anchor: "robot-get-direction",
+                                desc: "Returns the direction the robot is facing in as a number. <code>0</code> is east, <code>1</code> is north, <code>2</code> is west, and <code>3</code> is south."
+                            },
+                            {
+                                name: "<code>getX(): number</code>",
+                                anchor: "robot-get-x",
+                                desc: "Returns the robot's x coordinate on the grid."
+                            },
+                            {
+                                name: "<code>getY(): number</code>",
+                                anchor: "robot-get-y",
+                                desc: "Returns the robot's y coordinate on the grid."
+                            },
+                            {
+                                name: "<code>getSpeed(): number</code>",
+                                anchor: "robot-get-speed",
+                                desc: "Returns the movement speed of the robot which is measured in number of cells per second. The speed can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                            },
+                            {
+                                name: "<code>setSpeed(cellsPerSecond: number)</code>",
+                                anchor: "robot-set-speed",
+                                desc: "Sets the movement speed of the robot which is measured in number of cells per second. The speed must be a number >= <code>0</code>. The <code>speed</code> can be a decimal number. E.g. <code>1.5</code> means the robot crosses one and a half cells when moving forward."
+                            },
+                            {
+                                name: "<code>getTurningSpeed(): number</code>",
+                                anchor: "robot-get-turning-speed",
+                                desc: "Returns the turning speed of the robot which is measured in number of degrees per second."
+                            },
+                            {
+                                name: "<code>setTurningSpeed(degreesPerSecond: number)</code>",
+                                anchor: "robot-set-turning-speed",
+                                desc: "Set the turning speed of the robot which is measured in number of degrees per second. The number must be >= <code>0</code>. The <code>degreesPerSecond</code> can be a decimal number. E.g. <code>40.5</code> means the robot turns by 40.5 degrees per second."
+                            }
+                        ],
+                        subCategories: []
+                    }
+                ]
+            };
+            this.bus.event(new events.AnnounceDocumentation(docs));
+        };
         RobotWorld.prototype.onEvent = function (event) {
             var _this = this;
             if (event instanceof events.Stop) {
                 this.input.addListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_7.setElementEnabled($(element), true);
+                    Utils_6.setElementEnabled($(element), true);
                 });
                 this.world = new World(this.worldData);
                 this.isRunning = false;
@@ -8345,7 +8305,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             else if (event instanceof events.Run || event instanceof events.Debug) {
                 this.input.removeListener(this.toolsHandler);
                 this.container.find("#pb-robot-world-tools input").each(function (index, element) {
-                    Utils_7.setElementEnabled($(element), false);
+                    Utils_6.setElementEnabled($(element), false);
                 });
                 this.worldData = JSON.parse(JSON.stringify(this.world.data));
                 this.isRunning = true;
@@ -8357,6 +8317,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(function () { _this.draw(0); });
             }
             else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "robot";
                 event.project.contentObject.type = "robot";
                 event.project.contentObject.world = this.world.data;
                 requestAnimationFrame(function () { _this.draw(0); });
@@ -8492,7 +8453,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
             ctx.restore();
         };
         return RobotWorld;
-    }(Widget_5.Widget));
+    }(Widget_4.Widget));
     exports.RobotWorld = RobotWorld;
     var RobotAction;
     (function (RobotAction) {
@@ -8799,7 +8760,7 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
     }());
     exports.SplitPane = SplitPane;
 });
-define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_6) {
+define("widgets/Description", ["require", "exports", "widgets/Widget"], function (require, exports, Widget_5) {
     "use strict";
     exports.__esModule = true;
     var Description = (function (_super) {
@@ -8814,10 +8775,442 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
         Description.prototype.onEvent = function (event) {
         };
         return Description;
-    }(Widget_6.Widget));
+    }(Widget_5.Widget));
     exports.Description = Description;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog"], function (require, exports, Events_2, Toolbar_1, Debugger_2, Editor_2, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasWorld = (function (_super) {
+        __extends(CanvasWorld, _super);
+        function CanvasWorld(bus) {
+            return _super.call(this, bus) || this;
+        }
+        CanvasWorld.prototype.render = function () {
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
+            var canvas = dom.find("canvas");
+            this.canvas = canvas[0];
+            this.context = this.canvas.getContext('2d');
+            var canvasResize = function () {
+                var canvas = dom.find("canvas");
+                var width = canvas.width();
+                var height = width / 16 * 9;
+                if (height == canvas.height()) {
+                    requestAnimationFrame(canvasResize);
+                    return;
+                }
+                canvas.height(height);
+                var el = canvas[0];
+                if (el.width != 960) {
+                    el.width = 960;
+                    el.height = 510;
+                }
+                requestAnimationFrame(canvasResize);
+            };
+            canvasResize();
+            this.announceExternalFunctions();
+            this.announceDocs();
+            return dom[0];
+        };
+        CanvasWorld.prototype.announceExternalFunctions = function () {
+            var _this = this;
+            var functionsAndTypes = new compiler.ExternalFunctionsTypesConstants();
+            functionsAndTypes.addFunction("clear", [
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
+            });
+            functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                requestAnimationFrame(function () { asyncResult.completed = true; });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("drawCircle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radius", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radius, color) {
+                var ctx = _this.context;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = color;
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawLine", [
+                { name: "x1", type: Compiler_3.NumberType },
+                { name: "y1", type: Compiler_3.NumberType },
+                { name: "x2", type: Compiler_3.NumberType },
+                { name: "y2", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType },
+            ], Compiler_3.NothingType, true, function (x1, y1, x2, y2, color) {
+                var ctx = _this.context;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            });
+            functionsAndTypes.addFunction("drawRectangle", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, width, hegiht, color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, width, hegiht);
+            });
+            functionsAndTypes.addFunction("drawEllipse", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "radiusX", type: Compiler_3.NumberType },
+                { name: "radiusY", type: Compiler_3.NumberType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (x, y, radiusX, radiusY, color) {
+                var ctx = _this.context;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.ellipse(x, y, radiusX, radiusY, 0 * Math.PI / 180, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            functionsAndTypes.addFunction("drawText", [
+                { name: "text", type: Compiler_3.StringType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "fontSize", type: Compiler_3.NumberType },
+                { name: "fontFamily", type: Compiler_3.StringType },
+                { name: "color", type: Compiler_3.StringType }
+            ], Compiler_3.NothingType, false, function (text, x, y, fontSize, fontFamily, color) {
+                var ctx = _this.context;
+                ctx.font = fontSize.toString() + "px " + fontFamily;
+                ctx.fillStyle = color;
+                ctx.fillText(text, x, y);
+            });
+            var imageType = functionsAndTypes.addType("image", [
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType },
+                { name: "url", type: Compiler_3.StringType }
+            ], false);
+            functionsAndTypes.addFunction("loadImage", [
+                { name: "url", type: Compiler_3.StringType }
+            ], imageType, true, function (url) {
+                var image = new Image();
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                image.onload = function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = image;
+                    asyncResult.value = record;
+                };
+                image.onerror = function () {
+                    alert("Couldn't load image " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = image.width;
+                    record[1] = image.height;
+                    record[2] = url;
+                    record[3] = new Image();
+                    asyncResult.value = record;
+                };
+                image.src = url;
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("drawImage", [
+                { name: "image", type: imageType },
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType },
+                { name: "width", type: Compiler_3.NumberType },
+                { name: "height", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (image, x, y, width, height) {
+                var ctx = _this.context;
+                if (!image[3])
+                    return;
+                ctx.drawImage(image[3], x, y, width, height);
+            });
+            var mouseX = 0;
+            var mouseY = 0;
+            var mouseButtonDown = false;
+            var input = new Utils_7.Input(this.canvas);
+            var canvas = this.canvas;
+            input.addListener({
+                down: function (x, y) {
+                    mouseButtonDown = true;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                up: function (x, y) {
+                    mouseButtonDown = false;
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                moved: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                },
+                dragged: function (x, y) {
+                    mouseX = x / $(canvas).width() * canvas.width;
+                    mouseY = y / $(canvas).height() * canvas.height;
+                }
+            });
+            functionsAndTypes.addFunction("getMouseX", [], Compiler_3.NumberType, false, function () {
+                return mouseX;
+            });
+            functionsAndTypes.addFunction("getMouseY", [], Compiler_3.NumberType, false, function () {
+                return mouseY;
+            });
+            functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
+                return mouseButtonDown;
+            });
+            functionsAndTypes.addFunction("rgb", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue));
+                return "rgb(" + red + ", " + green + ", " + blue + ")";
+            });
+            functionsAndTypes.addFunction("rgba", [
+                { name: "red", type: Compiler_3.NumberType },
+                { name: "green", type: Compiler_3.NumberType },
+                { name: "blue", type: Compiler_3.NumberType },
+                { name: "alpha", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (red, green, blue, alpha) {
+                red = Math.max(0, Math.min(255, red));
+                green = Math.max(0, Math.min(255, green));
+                blue = Math.max(0, Math.min(255, blue)) / 255;
+                return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
+            });
+            var soundType = functionsAndTypes.addType("sound", [
+                { name: "url", type: Compiler_3.StringType },
+                { name: "duration", type: Compiler_3.NumberType },
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "rate", type: Compiler_3.NumberType }
+            ], false);
+            functionsAndTypes.addFunction("loadSound", [
+                { name: "url", type: Compiler_3.StringType }
+            ], soundType, true, function (url) {
+                var sound = new Howl({
+                    src: [url, url]
+                });
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                sound.on("load", function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = sound;
+                    asyncResult.value = record;
+                });
+                sound.on("loaderror", function () {
+                    alert("Couldn't load sound " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = new Howl({
+                        src: [url, url]
+                    });
+                    asyncResult.value = record;
+                });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("playSound", [
+                { name: "sound", type: soundType }
+            ], Compiler_3.NumberType, false, function (sound) {
+                return sound[sound.length - 1].play();
+            });
+            functionsAndTypes.addFunction("stopSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].stop(soundId);
+            });
+            functionsAndTypes.addFunction("pauseSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].pause(soundId);
+            });
+            functionsAndTypes.addFunction("setVolume", [
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (volume, sound, soundId) {
+                sound[sound.length - 1].volume(volume, soundId);
+            });
+            functionsAndTypes.addFunction("setRate", [
+                { name: "rate", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (rate, sound, soundId) {
+                sound[sound.length - 1].rate(rate, soundId);
+            });
+            this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
+        };
+        CanvasWorld.prototype.onEvent = function (event) {
+            if (event instanceof events.Run) {
+                var ctx = this.context;
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            else if (event instanceof events.BeforeSaveProject) {
+                event.project.type = "canvas";
+            }
+        };
+        CanvasWorld.prototype.announceDocs = function () {
+            var docs = {
+                name: "Canvas program functions & types",
+                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
+                entries: [],
+                subCategories: [
+                    {
+                        name: "Clearing and showing the canvas",
+                        desc: "These functions let you clear the canvas and show it.",
+                        entries: [
+                            {
+                                anchor: "canvas-clear",
+                                name: "<code>clear(color: string)</code>",
+                                desc: "Erases the entire canvas with the <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-show",
+                                name: "<code>show()</code>",
+                                desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing shapes",
+                        desc: "This functions let draw shapes.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-line",
+                                name: "<code>drawLine(x1: number, y1: number, x2: number, y2: number, color: string)</code>",
+                                desc: "Draws a line from <code>(x1, y1)</code> to <code>(x2, y2)</code> with the given <code>color</code>."
+                            },
+                            {
+                                anchor: "canvas-draw-rect",
+                                name: "<code>drawRectangle(x: number, y: number, width: number, height: number, color: string)</code>",
+                                desc: "Draws a filled rectangle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the rectangle. The <code>width</code> and <code>height</code> specify the size of the rectangle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-circle",
+                                name: "<code>drawCircle(x: number, y: number, radius: number, color: string)</code>",
+                                desc: "Draws a filled circle with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the circle. The <code>radius</code> specifies the radius of the circle in pixels."
+                            },
+                            {
+                                anchor: "canvas-draw-ellipse",
+                                name: "<code>drawEllipse(x: number, y: number, radiusX: number, radiusY: number, color: string)</code>",
+                                desc: "Draws a filled ellipse with the given <code>color</code>. The <code>(x, y)</code> coordinate specifies the position of the center of the ellipse. The <code>radiusX</code> and <code>radiusY</code> parameters specify the radius of the circle in pixels on the x- and y-axis respectively."
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Drawing text",
+                        desc: "This functions let draw text.",
+                        entries: [
+                            {
+                                anchor: "canvas-draw-text",
+                                name: "<code>drawText(text: string, x: number, y: number, fontSize: number, fontName: String, color: string)</code>",
+                                desc: "Draws the text with the given color, size, and font. The <code>(x, y)</code> coordinate specifies the position of the bottom left corner of the text. The <code>fontSize</code> parameter specifies the height of the text in pixels. The <code>fontName</code> specifies the name of the font, e.g. \"Arial\", or \"Helvetica\". See the <a target=\"_blank\" href=\"https://www.w3schools.com/cssref/css_websafe_fonts.asp\">safe web font list</a> for available font names. Note that this function will ignore new lines in the text!"
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Colors",
+                        desc: "These functions let create color strings from red, green, and blue color values.",
+                        entries: [
+                            {
+                                anchor: "canvas-rgb",
+                                name: "<code>rgb(red: number, green: number, blue: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>."
+                            },
+                            {
+                                anchor: "canvas-rgba",
+                                name: "<code>rgba(red: number, green: number, blue: number, alpha: number): string</code>",
+                                desc: "Returns a string representing the color given by the mixture of <code>red</code>, <code>green</code>, and <code>blue</code>. The color values must be in the range <code>0</code> to <code>255</code>. The <code>alpha</code> parameter specifies the opacity of the color, with <code>0</code> meaning fully transparent, and <code>255</code> meaning fully opaque."
+                            },
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Loading and drawing images",
+                        desc: "These functions and records let load images from the Web and draw them onto the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-load-image",
+                                name: "<code>loadImage(url: string): image</code>",
+                                desc: "Loads the image from the given <code>url</code> and returns it as an <code>image</code> record value. If loading the image failed, a dialog will be shown displaying an error."
+                            },
+                            {
+                                anchor: "canvas-draw-image",
+                                name: "<code>drawImage(image: image, x: number, y: number, width: number, height: number)</code>",
+                                desc: "Draws the <code>image</code> to the canvas. The <code>(x, y)</code> coordinate specifies the position of the top left corner of the image on the canvas. The <code>width</code> and <code>height</code> specify the size at which the image should be drawn. If the image could not be loaded previously, nothing will be drawn."
+                            },
+                            {
+                                anchor: "canvas-image",
+                                name: "<code>record image</code>",
+                                desc: "\n\t\t\t\t\t\t\t\t<p>\n\t\t\t\t\t\t\t\t\tThis record type stores the data for an image loaded via <code>loadImage(url: string): image</code>. It has the following fields:\n\t\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t\t\t<ul>\n\t\t\t\t\t\t\t\t\t<li><em>width</em>: the width of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>height</em>: the height of the image in pixels.</li>\n\t\t\t\t\t\t\t\t\t<li><em>url</em>: the url from which the image was loaded.</li>\n\t\t\t\t\t\t\t\t</ul>\n\t\t\t\t\t\t\t"
+                            }
+                        ],
+                        subCategories: []
+                    },
+                    {
+                        name: "Mouse and touch input",
+                        desc: "These functions let check where the mouse cursor or finger is on the canvas.",
+                        entries: [
+                            {
+                                anchor: "canvas-get-mouse-x",
+                                name: "<code>getMouseX(): number</code>",
+                                desc: "Returns the x-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-get-mouse-y",
+                                name: "<code>getMouseY(): number</code>",
+                                desc: "Returns the y-coordinate of the current mouse cursor or finger location on the canvas."
+                            },
+                            {
+                                anchor: "canvas-is-mouse-button-down",
+                                name: "<code>isMouseButtonDown(): boolean</code>",
+                                desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
+                            },
+                        ],
+                        subCategories: []
+                    }
+                ]
+            };
+            this.bus.event(new events.AnnounceDocumentation(docs));
+        };
+        return CanvasWorld;
+    }(Widget_6.Widget));
+    exports.CanvasWorld = CanvasWorld;
+});
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_1, CanvasWorld_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
@@ -8825,9 +9218,8 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var _this = this;
             this.eventBus = new Events_2.EventBus();
             this.toolbar = new Toolbar_1.Toolbar(this.eventBus, Toolbar_1.ToolbarMode.ProjectPage);
-            this.editor = new Editor_2.Editor(this.eventBus);
-            this["debugger"] = new Debugger_2.Debugger(this.eventBus);
-            this.playground = new RobotWorld_1.RobotWorld(this.eventBus);
+            this.editor = new Editor_1.Editor(this.eventBus);
+            this["debugger"] = new Debugger_1.Debugger(this.eventBus);
             this.docs = new Docs_1.Docs(this.eventBus);
             this.desc = new Description_1.Description(this.eventBus);
             this.unsaved = false;
@@ -8835,7 +9227,6 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this.editor);
             this.eventBus.addListener(this["debugger"]);
-            this.eventBus.addListener(this.playground);
             this.eventBus.addListener(this.docs);
             this.eventBus.addListener(this.desc);
             var dom = $("\n\t\t\t<div id=\"pb-project-page\">\n\t\t\t</div>\n\t\t");
@@ -8873,15 +9264,17 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             editorAndDocs.append(helpLabel);
             editorAndDocs.append(help);
             editorAndDebugger.append(editorAndDocs);
-            var playgroundAndDescription = $("\n\t\t\t<div id=\"pb-world-and-comments\">\n\t\t\t</div>\n\t\t");
-            playgroundAndDescription.append(this.playground.render());
-            playgroundAndDescription.append(this.desc.render());
-            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, playgroundAndDescription);
+            this.playgroundAndDescription = $("\n\t\t\t<div id=\"pb-world-and-comments\">\n\t\t\t</div>\n\t\t");
+            var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, this.playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
             var projectId = Api_1.Api.getProjectId();
             if (projectId) {
                 this.loadProject(projectId);
+            }
+            else {
+                var projectType = Api_1.Api.getProjectType();
+                this.setupWorld(projectType);
             }
             window.onbeforeunload = function () {
                 if (window.location.host == "localhost:8001")
@@ -8894,6 +9287,17 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
                 }
             };
         }
+        ProjectPage.prototype.setupWorld = function (projectType) {
+            if (projectType === "canvas") {
+                this.microWorld = new CanvasWorld_1.CanvasWorld(this.eventBus);
+            }
+            else {
+                this.microWorld = new RobotWorld_1.RobotWorld(this.eventBus);
+            }
+            this.eventBus.addListener(this.microWorld);
+            this.playgroundAndDescription.append(this.microWorld.render());
+            this.playgroundAndDescription.append(this.desc.render());
+        };
         ProjectPage.prototype.loadProject = function (id) {
             var _this = this;
             var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Loading project " + id + ", stay tuned!</p>\n\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t</div>");
@@ -8902,6 +9306,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             dialog.show();
             Api_1.Api.loadProject(id, function (project) {
                 dialog.hide();
+                _this.setupWorld(project.type);
                 _this.eventBus.event(new Events_2.ProjectLoaded(project));
             }, function (error) {
                 dialog.hide();
@@ -8952,7 +9357,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             this.by = dom.find("#pb-toolbar-by");
             this["new"] = dom.find("#pb-toolbar-new");
             this["new"].click(function () {
-                window.location = "/project.html";
+                _this.newDialog();
             });
             this.save = dom.find("#pb-toolbar-save");
             this.save.click(function () {
@@ -9029,6 +9434,20 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 this.signup.show();
                 this.user.hide();
             }
+        };
+        Toolbar.prototype.newDialog = function () {
+            var content = $("\n\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t<p>Pick the typ of program you want to write!</p>\n\t\t\t<div style=\"display: flex; flex-direction: row; width: 100%;\">\n\t\t\t\t<div id=\"pb-new-robot-program\" style=\"cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; margin-right: 0.5em; position: relative\">\n\t\t\t\t\t<img src=\"/img/new-robot-world.png\">\n\t\t\t\t\t<span style=\"position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);\">Robot program</span>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-new-canvas-program\" style=\"cursor: pointer; display: flex; flex-direction: row; padding: 0.5em; position: relative\">\n\t\t\t\t\t<img style=\"width: 100%;\" src=\"/img/new-canvas-world.png\">\n\t\t\t\t\t<span style=\"position: absolute; left: 0; bottom: 0; width: 100%; text-align: center; padding: 0.5em; color: white; background: rgba(0, 0, 0, 0.75);\">Canvas program</span>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t</div>");
+            content.find("#pb-new-robot-program").click(function () {
+                window.location = "/project.html";
+            });
+            content.find("#pb-new-canvas-program").click(function () {
+                window.location = "/project.html?type=canvas";
+            });
+            var dialog = new Dialog_2.Dialog("New Project", content[0], ["Cancel"]);
+            dialog.buttons[0].click(function () {
+                dialog.hide();
+            });
+            dialog.show();
         };
         Toolbar.prototype.loginDialog = function (email) {
             var _this = this;
@@ -9250,7 +9669,159 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_4, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_3, Dialog_3) {
+    "use strict";
+    exports.__esModule = true;
+    var AdminPage = (function () {
+        function AdminPage(parent) {
+            var _this = this;
+            this.eventBus = new Events_4.EventBus();
+            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.projects = [];
+            this.fetching = false;
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            parent.append(this.toolbar.render());
+            var dom = $("\n\t\t\t<div id=\"pb-admin-page\">\n\t\t\t\t<h1>Administration</h1>\n\t\t\t\t<div class=\"pb-project-list\" style=\"width: 100%\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            $(parent).append(dom);
+            this.fetchProjects(dom.find(".pb-project-list"));
+            window.onscroll = function () {
+                var scrollHeight, totalHeight;
+                scrollHeight = document.body.scrollHeight;
+                totalHeight = window.scrollY + window.innerHeight;
+                if (totalHeight >= scrollHeight) {
+                    _this.fetchProjects(dom.find(".pb-project-list"));
+                }
+            };
+        }
+        AdminPage.prototype.fetchProjects = function (projectListDom) {
+            var _this = this;
+            if (this.fetching)
+                return;
+            console.log("Fetching");
+            Api_3.Api.getProjectsAdmin("Newest", this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
+                _this.renderProjects(projectListDom, projects);
+                _this.fetching = false;
+            }, function () {
+                Dialog_3.Dialog.alert("Error", $("<p>Couldn't retrieve projects.</p>")).show();
+                _this.fetching = false;
+            });
+            this.fetching = true;
+        };
+        AdminPage.prototype.renderProjects = function (dom, projects) {
+            var _this = this;
+            projects.forEach(function (project) {
+                _this.projects.push(project);
+                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_3.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>User:</td><td><a href=\"" + Api_3.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></td></tr>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t");
+                dom.append(projectDom);
+            });
+        };
+        AdminPage.prototype.onEvent = function (event) {
+        };
+        return AdminPage;
+    }());
+    exports.AdminPage = AdminPage;
+});
+define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/VirtualMachine"], function (require, exports, Compiler_4, VirtualMachine_1) {
+    "use strict";
+    exports.__esModule = true;
+    var BenchmarkPage = (function () {
+        function BenchmarkPage(parent) {
+            this.addBenchmark(parent, "Fibonacci", "\nfun fib (n: number): number\n\tif n < 2 then return n end\n\treturn fib(n - 2) + fib(n - 1)\nend\nfib(30)\n");
+        }
+        BenchmarkPage.prototype.addBenchmark = function (parent, title, source) {
+            var _this = this;
+            source = source.trim();
+            var dom = $("\n\t\t\t<div class=\"pb-benchmark\">\n\t\t\t\t<h1>" + title + "</h1>\n\t\t\t\t<div class=\"pb-benchmark-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-vm-code\"></div>\n\t\t\t\t<div class=\"pb-benchmark-result\">No benchmark results yet.</div>\n\t\t\t\t<button id=\"pb-benchmark-run\">Run</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
+            setTimeout(function () {
+                var editor = _this.editor = CodeMirror(dom.find(".pb-benchmark-code")[0], {
+                    tabSize: 3,
+                    indentUnit: 3,
+                    indentWithTabs: true,
+                    lineNumbers: true,
+                    gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
+                    fixedGutter: true,
+                    extraKeys: {
+                        "Tab": "indentAuto"
+                    },
+                    theme: "monokai"
+                });
+                editor.on("change", function () {
+                    var module = null;
+                    try {
+                        module = Compiler_4.compile(editor.getValue(), new Compiler_4.ExternalFunctionsTypesConstants());
+                    }
+                    catch (e) {
+                        alert("Error in " + title + ": " + e.message);
+                        return;
+                    }
+                    dom.find(".pb-benchmark-vm-code").text(Compiler_4.moduleToString(module));
+                });
+                editor.setValue(source);
+            }, 400);
+            dom.find("#pb-benchmark-run").click(function () {
+                var module = null;
+                try {
+                    module = Compiler_4.compile(_this.editor.getValue(), new Compiler_4.ExternalFunctionsTypesConstants());
+                }
+                catch (e) {
+                    alert("Error in " + title + ": " + e.message);
+                    return;
+                }
+                var result = dom.find(".pb-benchmark-result");
+                result.text("Benchmark running...");
+                var vm = new VirtualMachine_1.VirtualMachine(module.functions, module.externalFunctions);
+                var start = performance.now();
+                for (var runs = 0; runs < 5; runs++) {
+                    while (vm.state != VirtualMachine_1.VirtualMachineState.Completed) {
+                        vm.run(10000);
+                    }
+                    vm.restart();
+                }
+                var total = (performance.now() - start) / 1000;
+                var perRun = total / 5;
+                result.text("Total: " + total + " secs, " + perRun + " secs/run");
+            });
+            parent.append(dom);
+        };
+        return BenchmarkPage;
+    }());
+    exports.BenchmarkPage = BenchmarkPage;
+});
+define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_5, Editor_2, Debugger_2, CanvasWorld_2) {
+    "use strict";
+    exports.__esModule = true;
+    var CanvasPage = (function () {
+        function CanvasPage(parent) {
+            this.eventBus = new Events_5.EventBus();
+            this.editor = new Editor_2.Editor(this.eventBus);
+            this["debugger"] = new Debugger_2.Debugger(this.eventBus);
+            this.canvas = new CanvasWorld_2.CanvasWorld(this.eventBus);
+            this.sentSource = false;
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.editor);
+            this.eventBus.addListener(this["debugger"]);
+            this.eventBus.addListener(this.canvas);
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-page\">\n\t\t\t</div>\n\t\t");
+            dom.append(this["debugger"].render());
+            dom.append(this.editor.render());
+            dom.append(this.canvas.render());
+            this.editor.setEmbedURls(false);
+            parent.append(dom);
+        }
+        CanvasPage.prototype.onEvent = function (event) {
+            var _this = this;
+            if (event instanceof Events_5.SourceChanged) {
+                if (!this.sentSource)
+                    requestAnimationFrame(function () { return _this.editor.setSource("\n\t\t\tvar sound = loadSound(\"http://mo.flussbuero.at/music/hochgeladenes/do.mp3\")\n\t\t\tvar id  = playSound(sound)\n\t\t\tpause(5000)\n\t\t\tsetVolume(0.5,sound,id)\n\t\t\tpause(5000)\n\t\t\tsetVolume(1,sound,id)\n\t\t\tsetRate(2,sound,id)\n\t\t\tstopSound(sound,id)"); });
+                this.sentSource = true;
+            }
+        };
+        return CanvasPage;
+    }());
+    exports.CanvasPage = CanvasPage;
+});
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_6, RobotWorld_2, Compiler_5, VirtualMachine_2) {
     "use strict";
     exports.__esModule = true;
     var Player = (function (_super) {
@@ -9258,7 +9829,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
         function Player(project, autoplay, showSourceLink, bus) {
             if (autoplay === void 0) { autoplay = false; }
             if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_4.EventBus(); }
+            if (bus === void 0) { bus = new Events_6.EventBus(); }
             var _this = _super.call(this, bus) || this;
             _this.project = project;
             _this.autoplay = autoplay;
@@ -9285,7 +9856,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                     requestAnimationFrame(advanceVm);
                 }
                 else {
-                    _this.bus.event(new Events_4.Stop());
+                    _this.bus.event(new Events_6.Stop());
                     _this.vm.restart();
                     _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                     stop.hide();
@@ -9294,7 +9865,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             };
             var run = dom.find("#pb-player-run");
             run.click(function () {
-                _this.bus.event(new Events_4.Run());
+                _this.bus.event(new Events_6.Run());
                 stop.show();
                 run.hide();
                 _this.vm.restart();
@@ -9303,7 +9874,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             var stop = dom.find("#pb-player-stop");
             stop.hide();
             stop.click(function () {
-                _this.bus.event(new Events_4.Stop());
+                _this.bus.event(new Events_6.Stop());
                 _this.vm.restart();
                 _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                 stop.hide();
@@ -9312,7 +9883,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             try {
                 var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
                 this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
-                this.bus.event(new Events_4.ProjectLoaded(this.project));
+                this.bus.event(new Events_6.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
             }
@@ -9323,7 +9894,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_4.AnnounceExternalFunctions) {
+            if (event instanceof Events_6.AnnounceExternalFunctions) {
                 this.extFuncs = event.functions;
             }
         };
@@ -9331,13 +9902,13 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_8.Widget));
     exports.Player = Player;
 });
-define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_5, RobotWorld_3) {
+define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_7, RobotWorld_3) {
     "use strict";
     exports.__esModule = true;
     var ProjectPreview = (function (_super) {
         __extends(ProjectPreview, _super);
         function ProjectPreview(project) {
-            var _this = _super.call(this, new Events_5.EventBus()) || this;
+            var _this = _super.call(this, new Events_7.EventBus()) || this;
             _this.project = project;
             _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
             _this.world.setWorldData(project.contentObject.world);
@@ -9356,13 +9927,13 @@ define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widge
     }(Widget_9.Widget));
     exports.ProjectPreview = ProjectPreview;
 });
-define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_6, Toolbar_2) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_3) {
     "use strict";
     exports.__esModule = true;
     var DevsPage = (function () {
         function DevsPage(parent) {
-            this.eventBus = new Events_6.EventBus();
-            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.eventBus = new Events_8.EventBus();
+            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             $(this.toolbar.render()).insertBefore($(parent).find("#pb-devs-page"));
@@ -9373,16 +9944,16 @@ define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], 
     }());
     exports.DevsPage = DevsPage;
 });
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_3, Dialog_3) {
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_4) {
     "use strict";
     exports.__esModule = true;
     var EmbeddedPage = (function () {
         function EmbeddedPage(parent) {
             var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
-            Api_3.Api.loadProject(Api_3.Api.getProjectId(), function (project) {
+            Api_4.Api.loadProject(Api_4.Api.getProjectId(), function (project) {
                 dom.append(new Player_1.Player(project).render());
             }, function () {
-                Dialog_3.Dialog.alert("Sorry", $("Could not load project " + Api_3.Api.getProjectId()));
+                Dialog_4.Dialog.alert("Sorry", $("Could not load project " + Api_4.Api.getProjectId()));
             });
             parent.append(dom);
         }
@@ -9390,35 +9961,35 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_7, Toolbar_3, Api_4, Dialog_4, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_5, Dialog_5, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_7.EventBus();
-            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
+            this.eventBus = new Events_9.EventBus();
+            this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" width=\"390px\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<h1 style=\"text-align: center\">Want to learn how to code?</h1>\n\t\t\t\t<div style=\"margin-bottom: 2em;\">\n\t\t\t\t\t<a class=\"pb-button\" href=\"/learn.html\">Teach me how to code</a>\n\t\t\t\t\t<a class=\"pb-button\" href=\"/devs.html\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share your programs with your friends!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the <a href=\"/learn.html\">Paperbots course</a>\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Read the <a href=\"/for-devs.html\">language documentation</a>, then create interesting programs\n\t\t\t\t\t\tothers can remix and learn from.</p>\n\t\t\t\t</div>\n\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            Api_4.Api.loadProject("IgMlfr", function (project) {
+            Api_5.Api.loadProject("IgMlfr", function (project) {
                 dom.find("#pb-index-page-example").append(new Player_2.Player(project, true, true).render());
             }, function () { });
             $(parent).append(dom);
-            var projectId = Api_4.Api.getUrlParameter("projectId");
+            var projectId = Api_5.Api.getUrlParameter("projectId");
             if (projectId) {
                 window.location = "/project.html?id=" + projectId;
             }
-            Api_4.Api.getFeaturedProjects(function (projects) {
+            Api_5.Api.getFeaturedProjects(function (projects) {
                 var featured = dom.find(".pb-index-page-featured");
                 projects.forEach(function (project) {
-                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_4.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_4.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_5.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
                     card.find(".pb-featured-card-player").append(new Player_2.Player(project, false, false).render());
                     featured.append(card);
                 });
             }, function () {
-                Dialog_4.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
+                Dialog_5.Dialog.alert("Sorry", $("Couldn't get the featured projects from the server. If this problem persists"));
             });
         }
         IndexPage.prototype.onEvent = function (event) {
@@ -9427,13 +9998,13 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_4) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_10, Toolbar_5) {
     "use strict";
     exports.__esModule = true;
     var LearnPage = (function () {
         function LearnPage(parent) {
-            this.eventBus = new Events_8.EventBus();
-            this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
+            this.eventBus = new Events_10.EventBus();
+            this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
@@ -9447,29 +10018,29 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_5, Api_5, Dialog_5, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_11, Toolbar_6, Api_6, Dialog_6, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
             var _this = this;
-            this.eventBus = new Events_9.EventBus();
-            this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
+            this.eventBus = new Events_11.EventBus();
+            this.toolbar = new Toolbar_6.Toolbar(this.eventBus, Toolbar_6.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
-            var userId = Api_5.Api.getUserId();
+            var userId = Api_6.Api.getUserId();
             if (!userId) {
-                var dialog = Dialog_5.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
+                var dialog = Dialog_6.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
                     window.location = "/";
                 });
                 dialog.show();
             }
             else {
-                Api_5.Api.getUserProjects(userId, true, function (projects) {
+                Api_6.Api.getUserProjects(userId, true, function (projects) {
                     _this.renderUser(dom, userId, projects);
                 }, function (error) {
                 });
@@ -9483,16 +10054,16 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                     project.contentObject = JSON.parse(project.content);
                     var preview = new Player_3.Player(project, false, false).render();
                     projectDom.append(preview);
-                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    if (project.userName == Api_5.Api.getUserName()) {
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_6.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_6.Api.getUserName()) {
                         var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
                         projectDom.append(deleteButton);
                         deleteButton.click(function () {
-                            Dialog_5.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
-                                Api_5.Api.deleteProject(project.code, function () {
+                            Dialog_6.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
+                                Api_6.Api.deleteProject(project.code, function () {
                                     projectDom.fadeOut(1000);
                                 }, function () {
-                                    Dialog_5.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
+                                    Dialog_6.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
                                 });
                             }).show();
                         });

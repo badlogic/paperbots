@@ -10,15 +10,17 @@ import { Docs } from "./widgets/Docs";
 import { Description } from "./widgets/Description";
 import { Api } from "./Api";
 import { Dialog } from "./widgets/Dialog";
+import { CanvasWorld } from "./widgets/CanvasWorld";
 
 export class ProjectPage implements EventListener {
 	private eventBus = new EventBus();
 	private toolbar = new Toolbar(this.eventBus, ToolbarMode.ProjectPage);
 	private editor = new Editor(this.eventBus);
 	private debugger = new Debugger(this.eventBus);
-	private playground = new RobotWorld(this.eventBus);
+	private microWorld: RobotWorld | CanvasWorld;
 	private docs = new Docs(this.eventBus);
 	private desc = new Description(this.eventBus);
+	private playgroundAndDescription: JQuery<HTMLElement>;
 	private unsaved = false;
 
 	constructor(parent: HTMLElement) {
@@ -27,7 +29,6 @@ export class ProjectPage implements EventListener {
 		this.eventBus.addListener(this.toolbar);
 		this.eventBus.addListener(this.editor);
 		this.eventBus.addListener(this.debugger);
-		this.eventBus.addListener(this.playground);
 		this.eventBus.addListener(this.docs);
 		this.eventBus.addListener(this.desc);
 
@@ -87,15 +88,13 @@ export class ProjectPage implements EventListener {
 		editorAndDocs.append(help);
 		editorAndDebugger.append(editorAndDocs);
 
-		let playgroundAndDescription = $(/*html*/`
+		this.playgroundAndDescription = $(/*html*/`
 			<div id="pb-world-and-comments">
 			</div>
 		`);
 
-		playgroundAndDescription.append(this.playground.render());
-		playgroundAndDescription.append(this.desc.render());
 
-		let splitPane = new SplitPane(editorAndDebugger, playgroundAndDescription);
+		let splitPane = new SplitPane(editorAndDebugger, this.playgroundAndDescription);
 		dom.append(splitPane.dom);
 		$(parent).append(dom);
 
@@ -103,6 +102,11 @@ export class ProjectPage implements EventListener {
 		let projectId = Api.getProjectId();
 		if (projectId) {
 			this.loadProject(projectId);
+		} else {
+			// if we didn't get a project id, check if we got a project
+			// type and instantiate the right micro world
+			let projectType = Api.getProjectType();
+			this.setupWorld(projectType);
 		}
 
 		// Setup a check to alert the user to not leave the site
@@ -115,6 +119,17 @@ export class ProjectPage implements EventListener {
 				return null;
 			}
 		}
+	}
+
+	setupWorld(projectType: string) {
+		if (projectType === "canvas") {
+			this.microWorld = new CanvasWorld(this.eventBus);
+		} else {
+			this.microWorld = new RobotWorld(this.eventBus);
+		}
+		this.eventBus.addListener(this.microWorld);
+		this.playgroundAndDescription.append(this.microWorld.render());
+		this.playgroundAndDescription.append(this.desc.render());
 	}
 
 	loadProject (id: string) {
@@ -130,6 +145,7 @@ export class ProjectPage implements EventListener {
 
 		Api.loadProject(id, (project) => {
 			dialog.hide();
+			this.setupWorld(project.type);
 			this.eventBus.event(new ProjectLoaded(project));
 		}, (error) => {
 			dialog.hide();

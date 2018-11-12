@@ -38,6 +38,11 @@ export interface NumberLiteral extends Expression {
 	value: number
 }
 
+export interface ListLiteral extends Expression {
+	kind: "list",
+	values: Expression[]
+}
+
 export interface VariableAccess extends Expression {
 	kind: "variableAccess",
 	name: Identifier
@@ -79,6 +84,7 @@ export interface If extends BaseNode {
 	kind: "if",
 	condition: Expression
 	trueBlock: Array<AstNode>,
+	elseIfs: Array<If>,
 	falseBlock: Array<AstNode>
 }
 
@@ -102,6 +108,7 @@ export interface Assignment extends BaseNode {
 
 export interface TypeName {
 	id: Identifier
+	elementType?: TypeName;
 }
 
 export interface VariableDecl extends BaseNode {
@@ -167,6 +174,7 @@ type AstNode =
 	|	StringLiteral
 	|	BooleanLiteral
 	|	NumberLiteral
+	|	ListLiteral
 	|	VariableAccess
 	|	FunctionCall
 	|	FieldAccess
@@ -224,9 +232,9 @@ export interface Field {
 	type: Type
 }
 
-export interface ArrayType extends BaseType {
-	kind: "array"
-	// TODO Implement
+export interface ListType extends BaseType {
+	kind: "list"
+	elmentType: Type;
 }
 
 export const NothingType: PrimitiveType = {
@@ -249,7 +257,7 @@ export const StringType: PrimitiveType = {
 	signature: "string"
 };
 
-export type Type = PrimitiveType | FunctionType | RecordType | ArrayType;
+export type Type = PrimitiveType | FunctionType | RecordType | ListType;
 
 export class Types {
 	private all: Map<Type> = { }
@@ -324,6 +332,27 @@ export class Types {
 		})
 		sig += ")";
 		return sig;
+	}
+
+	static typeNameSignature(typeName: TypeName) {
+		if (!typeName.elementType) return typeName.id.value;
+		var signature = "list<"
+		let elementType = typeName.elementType;
+		var nestingLevel = 1
+		while (true) {
+			signature += "list<"
+			if (elementType.elementType) {
+				elementType = elementType.elementType;
+			} else {
+				break;
+			}
+		}
+		signature += elementType.id.value;
+		while(nestingLevel > 0) {
+			signature += ">";
+			nestingLevel--;
+		}
+		return signature;
 	}
 }
 
@@ -478,11 +507,83 @@ export class ExternalFunctionsTypesConstants {
 		)
 
 		externals.addFunction(
+			"abs",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.abs(value); }
+		)
+
+		externals.addFunction(
 			"truncate",
 			[{name:"value", type: NumberType}],
 			NumberType,
 			false,
 			(value) => { return value | 0; }
+		)
+
+		externals.addFunction(
+			"round",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.round(value); }
+		)
+
+		externals.addFunction(
+			"floor",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.floor(value); }
+		)
+
+		externals.addFunction(
+			"ceiling",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value) => { return Math.ceil(value); }
+		)
+
+		externals.addFunction(
+			"sqrt",
+			[{name:"value", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.sqrt(value); }
+		)
+
+		externals.addFunction(
+			"pow",
+			[{name:"value", type: NumberType}, {name:"power", type: NumberType}],
+			NumberType,
+			false,
+			(value: number, power: number) => { return Math.pow(value, power); }
+		)
+
+		externals.addFunction(
+			"cos",
+			[{name:"radians", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.cos(value); }
+		)
+
+		externals.addFunction(
+			"sin",
+			[{name:"radians", type: NumberType}],
+			NumberType,
+			false,
+			(value: number) => { return Math.sin(value); }
+		)
+
+		externals.addFunction(
+			"atan2",
+			[{name:"x", type: NumberType}, {name:"y", type: NumberType}],
+			NumberType,
+			false,
+			(x: number, y: number) => { return Math.atan2(x, y); }
 		)
 
 		externals.addFunction(
@@ -535,13 +636,15 @@ export class ExternalFunctionsTypesConstants {
 
 	copy () {
 		let copy = new ExternalFunctionsTypesConstants();
+		copy.functions.length = 0;
+		copy.functionLookup = {};
 		for(var i = 0; i < this.functions.length; i++) {
 			let f = this.functions[i];
 			copy.addFunction(f.name, f.parameters, f.returnType, f.async, f.fun);
 		}
 		for (var i = 0; i < this.records.length; i++) {
 			let r = this.records[i];
-			copy.addType(r.signature, r.fields);
+			copy.addType(r.signature, r.fields, r.generateConstructor);
 		}
 		return copy;
 	}
@@ -645,7 +748,7 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		let type: Type = {
 			kind: "record",
 			fields: [],
-			generateConstructor: false,
+			generateConstructor: true,
 			declarationNode: rec,
 			signature: rec.name.value
 		}
@@ -690,10 +793,9 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 		});
 	});
 
-	// Create constructor functions for all records
+	// Create constructor functions for all records, user defined and external
 	// TODO check for recursive types
 	records.forEach(rec => {
-		if (!rec.type.generateConstructor) return;
 		let params: Array<Parameter> = [];
 		rec.fields.forEach(field =>
 			params.push({name: field.name.value, type: field.type})
@@ -706,6 +808,22 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			return value;
 		});
 	});
+
+	externalFunctions.records.forEach(rec => {
+		if (!rec.generateConstructor) return;
+		let params: Array<Parameter> = [];
+		rec.fields.forEach(field =>
+			params.push({name: field.name, type: field.type})
+		);
+		externalFunctions.addFunction(rec.signature, params, rec, false, (...args: any[]) => {
+			let value = [];
+			for (var i = 0; i < args.length; i++) {
+				value[i] = args[i];
+			}
+			return value;
+		});
+	});
+
 
 	// Create the external function look up, copy
 	// the user provided externals, otherwise we
@@ -788,6 +906,10 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			node.type = StringType;
 			break;
 
+		case "list":
+			// TODO
+			throw new CompilerError(`List literals not implemented yet.`, node.location);
+
 		case "unaryOp":
 			typeCheckRec((node.value as AstNode), types, scopes, enclosingFun, enclosingLoop);
 			switch(node.operator) {
@@ -852,6 +974,13 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			scopes.push();
 			node.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
+			node.elseIfs.forEach(elseIf => {
+				typeCheckRec(elseIf.condition as AstNode, types, scopes, enclosingFun, enclosingLoop);
+				if (elseIf.condition.type != BooleanType) throw new CompilerError(`Condition of elseif statement must be a 'boolean', but is a '${elseIf.condition.type.signature}`, elseIf.condition.location);
+				scopes.push();
+				elseIf.trueBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
+				scopes.pop();
+			})
 			scopes.push();
 			node.falseBlock.forEach(child => typeCheckRec(child as AstNode, types, scopes, enclosingFun, enclosingLoop));
 			scopes.pop();
@@ -876,7 +1005,7 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 		case "variable":
 			typeCheckRec(node.value as AstNode, types, scopes, enclosingFun, enclosingLoop);
 			if (node.typeName) {
-				let type = types.get(node.typeName.id.value);
+				let type = types.get(Types.typeNameSignature(node.typeName));
 				if (!type) throw new CompilerError(`Unknown type '${node.typeName.id.value}' for variable '${node.name.value}'.`, node.typeName.id.location);
 				if (type != node.value.type) throw new CompilerError(`Can't assign a value of type '${node.value.type.signature}' to variable '${node.name.value}' with type '${type.signature}.`, node.value.location);
 				node.type = type;
@@ -955,7 +1084,6 @@ function typeCheckRec(node: AstNode, types: Types, scopes: Scopes, enclosingFun:
 			typeCheckRec(node.record as AstNode, types, scopes, enclosingFun, enclosingLoop)
 			if (node.record.type.kind != "record") throw new CompilerError(`Can only access fields on record types, but got a ${node.record.type.signature}.`, node.location);
 			let recordType = node.record.type;
-			// TODO wtf is going on here
 			for (var i = 0; i < recordType.fields.length; i++) {
 				let field = recordType.fields[i];
 				if (field.name == node.name.value) {
@@ -1056,6 +1184,10 @@ function emitStatementList (statements: Array<AstNode>, context: EmitterContext)
 		// Check if this is a node that leaves a value on the stack
 		// so we can insert a pop
 		switch(stmt.kind) {
+			case "list":
+				// TODO
+				throw new CompilerError(`List literals not implemented yet.`, stmt.location);
+
 			case "number":
 			case "boolean":
 			case "string":
@@ -1137,6 +1269,9 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 	let lineInfos = fun.lineInfos;
 
 	switch(node.kind) {
+		case "list":
+			// TODO
+			throw new CompilerError(`List literals not implemented yet.`, node.location);
 		case "number":
 		case "boolean":
 		case "string":
@@ -1191,7 +1326,6 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 				for (; fieldIndex < recordType.fields.length; fieldIndex++) {
 					if (recordType.fields[fieldIndex].name == fieldAccess.name.value) break;
 				}
-				// TODO deep copy assignment of record types
 				instructions.push({kind: "storeField", fieldIndex: fieldIndex});
 				emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			} else if (node.left.kind == "arrayAccess") {
@@ -1215,27 +1349,41 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			if(isStatement) emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
 			break;
 		case "if":
-			emitAstNode(node.condition as AstNode, context, false);
+			// Setup the jump past the if statement
+			let jumpPastIf: Instruction = { kind: "jump", offset: 0 };
 
-			// Setup jumps. There's a boolean value on the top of the stack
-			// for the conditional which will be consumed by jumpIfFalse
-			let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
-			let jumpPastFalse: Instruction = { kind: "jump", offset: 0 };
-			instructions.push(jumpToFalse);
-			emitLineInfo(lineInfos, context.lineInfoIndex, node.location.start.line, instructions.length - lastInsIndex);
-			context.lineInfoIndex++;
+			// The initial if condition then, and all elseifs can be
+			// handled the same in a loop.
+			let ifChecks: If[] = [];
+			ifChecks.push(node);
+			node.elseIfs.forEach(elseIf => ifChecks.push(elseIf));
 
-			// Emit the true block and a jump to after the false block
-			scopes.push();
-			emitStatementList(node.trueBlock, context);
-			scopes.pop()
-			assignScopeInfoEndPc(node.trueBlock, instructions.length - 1);
-			instructions.push(jumpPastFalse);
-			lineInfos.push(lineInfos[lineInfos.length - 1]);
-			context.lineInfoIndex++;
+			// 1. Emit condition
+			// 2. Check if top of stack is false, and jump past statements
+			// 3. Emit statements
+			// 4. Patch up jump past statements.
+			ifChecks.forEach(ifCheck => {
+				// Emit the condition, which puts a boolean on the stack. Then
+				// check if it is true, and if not, go to the next elseif block
+				emitAstNode(ifCheck.condition as AstNode, context, false);
+				let jumpToFalse: Instruction = { kind: "jumpIfFalse", offset: 0 };
+				instructions.push(jumpToFalse);
+				emitLineInfo(lineInfos, context.lineInfoIndex, ifCheck.location.start.line, instructions.length - lastInsIndex);
+				context.lineInfoIndex++;
 
-			// Patch in the address of the first instruction of the false block
-			jumpToFalse.offset = instructions.length;
+				// Emit the true block and a jump to after the false block
+				scopes.push();
+				emitStatementList(ifCheck.trueBlock, context);
+				scopes.pop()
+				assignScopeInfoEndPc(ifCheck.trueBlock, instructions.length - 1);
+				instructions.push(jumpPastIf);
+				lineInfos.push(lineInfos[lineInfos.length - 1]);
+				context.lineInfoIndex++;
+
+				// Patch in the address of the first instruction of the false block
+				jumpToFalse.offset = instructions.length;
+				lastInsIndex = instructions.length;
+			})
 
 			// Emit the false block
 			scopes.push();
@@ -1244,7 +1392,7 @@ function emitAstNode(node: AstNode, context: EmitterContext, isStatement: boolea
 			assignScopeInfoEndPc(node.falseBlock, instructions.length - 1);
 
 			// Patch in the address of the first instruction after the false block
-			jumpPastFalse.offset = instructions.length;
+			jumpPastIf.offset = instructions.length;
 			break;
 		case "while":
 			// save the index of the start of the condition code

@@ -1,6 +1,6 @@
 import * as events from "./Events"
 import { Widget } from "./Widget"
-import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled } from "../Utils"
+import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled, Map} from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
 import { NumberType, StringType, NothingType } from "../language/Compiler";
@@ -18,7 +18,7 @@ export class CanvasWorld extends Widget {
 	render(): HTMLElement {
 		let dom = $(/*html*/`
 			<div id="pb-canvas-world">
-				<canvas></canvas>
+				<canvas tabindex="1"></canvas>
 			</div>
 		`);
 
@@ -58,6 +58,18 @@ export class CanvasWorld extends Widget {
 			let ctx = this.context;
 			ctx.fillStyle = color;
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+		});
+
+		let rgbToHex = (r, g, b) => {
+			return ((r << 16) | (g << 8) | b).toString(16);
+		};
+
+		functionsAndTypes.addFunction("getPixel", [
+			{name: "x", type: NumberType},
+			{name: "y", type: NumberType}
+		], StringType, false, (x: number, y: number): string => {
+			var p = this.context.getImageData(x, y, 1, 1).data;
+			return "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
 		});
 
 		functionsAndTypes.addFunction("show", [], NothingType, true, () => {
@@ -208,8 +220,6 @@ export class CanvasWorld extends Widget {
 		var mouseX = 0;
 		var mouseY = 0;
 		var mouseButtonDown = false;
-		// getMouseX(), getMouseY()
-		// getMouseButtonDown(): boolean
 
 		let input = new Input(this.canvas);
 		let canvas = this.canvas;
@@ -242,7 +252,24 @@ export class CanvasWorld extends Widget {
 
 		functionsAndTypes.addFunction("isMouseButtonDown",[],compiler.BooleanType,false,()=>{
 			return mouseButtonDown;
-		})
+		});
+
+		var pressedKeys: Map<boolean> = {};
+		canvas.addEventListener("keypress", (ev: KeyboardEvent) => {
+			console.log("Press: " + JSON.stringify(ev));
+		});
+
+		canvas.addEventListener("keydown", (ev: KeyboardEvent) => {
+			pressedKeys[ev.key] = true;
+		});
+
+		canvas.addEventListener("keyup", (ev: KeyboardEvent) => {
+			pressedKeys[ev.key] = false;
+		});
+
+		functionsAndTypes.addFunction("isKeyDown",[{name: "key", type: StringType}],compiler.BooleanType,false,(key: string)=>{
+			return pressedKeys[key];
+		});
 
 		functionsAndTypes.addFunction("rgb", [
 			{name: "red", type: NumberType},
@@ -275,6 +302,7 @@ export class CanvasWorld extends Widget {
 			let ctx = this.context;
 			ctx.fillStyle = "black";
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+			this.canvas.focus();
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.type = "canvas";
 		}
@@ -334,7 +362,7 @@ end</code>
 			entries: [],
 			subCategories: [
 				{
-					name: "Clearing and showing the canvas",
+					name: "Clearing, reading, and showing the canvas",
 					desc: "These functions let you clear the canvas and show it.",
 					entries: [
 						{
@@ -346,6 +374,11 @@ end</code>
 							anchor: "canvas-show",
 							name: "<code>show()</code>",
 							desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
+						},
+						{
+							anchor: "canvas-get-pixel",
+							name: "<code>getPixel(x: number, y: number): string</code>",
+							desc: "Returns the pixel color at position <code>(x, y)</code> as a color string. The string is of the format <code>#rrggbb</code>, e.g. <code>#000000</code> for black, <code>#ff0000</code> for the color red, etc."
 						}
 					],
 					subCategories: []
@@ -438,8 +471,8 @@ end</code>
 					subCategories: []
 				},
 				{
-					name: "Mouse and touch input",
-					desc: "These functions let check where the mouse cursor or finger is on the canvas.",
+					name: "Mouse, touch, and keyboard input input",
+					desc: "These functions let check where the mouse cursor or finger is on the canvas, and what keys have been pressed.",
 					entries: [
 						{
 							anchor: "canvas-get-mouse-x",
@@ -455,6 +488,11 @@ end</code>
 							anchor: "canvas-is-mouse-button-down",
 							name: "<code>isMouseButtonDown(): boolean</code>",
 							desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
+						},
+						{
+							anchor: "canvas-is-key-pressed",
+							name: "<code>isKeyPressed(key: string): boolean</code>",
+							desc: `Returns whether the <code>key</code> is pressed. The key is either a single letter string like <code>"a"</code>, or, if a special key like a cursor key was pressed, the name of that special key. Common special key names are <code>"ArrowLeft"</code>, <code>"ArrowRight"</code>, <code>"ArrowUp"</code>, and <code>"ArrowDown</code> for the arrow keys, <code>"Escape"</code> for the escape key, and <code>"Enter"</code> for the enter key. The space key is returned as the string <code>" "</code> (a string with a space in it). See the <a href="https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values">the key values table</a> for the names of other special keys.`
 						},
 					],
 					subCategories: []

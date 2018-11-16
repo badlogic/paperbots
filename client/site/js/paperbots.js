@@ -8899,7 +8899,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             return _super.call(this, bus) || this;
         }
         CanvasWorld.prototype.render = function () {
-            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas></canvas>\n\t\t\t</div>\n\t\t");
+            var dom = $("\n\t\t\t<div id=\"pb-canvas-world\">\n\t\t\t\t<canvas tabindex=\"1\"></canvas>\n\t\t\t</div>\n\t\t");
             var canvas = dom.find("canvas");
             this.canvas = canvas[0];
             this.context = this.canvas.getContext('2d');
@@ -8933,6 +8933,16 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 var ctx = _this.context;
                 ctx.fillStyle = color;
                 ctx.fillRect(0, 0, _this.canvas.width, _this.canvas.height);
+            });
+            var rgbToHex = function (r, g, b) {
+                return ((r << 16) | (g << 8) | b).toString(16);
+            };
+            functionsAndTypes.addFunction("getPixel", [
+                { name: "x", type: Compiler_3.NumberType },
+                { name: "y", type: Compiler_3.NumberType }
+            ], Compiler_3.StringType, false, function (x, y) {
+                var p = _this.context.getImageData(x, y, 1, 1).data;
+                return "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
             });
             functionsAndTypes.addFunction("show", [], Compiler_3.NothingType, true, function () {
                 var asyncResult = {
@@ -9118,6 +9128,19 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
                 return mouseButtonDown;
             });
+            var pressedKeys = {};
+            canvas.addEventListener("keypress", function (ev) {
+                console.log("Press: " + JSON.stringify(ev));
+            });
+            canvas.addEventListener("keydown", function (ev) {
+                pressedKeys[ev.key] = true;
+            });
+            canvas.addEventListener("keyup", function (ev) {
+                pressedKeys[ev.key] = false;
+            });
+            functionsAndTypes.addFunction("isKeyDown", [{ name: "key", type: Compiler_3.StringType }], compiler.BooleanType, false, function (key) {
+                return pressedKeys[key];
+            });
             functionsAndTypes.addFunction("rgb", [
                 { name: "red", type: Compiler_3.NumberType },
                 { name: "green", type: Compiler_3.NumberType },
@@ -9146,6 +9169,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 var ctx = this.context;
                 ctx.fillStyle = "black";
                 ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.canvas.focus();
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.type = "canvas";
@@ -9158,7 +9182,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 entries: [],
                 subCategories: [
                     {
-                        name: "Clearing and showing the canvas",
+                        name: "Clearing, reading, and showing the canvas",
                         desc: "These functions let you clear the canvas and show it.",
                         entries: [
                             {
@@ -9170,6 +9194,11 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                                 anchor: "canvas-show",
                                 name: "<code>show()</code>",
                                 desc: "Displays everything that has been drawn so far on the canvas, then waits until the next time the whole canvas needs to be redrawn."
+                            },
+                            {
+                                anchor: "canvas-get-pixel",
+                                name: "<code>getPixel(x: number, y: number): string</code>",
+                                desc: "Returns the pixel color at position <code>(x, y)</code> as a color string. The string is of the format <code>#rrggbb</code>, e.g. <code>#000000</code> for black, <code>#ff0000</code> for the color red, etc."
                             }
                         ],
                         subCategories: []
@@ -9253,8 +9282,8 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                         subCategories: []
                     },
                     {
-                        name: "Mouse and touch input",
-                        desc: "These functions let check where the mouse cursor or finger is on the canvas.",
+                        name: "Mouse, touch, and keyboard input input",
+                        desc: "These functions let check where the mouse cursor or finger is on the canvas, and what keys have been pressed.",
                         entries: [
                             {
                                 anchor: "canvas-get-mouse-x",
@@ -9270,6 +9299,11 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                                 anchor: "canvas-is-mouse-button-down",
                                 name: "<code>isMouseButtonDown(): boolean</code>",
                                 desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
+                            },
+                            {
+                                anchor: "canvas-is-key-pressed",
+                                name: "<code>isKeyPressed(key: string): boolean</code>",
+                                desc: "Returns whether the <code>key</code> is pressed. The key is either a single letter string like <code>\"a\"</code>, or, if a special key like a cursor key was pressed, the name of that special key. Common special key names are <code>\"ArrowLeft\"</code>, <code>\"ArrowRight\"</code>, <code>\"ArrowUp\"</code>, and <code>\"ArrowDown</code> for the arrow keys, <code>\"Escape\"</code> for the escape key, and <code>\"Enter\"</code> for the enter key. The space key is returned as the string <code>\" \"</code> (a string with a space in it). See the <a href=\"https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values\">the key values table</a> for the names of other special keys."
                             },
                         ],
                         subCategories: []

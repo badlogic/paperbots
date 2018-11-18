@@ -1084,7 +1084,12 @@ define("widgets/Debugger", ["require", "exports", "widgets/Widget", "widgets/Eve
                         if (pc_1 < slot.scope.startPc || pc_1 > slot.scope.endPc)
                             return;
                         var dom = $("\n\t\t\t\t\t\t<div class=\"pb-debugger-local\">\n\t\t\t\t\t\t</div>\n\t\t\t\t\t");
-                        dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+                        if (slot.symbol.type.kind == "primitive") {
+                            dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+                        }
+                        else if (slot.symbol.type.kind == "record") {
+                            dom.text(slot.symbol.name.value + ": record");
+                        }
                         dom.click(function () {
                             var location = slot.symbol.name.location;
                             _this.bus.event(new events.Select(location.start.line, location.start.column, location.end.line, location.end.column));

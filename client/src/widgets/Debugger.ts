@@ -382,7 +382,11 @@ export class Debugger extends Widget {
 						<div class="pb-debugger-local">
 						</div>
 					`);
-					dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+					if (slot.symbol.type.kind == "primitive") {
+						dom.text(slot.symbol.name.value + ": " + JSON.stringify(slot.value));
+					} else if (slot.symbol.type.kind == "record") {
+						dom.text(slot.symbol.name.value + ": record");
+					}
 					dom.click(() => {
 						let location = slot.symbol.name.location;
 						this.bus.event(new events.Select(

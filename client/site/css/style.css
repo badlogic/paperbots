@@ -662,7 +662,9 @@ WIDGET STYLES
 }
 
 .compiler-error {
-	text-decoration: underline red;
+	text-decoration: red underline;
+	text-decoration-skip: none;
+	text-decoration-skip-ink: none;
 }
 
 /*------------------------------------------------------------------------

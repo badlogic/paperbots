@@ -3,7 +3,6 @@ import { Widget } from "./Widget"
 import { AssetManager, Input, InputListener, TimeKeeper, setElementEnabled, Map} from "../Utils"
 import * as compiler from "../language/Compiler"
 import * as vm from "../language/VirtualMachine"
-import * from "howler"
 import { NumberType, StringType, NothingType } from "../language/Compiler";
 import { DocCategory } from "./Docs";
 import { Dialog } from "./Dialog";
@@ -11,6 +10,7 @@ import { Dialog } from "./Dialog";
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
 	context: CanvasRenderingContext2D;
+	sounds: Array<Howl> = [];
 
 	constructor(bus: events.EventBus) {
 		super(bus);
@@ -216,8 +216,8 @@ export class CanvasWorld extends Widget {
 			if (!image[3]) return;
 			ctx.drawImage(image[3],x,y,width,height);
 		});
-		
-		
+
+
 		var mouseX = 0;
 		var mouseY = 0;
 		var mouseButtonDown = false;
@@ -294,91 +294,96 @@ export class CanvasWorld extends Widget {
 			blue = Math.max(0, Math.min(255, blue)) / 255;
 			return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 		});
+
 		let soundType = functionsAndTypes.addType("sound", [
 			{name: "url", type: StringType},
 			{name: "duration", type: NumberType},
-			{name: "volume",type: NumberType},
-			{name: "rate",type: NumberType}
 		], false);
-		
 
 		functionsAndTypes.addFunction("loadSound",[
 			{name:"url",type:StringType}
-		],soundType,true,(url)=>{
+		], soundType, true,(url: string) => {
 			var sound = new Howl({
 				src: [url, url]
-			  });
+			});
 			let asyncResult: vm.AsyncPromise<Array<any>> = {
 				completed: false,
-				value: null
-			}
+				value: null,
+				stopVirtualMachine: false
+			};
 			sound.on("load",()=>{
 				asyncResult.completed = true;
 				let record = [];
 				record[0] = url;
 				record[1] = sound.duration;
-				record[2] = sound.volume;
-				record[3] = sound.rate;
-				record[4] = sound;
+				record[2] = sound;
 				asyncResult.value = record;
-
+				this.sounds.push(sound);
 			});
 			sound.on("loaderror",()=>{
-				alert("Couldn't load sound " + url);
+				Dialog.alert("Error", $("Couldn't load sound " + url)).show();
 				asyncResult.completed = true;
 				let record = [];
 				record[0] = url;
 				record[1] = sound.duration;
-				record[2] = sound.volume;
-				record[3] = sound.rate;
-				record[4] = new Howl({
-					src: [url, url]
-					});
+				record[2] = {};
 				asyncResult.value = record;
 			});
-		
+
 			return asyncResult;
 
 		});
 
 		functionsAndTypes.addFunction("playSound",[
-			{name:"sound",type:soundType}
-		],NumberType,false,(sound)=>{
+			{name: "sound", type: soundType}
+		], NumberType, false, (sound) => {
 			return sound[sound.length-1].play();
 		});
+
 		functionsAndTypes.addFunction("stopSound",[
-			{name:"sound",type:soundType},
-			{name:"soundId",type:NumberType}
-		],NothingType,false,(sound,soundId)=>{
+			{name: "sound", type: soundType},
+			{name: "soundId", type: NumberType}
+		], NothingType, false, (sound, soundId) => {
 			sound[sound.length-1].stop(soundId);
 		});
-		
+
 		functionsAndTypes.addFunction("pauseSound",[
-			{name:"sound",type:soundType},
-			{name:"soundId",type:NumberType}
-		],NothingType,false,(sound,soundId)=>{
+			{name: "sound", type:soundType},
+			{name: "soundId", type:NumberType}
+		], NothingType, false, (sound, soundId) => {
 			sound[sound.length-1].pause(soundId);
 		});
-		functionsAndTypes.addFunction("setVolume",[
-			{name:"volume",type:NumberType},
-			{name:"sound",type:soundType},
-			{name:"soundId",type:NumberType}
-		],NothingType,false,(volume,sound,soundId)=>{
+
+		functionsAndTypes.addFunction("setSoundVolume",[
+			{name: "sound", type: soundType},
+			{name: "soundId", type: NumberType},
+			{name: "volume", type: NumberType}
+		], NothingType, false, (sound, soundId, volume) => {
 			sound[sound.length-1].volume(volume,soundId);
-
 		});
-		functionsAndTypes.addFunction("setRate",[
-			{name:"rate",type:NumberType},
-			{name:"sound",type:soundType},
-			{name:"soundId",type:NumberType}
-		],NothingType,false,(rate,sound,soundId)=>{
+
+		functionsAndTypes.addFunction("getSoundVolume",[
+			{name: "sound", type: soundType},
+			{name: "soundId", type: NumberType}
+		], NumberType, false, (sound, soundId) => {
+			(sound[sound.length-1] as Howl).volume(soundId);
+		});
+
+		functionsAndTypes.addFunction("setSoundRate",[
+			{name: "sound",type: soundType},
+			{name: "soundId",type: NumberType},
+			{name: "rate",type: NumberType}
+		], NothingType, false, (sound, soundId, rate) => {
 			sound[sound.length-1].rate(rate,soundId);
-
 		});
-	
 
+		functionsAndTypes.addFunction("getSoundRate",[
+			{name: "sound",type: soundType},
+			{name: "soundId",type: NumberType}
+		], NumberType, false, (rate, sound, soundId) => {
+			return (sound[sound.length-1] as Howl).rate();
+		});
 
-	
 		this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
 	}
 
@@ -388,6 +393,9 @@ export class CanvasWorld extends Widget {
 			ctx.fillStyle = "black";
 			ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 			this.canvas.focus();
+		} else if (event instanceof events.Stop) {
+			this.sounds.forEach(sound => sound.stop());
+			this.sounds.length = 0;
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.type = "canvas";
 		}
@@ -587,5 +595,5 @@ end</code>
 		this.bus.event(new events.AnnounceDocumentation(docs));
 	}
 
-	
+
 }

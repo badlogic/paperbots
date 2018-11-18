@@ -34,14 +34,14 @@ export class CanvasPage implements EventListener {
 	onEvent(event: Event) {
 		if (event instanceof SourceChanged) {
 			if (!this.sentSource) requestAnimationFrame(() => this.editor.setSource(`
-			var sound = loadSound("http://mo.flussbuero.at/music/hochgeladenes/do.mp3")
-			var id  = playSound(sound)
-			pause(5000)
-			setVolume(0.5,sound,id)
-			pause(5000)
-			setVolume(1,sound,id)
-			setRate(2,sound,id)
-			stopSound(sound,id)`));
+var sound = loadSound("http://mo.flussbuero.at/music/hochgeladenes/do.mp3")
+var id  = playSound(sound)
+pause(5000)
+setSoundVolume(sound, id, 0.5)
+pause(5000)
+setSoundVolume(sound, id, 1)
+setSoundRate(sound, id, 2)
+stopSound(sound, id)`));
 			this.sentSource = true;
 		}
 	}

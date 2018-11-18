@@ -420,6 +420,10 @@ WIDGET STYLES
 	position: relative;
 }
 
+#pb-docs * {
+	user-select: text !important;
+}
+
 #pb-docs h1 {
 	margin-top: 0;
 }
@@ -675,6 +679,10 @@ PAGE STYLES
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+}
+
+#pb-project-page * {
+	user-select: none;
 }
 
 #pb-embed-page {

@@ -8798,14 +8798,12 @@ define("widgets/SplitPane", ["require", "exports"], function (require, exports) 
                 _this.resize();
             }, true);
             var down = function (clientX) {
-                $("*").css("user-select", "none");
                 x = clientX;
                 splitX = divider[0].offsetLeft;
                 dragged = false;
                 registerMove();
             };
             var up = function (clientX) {
-                $("*").css("user-select", "initial");
                 if (_this.toggle.text() == ">")
                     lastSplitPercentage = divider[0].offsetLeft / _this.dom[0].clientWidth;
                 unregisterMove();

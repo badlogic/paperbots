@@ -61,14 +61,12 @@ export class SplitPane {
 
 		// General handlers, used by both mouse and touch event code.
 		var down = (clientX: number) => {
-			$("*").css("user-select", "none");
 			x = clientX;
 			splitX = divider[0].offsetLeft;
 			dragged = false;
 			registerMove();
 		}
 		var up = (clientX: number) => {
-			$("*").css("user-select", "initial");
 			if (this.toggle.text() == ">")
 				lastSplitPercentage = divider[0].offsetLeft / this.dom[0].clientWidth;
 			unregisterMove();

@@ -825,14 +825,12 @@ PAGE STYLES
 #pb-debugger-and-editor-and-docs {
 	display: flex;
 	height: 100%;
-	width: 100%;
 }
 
 #pb-editor-and-docs {
 	display: flex;
-	flex: 1;
 	flex-direction: column;
-    width: 0px;
+    min-width: 0px;
 }
 
 /*------------------------------------------------------------------------

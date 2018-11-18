@@ -367,7 +367,6 @@ WIDGET STYLES
 
 /* Robot world widget styles **/
 #pb-robot-world {
-	user-select: none !important;
 	padding: 0.5em;
 	max-width: 600px;
 	max-height: 600px;
@@ -422,6 +421,9 @@ WIDGET STYLES
 
 #pb-docs * {
 	user-select: text !important;
+	-moz-user-select: text !important;
+	-webkit-user-select: text !important;
+	-ms-user-select: text !important;
 }
 
 #pb-docs h1 {
@@ -608,6 +610,10 @@ WIDGET STYLES
 	padding: 0.5em;
 	font-size: 14px;
 	min-width: 0px;
+	user-select: text !important;
+	-moz-user-select: text !important;
+	-webkit-user-select: text !important;
+	-ms-user-select: text !important;
 }
 
 #pb-code-editor-running {
@@ -683,6 +689,9 @@ PAGE STYLES
 
 #pb-project-page * {
 	user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
 }
 
 #pb-embed-page {

@@ -1,15 +1,11 @@
 import { EventBus, EventListener, Event } from "./widgets/Events"
 import { Toolbar, ToolbarMode } from "./widgets/Toolbar";
-import { Api, Project } from "./Api";
-import { Dialog } from "./widgets/Dialog";
-import { Player } from "./widgets/Player";
-import { ProjectPreview } from "./widgets/ProjectPreview";
 
 export class LearnPage implements EventListener {
 	private eventBus = new EventBus();
 	private toolbar = new Toolbar(this.eventBus, ToolbarMode.UserPage);
 
-	constructor (parent: HTMLElement) {
+	constructor (parent: JQuery) {
 		// Register the components
 		this.eventBus.addListener(this);
 		this.eventBus.addListener(this.toolbar);
@@ -39,7 +35,7 @@ export class LearnPage implements EventListener {
 			</div>
 		`);
 
-		$(parent).append(dom);
+		parent.append(dom);
 	}
 
 	onEvent(event: Event) {

@@ -45,9 +45,9 @@ export class Editor extends Widget {
 				styleActiveLine: true,
 				styleActiveSelected: true,
 				lineNumbers: true,
+				scrollBarStyle: "native",
 				gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
 				fixedGutter: true,
-
 				theme: "monokai"
 			});
 

@@ -12,10 +12,11 @@
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
 <body style="height: 100vh; padding: 0;">
+	<div id="index-scroll"></div>
 	<script>
 		require(["IndexPage"], function(module) {
 			var paperbots = module;
-			var editor = new paperbots.IndexPage($("body"));
+			var editor = new paperbots.IndexPage($("#index-scroll"));
 		});
 	</script>
 </body>

@@ -198,6 +198,7 @@ export class Debugger extends Widget {
 		}, false);
 
 		dom.find("input").attr("disabled", "true");
+
 		return dom[0];
 	}
 

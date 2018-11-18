@@ -16,10 +16,11 @@
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
 <body style="height: 100vh; padding: 0;">
+	<div id="project-scroll"></div>
 	<script>
 		require(["ProjectPage"], function(module) {
 			var paperbots = module;
-			var editor = new paperbots.ProjectPage($("body"));
+			var editor = new paperbots.ProjectPage($("#project-scroll"));
 		});
 	</script>
 </body>

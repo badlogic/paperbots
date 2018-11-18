@@ -9,7 +9,7 @@ export class AdminPage implements EventListener {
 	private projects: Project[] = [];
 	private fetching = false;
 
-	constructor (parent: HTMLElement) {
+	constructor (parent: JQuery) {
 		// Register the components
 		this.eventBus.addListener(this);
 		this.eventBus.addListener(this.toolbar);
@@ -29,10 +29,9 @@ export class AdminPage implements EventListener {
 
 		this.fetchProjects(dom.find(".pb-project-list"));
 		window.onscroll = () => {
-			var scrollHeight, totalHeight;
-			scrollHeight = document.body.scrollHeight;
-			totalHeight = window.scrollY + window.innerHeight;
-			if(totalHeight >= scrollHeight) {
+			let scrollHeight = document.body.scrollHeight;
+			let totalHeight = window.scrollY + window.innerHeight;
+			if(totalHeight>= scrollHeight - 100) {
 				this.fetchProjects(dom.find(".pb-project-list"));
 			}
 		}

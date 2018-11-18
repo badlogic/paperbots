@@ -7643,6 +7643,7 @@ define("widgets/Editor", ["require", "exports", "widgets/Widget", "widgets/Event
                     styleActiveLine: true,
                     styleActiveSelected: true,
                     lineNumbers: true,
+                    scrollBarStyle: "native",
                     gutters: ["gutter-breakpoints", "CodeMirror-linenumbers"],
                     fixedGutter: true,
                     theme: "monokai"
@@ -9792,10 +9793,9 @@ define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             $(parent).append(dom);
             this.fetchProjects(dom.find(".pb-project-list"));
             window.onscroll = function () {
-                var scrollHeight, totalHeight;
-                scrollHeight = document.body.scrollHeight;
-                totalHeight = window.scrollY + window.innerHeight;
-                if (totalHeight >= scrollHeight) {
+                var scrollHeight = document.body.scrollHeight;
+                var totalHeight = window.scrollY + window.innerHeight;
+                if (totalHeight >= scrollHeight - 100) {
                     _this.fetchProjects(dom.find(".pb-project-list"));
                 }
             };
@@ -9927,7 +9927,24 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
     }());
     exports.CanvasPage = CanvasPage;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_6, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_6, Toolbar_3) {
+    "use strict";
+    exports.__esModule = true;
+    var DevsPage = (function () {
+        function DevsPage(parent) {
+            this.eventBus = new Events_6.EventBus();
+            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            $(this.toolbar.render()).insertBefore($(parent).find("#pb-devs-page"));
+        }
+        DevsPage.prototype.onEvent = function (event) {
+        };
+        return DevsPage;
+    }());
+    exports.DevsPage = DevsPage;
+});
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_7, RobotWorld_2, Compiler_5, VirtualMachine_2) {
     "use strict";
     exports.__esModule = true;
     var Player = (function (_super) {
@@ -9935,7 +9952,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
         function Player(project, autoplay, showSourceLink, bus) {
             if (autoplay === void 0) { autoplay = false; }
             if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_6.EventBus(); }
+            if (bus === void 0) { bus = new Events_7.EventBus(); }
             var _this = _super.call(this, bus) || this;
             _this.project = project;
             _this.autoplay = autoplay;
@@ -9962,7 +9979,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                     requestAnimationFrame(advanceVm);
                 }
                 else {
-                    _this.bus.event(new Events_6.Stop());
+                    _this.bus.event(new Events_7.Stop());
                     _this.vm.restart();
                     _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                     stop.hide();
@@ -9971,7 +9988,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             };
             var run = dom.find("#pb-player-run");
             run.click(function () {
-                _this.bus.event(new Events_6.Run());
+                _this.bus.event(new Events_7.Run());
                 stop.show();
                 run.hide();
                 _this.vm.restart();
@@ -9980,7 +9997,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             var stop = dom.find("#pb-player-stop");
             stop.hide();
             stop.click(function () {
-                _this.bus.event(new Events_6.Stop());
+                _this.bus.event(new Events_7.Stop());
                 _this.vm.restart();
                 _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                 stop.hide();
@@ -9989,7 +10006,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             try {
                 var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
                 this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
-                this.bus.event(new Events_6.ProjectLoaded(this.project));
+                this.bus.event(new Events_7.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
             }
@@ -10000,55 +10017,13 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_6.AnnounceExternalFunctions) {
+            if (event instanceof Events_7.AnnounceExternalFunctions) {
                 this.extFuncs = event.functions;
             }
         };
         return Player;
     }(Widget_8.Widget));
     exports.Player = Player;
-});
-define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_7, RobotWorld_3) {
-    "use strict";
-    exports.__esModule = true;
-    var ProjectPreview = (function (_super) {
-        __extends(ProjectPreview, _super);
-        function ProjectPreview(project) {
-            var _this = _super.call(this, new Events_7.EventBus()) || this;
-            _this.project = project;
-            _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
-            _this.world.setWorldData(project.contentObject.world);
-            return _this;
-        }
-        ProjectPreview.prototype.render = function () {
-            this.bus.addListener(this);
-            this.bus.addListener(this.world);
-            var dom = $("\n\t\t\t<div class=\"pb-preview-widget\">\n\t\t\t</div>\n\t\t");
-            dom.append(this.world.render());
-            return dom[0];
-        };
-        ProjectPreview.prototype.onEvent = function (event) {
-        };
-        return ProjectPreview;
-    }(Widget_9.Widget));
-    exports.ProjectPreview = ProjectPreview;
-});
-define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_8, Toolbar_3) {
-    "use strict";
-    exports.__esModule = true;
-    var DevsPage = (function () {
-        function DevsPage(parent) {
-            this.eventBus = new Events_8.EventBus();
-            this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
-            this.eventBus.addListener(this);
-            this.eventBus.addListener(this.toolbar);
-            $(this.toolbar.render()).insertBefore($(parent).find("#pb-devs-page"));
-        }
-        DevsPage.prototype.onEvent = function (event) {
-        };
-        return DevsPage;
-    }());
-    exports.DevsPage = DevsPage;
 });
 define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_8) {
     "use strict";
@@ -10067,12 +10042,12 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_5, Dialog_9, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_4, Api_5, Dialog_9, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_9.EventBus();
+            this.eventBus = new Events_8.EventBus();
             this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -10104,19 +10079,19 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_10, Toolbar_5) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_9, Toolbar_5) {
     "use strict";
     exports.__esModule = true;
     var LearnPage = (function () {
         function LearnPage(parent) {
-            this.eventBus = new Events_10.EventBus();
+            this.eventBus = new Events_9.EventBus();
             this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-learn-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share them with your friends, and they can share\n\t\t\t\t\t\ttheir programs with you!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the Paperbots course\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Create interesting programs\n\t\t\t\t\t\tso others can learn and remix them.</p>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            $(parent).append(dom);
+            parent.append(dom);
         }
         LearnPage.prototype.onEvent = function (event) {
         };
@@ -10124,13 +10099,13 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_11, Toolbar_6, Api_6, Dialog_10, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_10, Toolbar_6, Api_6, Dialog_10, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
         function UserPage(parent) {
             var _this = this;
-            this.eventBus = new Events_11.EventBus();
+            this.eventBus = new Events_10.EventBus();
             this.toolbar = new Toolbar_6.Toolbar(this.eventBus, Toolbar_6.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -10223,6 +10198,31 @@ define("tests/TreeWidgetTest", ["require", "exports"], function (require, export
         return TreeWidgetTest;
     }());
     exports.TreeWidgetTest = TreeWidgetTest;
+});
+define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld"], function (require, exports, Widget_9, Events_11, RobotWorld_3) {
+    "use strict";
+    exports.__esModule = true;
+    var ProjectPreview = (function (_super) {
+        __extends(ProjectPreview, _super);
+        function ProjectPreview(project) {
+            var _this = _super.call(this, new Events_11.EventBus()) || this;
+            _this.project = project;
+            _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
+            _this.world.setWorldData(project.contentObject.world);
+            return _this;
+        }
+        ProjectPreview.prototype.render = function () {
+            this.bus.addListener(this);
+            this.bus.addListener(this.world);
+            var dom = $("\n\t\t\t<div class=\"pb-preview-widget\">\n\t\t\t</div>\n\t\t");
+            dom.append(this.world.render());
+            return dom[0];
+        };
+        ProjectPreview.prototype.onEvent = function (event) {
+        };
+        return ProjectPreview;
+    }(Widget_9.Widget));
+    exports.ProjectPreview = ProjectPreview;
 });
 define("widgets/TreeWidget", ["require", "exports"], function (require, exports) {
     "use strict";

@@ -416,6 +416,7 @@ WIDGET STYLES
 	padding: 0 1em 0 1em;
 	background: #1e1e1e;
 	overflow: auto;
+	overflow-x: hidden;
 	position: relative;
 }
 
@@ -673,6 +674,7 @@ PAGE STYLES
 	height: 100vh;
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
 #pb-embed-page {
@@ -830,6 +832,7 @@ PAGE STYLES
 #pb-editor-and-docs {
 	display: flex;
 	flex-direction: column;
+	flex: 1;
     min-width: 0px;
 }
 

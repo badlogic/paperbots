@@ -12,10 +12,11 @@
 	<link rel="stylesheet" type="text/css" href="css/style.css" />
 </head>
 <body style="height: 100vh; padding: 0;">
+	<div id="user-scroll"></div>
 	<script>
 		require(["UserPage"], function(module) {
 			var paperbots = module;
-			var editor = new paperbots.UserPage($("body"));
+			var editor = new paperbots.UserPage($("#user-scroll"));
 		});
 	</script>
 </body>

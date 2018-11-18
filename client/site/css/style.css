@@ -596,6 +596,13 @@ WIDGET STYLES
 	flex: 1;
 }
 
+#pb-code-editor-code-mirror-wrapper * {
+	user-select: text !important;
+	-moz-user-select: text !important;
+	-webkit-user-select: text !important;
+	-ms-user-select: text !important;
+}
+
 #pb-code-editor-code-mirror {
 	position: absolute;
 	width: 100%;

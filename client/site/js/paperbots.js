@@ -9161,6 +9161,78 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 blue = Math.max(0, Math.min(255, blue)) / 255;
                 return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
             });
+            var soundType = functionsAndTypes.addType("sound", [
+                { name: "url", type: Compiler_3.StringType },
+                { name: "duration", type: Compiler_3.NumberType },
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "rate", type: Compiler_3.NumberType }
+            ], false);
+            functionsAndTypes.addFunction("loadSound", [
+                { name: "url", type: Compiler_3.StringType }
+            ], soundType, true, function (url) {
+                var sound = new Howl({
+                    src: [url, url]
+                });
+                var asyncResult = {
+                    completed: false,
+                    value: null
+                };
+                sound.on("load", function () {
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = sound;
+                    asyncResult.value = record;
+                });
+                sound.on("loaderror", function () {
+                    alert("Couldn't load sound " + url);
+                    asyncResult.completed = true;
+                    var record = [];
+                    record[0] = url;
+                    record[1] = sound.duration;
+                    record[2] = sound.volume;
+                    record[3] = sound.rate;
+                    record[4] = new Howl({
+                        src: [url, url]
+                    });
+                    asyncResult.value = record;
+                });
+                return asyncResult;
+            });
+            functionsAndTypes.addFunction("playSound", [
+                { name: "sound", type: soundType }
+            ], Compiler_3.NumberType, false, function (sound) {
+                return sound[sound.length - 1].play();
+            });
+            functionsAndTypes.addFunction("stopSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].stop(soundId);
+            });
+            functionsAndTypes.addFunction("pauseSound", [
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (sound, soundId) {
+                sound[sound.length - 1].pause(soundId);
+            });
+            functionsAndTypes.addFunction("setVolume", [
+                { name: "volume", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (volume, sound, soundId) {
+                sound[sound.length - 1].volume(volume, soundId);
+            });
+            functionsAndTypes.addFunction("setRate", [
+                { name: "rate", type: Compiler_3.NumberType },
+                { name: "sound", type: soundType },
+                { name: "soundId", type: Compiler_3.NumberType }
+            ], Compiler_3.NothingType, false, function (rate, sound, soundId) {
+                sound[sound.length - 1].rate(rate, soundId);
+            });
             this.bus.event(new events.AnnounceExternalFunctions(functionsAndTypes));
         };
         CanvasWorld.prototype.onEvent = function (event) {
@@ -9917,7 +9989,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
             var _this = this;
             if (event instanceof Events_5.SourceChanged) {
                 if (!this.sentSource)
-                    requestAnimationFrame(function () { return _this.editor.setSource("\nvar img = loadImage(\"https://avatars1.githubusercontent.com/u/514052?s=88&v=4\")\n\nwhile true do\n\tclear(\"black\")\n\tvar x = getMouseX()\n\tvar y = getMouseY()\n\n\tvar start = time()\n\n\trepeat 1000 times\n\t\tdrawImage(img, random() * 960, random() * 510, img.width, img.height)\n\tend\n\n\tif isMouseButtonDown() then\n\t\tdrawRectangle(x, y, img.width, img.height, \"red\")\n\telse\n\t\tdrawRectangle(x, y, img.width, img.height, \"green\")\n\tend\n\n\tdrawText(toString(truncate((time() - start) * 1000)) .. \"ms\", 100, 100, 43, \"Arial\", \"red\")\n\n\tshow()\nend\n\t\t\t"); });
+                    requestAnimationFrame(function () { return _this.editor.setSource("\n\t\t\tvar sound = loadSound(\"http://mo.flussbuero.at/music/hochgeladenes/do.mp3\")\n\t\t\tvar id  = playSound(sound)\n\t\t\tpause(5000)\n\t\t\tsetVolume(0.5,sound,id)\n\t\t\tpause(5000)\n\t\t\tsetVolume(1,sound,id)\n\t\t\tsetRate(2,sound,id)\n\t\t\tstopSound(sound,id)"); });
                 this.sentSource = true;
             }
         };

@@ -1,0 +1,27 @@
+	
+		functionsAndTypes.addFunction("loadSound",[
+			{name:"url",type:StringType}
+		],StringType,true,(url)=>{
+			var sound = new Howl();
+			let asyncResult: vm.AsyncPromise<Array<any>> = {
+				completed: false,
+				value: null
+			}
+			sound.onload = () =>{
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = url;
+				record[1] = sound;
+				asyncResult.value = record;
+			}
+			sound.onerror = () =>{
+				alert("Couldn't load sound "+ url);
+				asyncResult.completed = true;
+				let record = [];
+				record[0] = url;
+				record[1] = new Howl();
+				asyncResult.value = record;
+			}
+			sound.src = url;
+			return asyncResult;
+		});

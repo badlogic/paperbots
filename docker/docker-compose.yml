@@ -7,6 +7,7 @@ services:
         volumes:
             - ./nginx.conf:/etc/nginx/conf.d/default.conf
             - ./data/web:/www
+            - ./data/files:/files
             - ./data/logs:/logs
         environment:
             VIRTUAL_HOST: paperbots.io,www.paperbots.io
@@ -32,6 +33,7 @@ services:
             - PAPERBOTS_DB_JDBC_URL=${PAPERBOTS_DB_JDBC_URL}
             - PAPERBOTS_DB_USER=${PAPERBOTS_DB_USER}
             - PAPERBOTS_DB_PWD=${PAPERBOTS_DB_PWD}
+            - PAPERBOTS_FILES_DIR=${PAPERBOTS_FILES_DIR}
     mysql:
         image: mysql:5.7.22
         container_name: paperbots_mysql

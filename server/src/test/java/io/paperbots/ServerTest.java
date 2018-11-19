@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.paperbots.Config.FilesConfig;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.Server.ErrorResponse;
 import io.paperbots.Server.SignupRequest;
@@ -38,9 +39,10 @@ public class ServerTest {
 	@ClassRule public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
 
 	@BeforeClass
-	public static void setup () {
+	public static void setup () throws IOException {
 		final Config.DatabaseConfig config = new Config.DatabaseConfig(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
-		server = new Server(new Paperbots(Database.setupDatabase(config, true), emails), false, new File("../client"));
+		server = new Server(new Paperbots(Database.setupDatabase(config, true), emails,
+			new Files(new FilesConfig(java.nio.file.Files.createTempDirectory("paperbots").toFile().getAbsolutePath()))), false, new File("../client"));
 	}
 
 	@AfterClass

@@ -2,8 +2,10 @@
 package io.paperbots;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -60,7 +62,8 @@ public class Paperbots {
 
 			Jdbi jdbi = Database.setupDatabase(config.getDatabaseConfig(), false);
 			Emails emails = new Emails.JavaxEmails(config.getEmailConfig());
-			Paperbots paperbots = new Paperbots(jdbi, emails);
+			Files files = new Files(config.getFilesConfig());
+			Paperbots paperbots = new Paperbots(jdbi, emails, files);
 			new Server(paperbots, parsed.has(reloadArg), staticFiles);
 		} catch (Throwable e) {
 			Log.error(e.getMessage(), e);
@@ -72,10 +75,16 @@ public class Paperbots {
 
 	private final Emails emails;
 	private final Jdbi jdbi;
+	private final Files files;
 
-	public Paperbots (Jdbi jdbi, Emails emails) {
+	public Paperbots (Jdbi jdbi, Emails emails, Files files) {
 		this.jdbi = jdbi;
 		this.emails = emails;
+		this.files = files;
+	}
+
+	public Files getFiles () {
+		return files;
 	}
 
 	public void signup (String name, String email, UserType type) {
@@ -274,6 +283,30 @@ public class Paperbots {
 				}
 			} catch (IllegalStateException t) {
 				throw new PaperbotsException(PaperbotsError.ServerError, t);
+			}
+		});
+	}
+
+	public void saveThumbnail (String token, String code, String thumbnail) {
+		if (!thumbnail.startsWith("data:image/png;base64,")) throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+		thumbnail = thumbnail.substring("data:image/png;base64,".length());
+		byte[] decodedThumbnail;
+		try {
+			decodedThumbnail = Base64.getDecoder().decode(thumbnail.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			throw new PaperbotsException(PaperbotsError.ServerError, "Couldn't decode thumbnail", e);
+		}
+		User user = getUserForToken(token);
+		jdbi.withHandle(handle -> {
+			try {
+				Project project = handle.createQuery("SELECT userName FROM projects WHERE code=:code").bind("code", code).mapToBean(Project.class).findOnly();
+				if (!project.getUserName().equals(user.getName())) {
+					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+				}
+				files.saveFile(code + ".png", decodedThumbnail);
+				return null;
+			} catch (Throwable t) {
+				throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 			}
 		});
 	}

@@ -7189,6 +7189,13 @@ define("Api", ["require", "exports", "Utils"], function (require, exports, Utils
                 error(e);
             });
         };
+        Api.saveThumbnail = function (projectId, thumbnail, success, error) {
+            this.request("api/savethumbnail", { projectId: projectId, thumbnail: thumbnail }, function (r) {
+                success();
+            }, function (e) {
+                error(e);
+            });
+        };
         Api.deleteProject = function (projectId, success, error) {
             this.request("api/deleteproject", { projectId: projectId }, function () {
                 success();
@@ -7577,8 +7584,9 @@ define("widgets/Events", ["require", "exports"], function (require, exports) {
     }());
     exports.ProjectLoaded = ProjectLoaded;
     var BeforeSaveProject = (function () {
-        function BeforeSaveProject(project) {
+        function BeforeSaveProject(project, thumbnail) {
             this.project = project;
+            this.thumbnail = thumbnail;
         }
         return BeforeSaveProject;
     }());
@@ -8902,6 +8910,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
         function CanvasWorld(bus) {
             var _this = _super.call(this, bus) || this;
             _this.sounds = [];
+            _this.pressedKeys = {};
             return _this;
         }
         CanvasWorld.prototype.render = function () {
@@ -8921,7 +8930,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                 var el = canvas[0];
                 if (el.width != 960) {
                     el.width = 960;
-                    el.height = 510;
+                    el.height = 540;
                 }
                 requestAnimationFrame(canvasResize);
             };
@@ -9079,6 +9088,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                         asyncResult.value = record;
                     });
                 };
+                image.crossOrigin = "anonymous";
                 image.src = url;
                 return asyncResult;
             });
@@ -9134,18 +9144,17 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             functionsAndTypes.addFunction("isMouseButtonDown", [], compiler.BooleanType, false, function () {
                 return mouseButtonDown;
             });
-            var pressedKeys = {};
             canvas.addEventListener("keypress", function (ev) {
                 console.log("Press: " + JSON.stringify(ev));
             });
             canvas.addEventListener("keydown", function (ev) {
-                pressedKeys[ev.key] = true;
+                _this.pressedKeys[ev.key] = true;
             });
             canvas.addEventListener("keyup", function (ev) {
-                pressedKeys[ev.key] = false;
+                _this.pressedKeys[ev.key] = false;
             });
             functionsAndTypes.addFunction("isKeyDown", [{ name: "key", type: Compiler_3.StringType }], compiler.BooleanType, false, function (key) {
-                return pressedKeys[key];
+                return _this.pressedKeys[key];
             });
             functionsAndTypes.addFunction("rgb", [
                 { name: "red", type: Compiler_3.NumberType },
@@ -9258,15 +9267,41 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             else if (event instanceof events.Stop) {
                 this.sounds.forEach(function (sound) { return sound.stop(); });
                 this.sounds.length = 0;
+                this.pressedKeys = {};
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.type = "canvas";
+                try {
+                    var canvas = document.createElement("canvas");
+                    canvas.width = 192;
+                    canvas.height = 108;
+                    var sx = 0, sy = 0, sw = 0, sh = 0;
+                    var ratio = canvas.height / canvas.width;
+                    if (ratio * this.canvas.width <= this.canvas.height) {
+                        sw = this.canvas.width;
+                        sh = this.canvas.width * ratio;
+                        sx = 0;
+                        sy = this.canvas.height / 2 - sh / 2;
+                    }
+                    else {
+                        sh = this.canvas.height;
+                        sw = this.canvas.height * canvas.width / canvas.height;
+                        sx = this.canvas.width / 2 - sw / 2;
+                        sy = 0;
+                    }
+                    var ctx = canvas.getContext("2d");
+                    ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+                    event.thumbnail = canvas.toDataURL();
+                }
+                catch (e) {
+                    console.log(e);
+                }
             }
         };
         CanvasWorld.prototype.announceDocs = function () {
             var docs = {
                 name: "Canvas program functions & types",
-                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
+                desc: "\n\t\t\t\t<p>\n\t\t\t\t\tUse these functions and types to draw shapes and images and get input from the mouse and keyboard!\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYour program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide\n\t\t\t\t\tand 540 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tThe <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tA pixel also has a color consisting of a red, green, and blue component. Each color component can have a value between <code>0</code> (no contribution) and <code>255</code> (full contribution). The final color of a pixel is calculated by the graphics card of your computer. Like a painter, it mixes the 3 colors red, green, and blue according to their contribution.\n\t\t\t\t<p>\n\t\t\t\t\tMost of the drawing functions expect you to specify a color as a <code>string</code>. For example, you can specify the color red as <code>\"red\"</code>, the color yellow as <code>\"yellow\"</code> and so on. There's a total of 140 color names you can pick from. See this handy <a target=\"_blank\" href=\"https://www.w3schools.com/colors/colors_names.asp\">color name table</a> for what color names are available.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tIf you want to create a color from its red, green, and blue components directly, you can use the <code>rgb(red: number, green: number, blue: number): string</code> function. E.g. <code>rgb(255, 0, 0)</code> would create the color red. <code>rgb(0, 255, 255)</code> would create the color yellow.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can do more than draw a still image with a canvas program! A computer redraws the screen\n\t\t\t\t\tdozens of times per second (usually somewhere between 60 and 120 times, depending on your display). If you want to do animation in your program, you have to draw a new image to the canvas that often as well. Here's an example:\n\t\t\t\t</p><pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nvar x = 0\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, x, 100, kittenImage.width / 5, kittenImage.height / 5)\n   show()\n   x = x + 2\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThis program loads a kitten image, and moves it across the screen, from the left to the right by 2 pixels every frame. The <code>show()</code> function displays everything we've drawn so far and waits until the next time we need to redraw the entire canvas.\n\t\t\t\t</p>\n\t\t\t\t<p>\n\t\t\t\t\tYou can also get input from your user via the mouse and keyboard! When the mouse cursor (or a finger on the touch screen) is over the canvas, you can call the <code>getMouseX()</code> and <code>getMouseY()</code> functions to get the <code>(x, y)</code> coordinate of the mouse cursor (or finger) relative to the canvas. Here's a program that draws the kitty at the mouse (or finger) position:\n\t\t\t\t</p>\n<pre><code>var kittenImage = loadImage(\"img/kitten.png\")\nwhile true do\n   clear(\"white\")\n   drawImage(kittenImage, getMouseX(), getMouseY(), kittenImage.width / 5, kittenImage.height / 5)\n   show()\nend</code>\n</pre>\n\t\t\t\t<p>\n\t\t\t\t\tThere are many more functions to get user input, see below!\n\t\t\t\t</p>\n\t\t\t",
                 entries: [],
                 subCategories: [
                     {
@@ -9798,7 +9833,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     title: _this.title.val(),
                     userName: Api_2.Api.getUserName(),
                     type: "robot"
-                });
+                }, null);
                 _this.bus.event(saveProject);
                 try {
                     saveProject.project.content = JSON.stringify(saveProject.project.contentObject);
@@ -9817,6 +9852,13 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     dialog.hide();
                     history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
                     _this.bus.event(new Events_3.ProjectSaved());
+                    if (saveProject.thumbnail) {
+                        Api_2.Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, function () {
+                            console.log("Saved thumbnail for " + saveProject.project.code);
+                        }, function () {
+                            console.log("Couldn't save thumbnail for " + saveProject.project.code);
+                        });
+                    }
                 }, function (error) {
                     _this.serverErrorDialog();
                     dialog.hide();

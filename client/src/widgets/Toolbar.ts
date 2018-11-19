@@ -385,7 +385,7 @@ export class Toolbar extends Widget {
 				title: this.title.val() as string,
 				userName: Api.getUserName(),
 				type: "robot"
-			});
+			}, null);
 
 			// All other components can now write to contentObject
 			this.bus.event(saveProject);
@@ -406,6 +406,14 @@ export class Toolbar extends Widget {
 				dialog.hide();
 				history.pushState(null, document.title, Api.getProjectUrl(projectCode))
 				this.bus.event(new ProjectSaved());
+
+				if (saveProject.thumbnail) {
+					Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, () => {
+						console.log("Saved thumbnail for " + saveProject.project.code);
+					}, () => {
+						console.log("Couldn't save thumbnail for " + saveProject.project.code);
+					});
+				}
 			}, (error) => {
 				this.serverErrorDialog();
 				dialog.hide();

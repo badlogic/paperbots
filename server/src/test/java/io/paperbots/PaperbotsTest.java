@@ -3,11 +3,14 @@ package io.paperbots;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.MySQLContainer;
 
+import io.paperbots.Config.FilesConfig;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.User;
@@ -20,9 +23,10 @@ public class PaperbotsTest {
 	@ClassRule public static MySQLContainer mysql = new MySQLContainer().withDatabaseName("paperbots");
 
 	@BeforeClass
-	public static void setup () {
+	public static void setup () throws IOException {
 		final Config.DatabaseConfig config = new Config.DatabaseConfig(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
-		paperbots = new Paperbots(Database.setupDatabase(config, true), emails);
+		paperbots = new Paperbots(Database.setupDatabase(config, true), emails,
+			new Files(new FilesConfig(java.nio.file.Files.createTempDirectory("paperbots").toFile().getAbsolutePath())));
 	}
 
 	@Test

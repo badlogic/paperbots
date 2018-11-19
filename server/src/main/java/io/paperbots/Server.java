@@ -142,6 +142,11 @@ public class Server {
 			ctx.json(new ProjectRequest(projectId));
 		});
 
+		app.post("/api/savethumbnail", ctx -> {
+			SaveThumbnailRequest request = ctx.bodyAsClass(SaveThumbnailRequest.class);
+			paperbots.saveThumbnail(ctx.cookie("token"), request.projectId, request.thumbnail);
+		});
+
 		app.post("/api/deleteproject", ctx -> {
 			ProjectRequest request = ctx.bodyAsClass(ProjectRequest.class);
 			paperbots.deleteProject(ctx.cookie("token"), request.projectId);
@@ -251,6 +256,20 @@ public class Server {
 		public ProjectRequest (String projectId) {
 			super();
 			this.projectId = projectId;
+		}
+	}
+
+	public static class SaveThumbnailRequest {
+		public String projectId;
+		public String thumbnail;
+
+		public SaveThumbnailRequest () {
+		}
+
+		public SaveThumbnailRequest (String projectId, String thumbnail) {
+			super();
+			this.projectId = projectId;
+			this.thumbnail = thumbnail;
 		}
 	}
 

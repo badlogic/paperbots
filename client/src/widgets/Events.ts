@@ -21,7 +21,7 @@ export class LoggedIn { };
 export class LoggedOut { };
 
 export class ProjectLoaded { constructor(public project: Project) { } }
-export class BeforeSaveProject { constructor(public project: Project) { } }
+export class BeforeSaveProject { constructor(public project: Project, public thumbnail: string) { } }
 export class ProjectSaved { }
 export class ProjectChanged { }
 

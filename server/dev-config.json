@@ -11,5 +11,8 @@
 		"jdbcUrl": "jdbc:mysql://127.0.0.1/paperbots",
 		"user": "root",
 		"password": "123"
-	}	
+	},
+	"filesConfig": {
+		"uploadDir": "files"
+	}
 }

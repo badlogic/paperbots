@@ -33,13 +33,15 @@ public class Config {
 	private final String reloadPassword;
 	private final EmailConfig emailConfig;
 	private final DatabaseConfig databaseConfig;
+	private final FilesConfig filesConfig;
 
 	@JsonCreator
 	public Config (@JsonProperty("reloadPassword") String reloadPassword, @JsonProperty("emailConfig") EmailConfig emailConfig,
-		@JsonProperty("databaseConfig") DatabaseConfig databaseConfig) {
+		@JsonProperty("databaseConfig") DatabaseConfig databaseConfig, FilesConfig filesConfig) {
 		this.reloadPassword = Optional.ofNullable(reloadPassword).orElseThrow( () -> new AssertionError("Reload password configuration missing"));
 		this.emailConfig = emailConfig;
 		this.databaseConfig = databaseConfig;
+		this.filesConfig = filesConfig;
 	}
 
 	public EmailConfig getEmailConfig () {
@@ -48,6 +50,10 @@ public class Config {
 
 	public DatabaseConfig getDatabaseConfig () {
 		return databaseConfig;
+	}
+
+	public FilesConfig getFilesConfig () {
+		return filesConfig;
 	}
 
 	public String getReloadPassword () {
@@ -71,7 +77,8 @@ public class Config {
 		return new Config(System.getenv("PAPERBOTS_RELOAD_PWD"),
 			new EmailConfig(System.getenv("PAPERBOTS_EMAIL_HOST"), Integer.parseInt(System.getenv("PAPERBOTS_EMAIL_PORT")),
 				System.getenv("PAPERBOTS_EMAIL_ADDRESS"), System.getenv("PAPERBOTS_EMAIL_PWD"), Boolean.parseBoolean(System.getenv("PAPERBOTS_EMAIL_SSL"))),
-			new DatabaseConfig(System.getenv("PAPERBOTS_DB_JDBC_URL"), System.getenv("PAPERBOTS_DB_USER"), System.getenv("PAPERBOTS_DB_PWD")));
+			new DatabaseConfig(System.getenv("PAPERBOTS_DB_JDBC_URL"), System.getenv("PAPERBOTS_DB_USER"), System.getenv("PAPERBOTS_DB_PWD")),
+			new FilesConfig(System.getenv("PAPERBOTS_FILES_DIR")));
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
@@ -107,8 +114,8 @@ public class Config {
 			return password;
 		}
 
-		public Boolean getSslEnabled() {
-			return sslEnabled!=null?sslEnabled:false;
+		public Boolean getSslEnabled () {
+			return sslEnabled != null ? sslEnabled : false;
 		}
 	}
 
@@ -135,6 +142,20 @@ public class Config {
 
 		public String getPassword () {
 			return password;
+		}
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class FilesConfig {
+		private final String filesDir;
+
+		@JsonCreator
+		public FilesConfig (@JsonProperty("filesDir") String filesDir) {
+			this.filesDir = Optional.ofNullable(filesDir).orElseThrow( () -> new IllegalArgumentException("Files directory is missing."));
+		}
+
+		public String getFilesDir () {
+			return filesDir;
 		}
 	}
 }

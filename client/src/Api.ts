@@ -103,6 +103,15 @@ export class Api {
 		});
 	}
 
+	static saveThumbnail(projectId: string, thumbnail: string, success: () => void, error: (error: RequestError) => void): any {
+		this.request("api/savethumbnail", {projectId: projectId, thumbnail: thumbnail},
+		(r: {projectId: string}) => {
+			success();
+		}, (e: RequestError) => {
+			error(e);
+		});
+	}
+
 	public static deleteProject(projectId: string, success: () => void, error: () => void) {
 		this.request("api/deleteproject", { projectId: projectId },
 		( ) => {

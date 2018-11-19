@@ -398,7 +398,7 @@ WIDGET STYLES
 /* Canvas world widget styles */
 #pb-canvas-world {
     max-width: 990px;
-    max-height: 510px;
+    max-height: 540px;
     width: 100%;
     padding: 0 15px;
 }

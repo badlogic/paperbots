@@ -6,11 +6,13 @@ import * as vm from "../language/VirtualMachine"
 import { NumberType, StringType, NothingType } from "../language/Compiler";
 import { DocCategory } from "./Docs";
 import { Dialog } from "./Dialog";
+import { Api } from "../Api";
 
 export class CanvasWorld extends Widget {
 	canvas: HTMLCanvasElement;
 	context: CanvasRenderingContext2D;
 	sounds: Array<Howl> = [];
+	pressedKeys: Map<boolean> = {};
 
 	constructor(bus: events.EventBus) {
 		super(bus);
@@ -39,7 +41,7 @@ export class CanvasWorld extends Widget {
 			let el = canvas[0] as HTMLCanvasElement
 			if (el.width != 960) {
 				el.width = 960;
-				el.height = 510;
+				el.height = 540;
 			}
 			requestAnimationFrame(canvasResize)
 		}
@@ -199,6 +201,7 @@ export class CanvasWorld extends Widget {
 					asyncResult.value = record;
 				});
 			}
+			image.crossOrigin = "anonymous";
 			image.src = url;
 			return asyncResult;
 		});
@@ -255,21 +258,20 @@ export class CanvasWorld extends Widget {
 			return mouseButtonDown;
 		});
 
-		var pressedKeys: Map<boolean> = {};
 		canvas.addEventListener("keypress", (ev: KeyboardEvent) => {
 			console.log("Press: " + JSON.stringify(ev));
 		});
 
 		canvas.addEventListener("keydown", (ev: KeyboardEvent) => {
-			pressedKeys[ev.key] = true;
+			this.pressedKeys[ev.key] = true;
 		});
 
 		canvas.addEventListener("keyup", (ev: KeyboardEvent) => {
-			pressedKeys[ev.key] = false;
+			this.pressedKeys[ev.key] = false;
 		});
 
 		functionsAndTypes.addFunction("isKeyDown",[{name: "key", type: StringType}],compiler.BooleanType,false,(key: string)=>{
-			return pressedKeys[key];
+			return this.pressedKeys[key];
 		});
 
 		functionsAndTypes.addFunction("rgb", [
@@ -396,8 +398,32 @@ export class CanvasWorld extends Widget {
 		} else if (event instanceof events.Stop) {
 			this.sounds.forEach(sound => sound.stop());
 			this.sounds.length = 0;
+			this.pressedKeys = {};
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.type = "canvas";
+			try {
+				let canvas = document.createElement("canvas");
+				canvas.width = 192;
+				canvas.height = 108;
+				var sx = 0, sy = 0, sw = 0, sh = 0;
+				let ratio = canvas.height / canvas.width;
+				if (ratio * this.canvas.width <= this.canvas.height) {
+					sw = this.canvas.width;
+					sh = this.canvas.width * ratio;
+					sx = 0;
+					sy = this.canvas.height / 2 - sh / 2;
+				} else {
+					sh = this.canvas.height;
+					sw = this.canvas.height * canvas.width / canvas.height;
+					sx = this.canvas.width / 2 - sw / 2;
+					sy = 0;
+				}
+				let ctx = canvas.getContext("2d");
+				ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+				event.thumbnail = canvas.toDataURL();
+			} catch (e) {
+				console.log(e);
+			}
 		}
 	}
 
@@ -410,7 +436,7 @@ export class CanvasWorld extends Widget {
 				</p>
 				<p>
 					Your program can draw to, and receive user input from the canvas. The canvas is always 960 pixels wide
-					and 510 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.
+					and 540 pixels high.A pixel can be located by its <code>(x, y)</code> coordinate.
 				</p>
 				<p>
 					The <code>x</code> coordinate can be between <code>0</code> (left most pixel) and <code>959</code> (right most pixel). The <code>y</code> coordinate can be between <code>0</code> (top most pixel) and <code>509</code> (bottom most pixel). Most of the drawing functions expect you to specify coodinates and sizes in pixels.

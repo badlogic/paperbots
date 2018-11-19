@@ -9088,7 +9088,6 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                         asyncResult.value = record;
                     });
                 };
-                image.crossOrigin = "anonymous";
                 image.src = url;
                 return asyncResult;
             });

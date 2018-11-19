@@ -201,7 +201,6 @@ export class CanvasWorld extends Widget {
 					asyncResult.value = record;
 				});
 			}
-			image.crossOrigin = "anonymous";
 			image.src = url;
 			return asyncResult;
 		});

@@ -3,3 +3,4 @@
 *.iml
 docker/data/
 scripts/report.html
+server/files

@@ -303,7 +303,7 @@ public class Paperbots {
 				if (!project.getUserName().equals(user.getName())) {
 					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 				}
-				files.saveFile(code + ".png", decodedThumbnail);
+				files.saveThumbnail(code, decodedThumbnail);
 				return null;
 			} catch (Throwable t) {
 				throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);

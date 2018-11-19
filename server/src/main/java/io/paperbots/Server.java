@@ -29,7 +29,8 @@ public class Server {
 	public Server (Paperbots paperbots, boolean reload, File staticFiles) {
 		if (!staticFiles.exists()) throw new RuntimeException("Static file directory '" + staticFiles.getPath() + "' does not exist.");
 
-		app = Javalin.create().enableStaticFiles(staticFiles.getAbsolutePath(), Location.EXTERNAL);
+		app = Javalin.create().enableStaticFiles(staticFiles.getAbsolutePath(), Location.EXTERNAL)
+			.enableStaticFiles(paperbots.getFiles().getFilesDir().getAbsolutePath(), Location.EXTERNAL);
 
 		// Websockets for local development
 		if (reload) {

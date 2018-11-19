@@ -11,20 +11,37 @@ import io.paperbots.PaperbotsException.PaperbotsError;
 public class Files {
 	private final FilesConfig config;
 	private final File filesDir;
+	private final File thumbnailsDir;
 
 	public Files (FilesConfig config) {
 		this.config = config;
 		this.filesDir = new File(config.getFilesDir());
 		if (this.filesDir.exists() && this.filesDir.isFile())
 			throw new IllegalArgumentException("Files directory " + config.getFilesDir() + " must be a directory, not a file.");
-		if (!this.filesDir.exists() && !this.filesDir.mkdirs()) throw new IllegalArgumentException("Couldn't delete files directory " + config.getFilesDir());
+		if (!this.filesDir.exists() && !this.filesDir.mkdirs()) throw new IllegalArgumentException("Couldn't create directory " + config.getFilesDir());
+		thumbnailsDir = new File(this.filesDir, "thumbnails");
+		if (!this.thumbnailsDir.exists() && !this.thumbnailsDir.mkdirs())
+			throw new IllegalArgumentException("Couldn't create directory " + this.thumbnailsDir.getParent());
 	}
 
-	public void saveFile (String fileName, byte[] content) {
+	public FilesConfig getConfig () {
+		return config;
+	}
+
+	public File getFilesDir () {
+		return filesDir;
+	}
+
+	public void saveThumbnail (String projectId, byte[] content) {
+		if (projectId.contains("..")) throw new PaperbotsException(PaperbotsError.ServerError, "Couldn't write file");
+		saveFile(new File(this.thumbnailsDir, projectId + ".png"), content);
+	}
+
+	private void saveFile (File file, byte[] content) {
 		try {
-			java.nio.file.Files.write(new File(filesDir, fileName).toPath(), content);
+			java.nio.file.Files.write(file.toPath(), content);
 		} catch (IOException e) {
-			throw new PaperbotsException(PaperbotsError.ServerError, "Couldn't write file " + fileName, e);
+			throw new PaperbotsException(PaperbotsError.ServerError, "Couldn't write file", e);
 		}
 	}
 }

@@ -19,13 +19,21 @@ if [ -z $PAPERBOTS_DB_PWD ] ; then echo "Specify \$PAPERBOTS_DB_PWD"; exit -1; f
 if [ -z $PAPERBOTS_DB_PORT ] ; then echo "Specify \$PAPERBOTS_DB_PORT"; exit -1; fi
 if [ -z $GDRIVE_FOLDER ] ; then echo "Specify \$GDRIVE_FOLDER"; exit -1; fi
 
-DUMP_FILE="paperbots-`date +%F`.sql"
-ZIP_DUMP_FILE="$DUMP_FILE.tar.gz"
-echo "Dumping paperbots database to $DUMP_FILE"
-ssh -l $SERVER_USER $SERVER_HOST "echo $SERVER_PWD | sudo -S docker exec $PAPERBOTS_DB_CONTAINER mysqldump --default-character-set=utf8mb4 -uroot -p$PAPERBOTS_DB_PWD --port $PAPERBOTS_DB_PORT paperbots" > $DUMP_FILE
+# MySQL dump
+MYSQL_DUMP_FILE="paperbots-`date +%F`.sql"
+ZIP_DUMP_FILE="$MYSQL_DUMP_FILE.tar.gz"
+echo "Dumping paperbots database to $MYSQL_DUMP_FILE"
+ssh -l $SERVER_USER $SERVER_HOST "echo $SERVER_PWD | sudo -S docker exec $PAPERBOTS_DB_CONTAINER mysqldump --default-character-set=utf8mb4 -uroot -p$PAPERBOTS_DB_PWD --port $PAPERBOTS_DB_PORT paperbots" > $MYSQL_DUMP_FILE
 echo "Uploading $DUMP_FILE to GDrive"
-tar -czvf $ZIP_DUMP_FILE $DUMP_FILE
+tar -czvf $ZIP_DUMP_FILE $MYSQL_DUMP_FILE
 gdrive upload -p $GDRIVE_FOLDER $ZIP_DUMP_FILE
-rm $DUMP_FILE
+rm $MYSQL_DUMP_FILE
 rm $ZIP_DUMP_FILE
+
+# Files dump
+FILES_DUMP_FILE=paperbots-`date +%F`-files.tar.gz
+ssh -l $SERVER_USER $SERVER_HOST "rm -f paperbots-files.tar.gz && tar -C paperbots.io/docker/data/ -czvf paperbots-files.tar.gz files"
+scp $SERVER_USER@$SERVER_HOST:/home/$SERVER_USER/paperbots-files.tar.gz $FILES_DUMP_FILE
+gdrive upload -p $GDRIVE_FOLDER $FILES_DUMP_FILE
+rm $FILES_DUMP_FILE
 

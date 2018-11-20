@@ -1,4 +1,4 @@
-FROM openjdk:slim
+FROM openjdk:10-jdk-slim
 
 WORKDIR /
 

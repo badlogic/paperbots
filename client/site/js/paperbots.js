@@ -7251,6 +7251,9 @@ define("Api", ["require", "exports", "Utils"], function (require, exports, Utils
         Api.getProjectUrl = function (name) {
             return Utils_4.escapeHtml("/project.html?id=" + name);
         };
+        Api.getImageProxyUrl = function (url) {
+            return "/api/proxyimage?url=" + url;
+        };
         Api.getUrlParameter = function (name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -8902,7 +8905,7 @@ define("widgets/Description", ["require", "exports", "widgets/Widget"], function
     }(Widget_5.Widget));
     exports.Description = Description;
 });
-define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler", "widgets/Dialog"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3, Dialog_4) {
+define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/Widget", "Utils", "language/Compiler", "language/Compiler", "widgets/Dialog", "Api"], function (require, exports, events, Widget_6, Utils_7, compiler, Compiler_3, Dialog_4, Api_1) {
     "use strict";
     exports.__esModule = true;
     var CanvasWorld = (function (_super) {
@@ -9088,7 +9091,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                         asyncResult.value = record;
                     });
                 };
-                image.src = url;
+                image.src = Api_1.Api.getImageProxyUrl(url);
                 return asyncResult;
             });
             functionsAndTypes.addFunction("drawImage", [
@@ -9438,7 +9441,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
     }(Widget_6.Widget));
     exports.CanvasWorld = CanvasWorld;
 });
-define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_1, Dialog_5, CanvasWorld_1) {
+define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "widgets/Debugger", "widgets/Editor", "widgets/RobotWorld", "widgets/SplitPane", "widgets/Docs", "widgets/Description", "Api", "widgets/Dialog", "widgets/CanvasWorld"], function (require, exports, Events_2, Toolbar_1, Debugger_1, Editor_1, RobotWorld_1, SplitPane_1, Docs_1, Description_1, Api_2, Dialog_5, CanvasWorld_1) {
     "use strict";
     exports.__esModule = true;
     var ProjectPage = (function () {
@@ -9496,12 +9499,12 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var splitPane = new SplitPane_1.SplitPane(editorAndDebugger, this.playgroundAndDescription);
             dom.append(splitPane.dom);
             $(parent).append(dom);
-            var projectId = Api_1.Api.getProjectId();
+            var projectId = Api_2.Api.getProjectId();
             if (projectId) {
                 this.loadProject(projectId);
             }
             else {
-                var projectType = Api_1.Api.getProjectType();
+                var projectType = Api_2.Api.getProjectType();
                 this.setupWorld(projectType);
             }
             window.onbeforeunload = function () {
@@ -9532,7 +9535,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
             var spinner = content.find("#pb-spinner");
             var dialog = new Dialog_5.Dialog("Loading", content[0], []);
             dialog.show();
-            Api_1.Api.loadProject(id, function (project) {
+            Api_2.Api.loadProject(id, function (project) {
                 dialog.hide();
                 _this.setupWorld(project.type);
                 _this.eventBus.event(new Events_2.ProjectLoaded(project));
@@ -9563,7 +9566,7 @@ define("ProjectPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"
     }());
     exports.ProjectPage = ProjectPage;
 });
-define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_6, Api_2, Utils_8) {
+define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/Dialog", "Api", "Utils"], function (require, exports, Widget_7, Events_3, Dialog_6, Api_3, Utils_8) {
     "use strict";
     exports.__esModule = true;
     var ToolbarMode;
@@ -9612,7 +9615,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             });
             this.profile = dom.find("#pb-toolbar-profile");
             dom.find("#pb-toolbar-logout").click(function () {
-                Api_2.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
+                Api_3.Api.logout(function () { _this.bus.event(new Events_3.LoggedOut()); }, function () { _this.serverErrorDialog(); });
             });
             this.setupLoginAndUser();
             window.onclick = function (event) {
@@ -9649,13 +9652,13 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             return dom[0];
         };
         Toolbar.prototype.setupLoginAndUser = function () {
-            var userName = Api_2.Api.getUserName();
+            var userName = Api_3.Api.getUserName();
             if (userName) {
                 this.login.hide();
                 this.signup.hide();
                 this.user.find("#pb-user-name").text(userName);
                 this.user.show();
-                this.profile.attr("href", Api_2.Api.getUserUrl(Api_2.Api.getUserName()));
+                this.profile.attr("href", Api_3.Api.getUserUrl(Api_3.Api.getUserName()));
             }
             else {
                 this.login.show();
@@ -9694,7 +9697,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_2.Api.login(emailOrUser.val(), function () {
+                Api_3.Api.login(emailOrUser.val(), function () {
                     dialog.hide();
                     _this.verifyDialog();
                 }, function (userDoesNotExist) {
@@ -9728,7 +9731,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_2.Api.verify(emailOrUser.val(), function () {
+                Api_3.Api.verify(emailOrUser.val(), function () {
                     dialog.hide();
                     _this.bus.event(new Events_3.LoggedIn());
                 }, function (invalidCode) {
@@ -9764,7 +9767,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 dialog.hide();
             });
             dialog.buttons[1].click(function () {
-                Api_2.Api.signup(email.val(), name.val(), function () {
+                Api_3.Api.signup(email.val(), name.val(), function () {
                     dialog.hide();
                     _this.verifyDialog();
                 }, function (reqError) {
@@ -9808,7 +9811,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         };
         Toolbar.prototype.saveProject = function () {
             var _this = this;
-            if (!Api_2.Api.getUserName()) {
+            if (!Api_3.Api.getUserName()) {
                 Dialog_6.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
                 return;
             }
@@ -9822,7 +9825,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 var dialog = new Dialog_6.Dialog("Saving", content[0], []);
                 dialog.show();
                 var saveProject = new Events_3.BeforeSaveProject({
-                    code: _this.loadedProject && _this.loadedProject.userName == Api_2.Api.getUserName() ? Api_2.Api.getProjectId() : null,
+                    code: _this.loadedProject && _this.loadedProject.userName == Api_3.Api.getUserName() ? Api_3.Api.getProjectId() : null,
                     contentObject: {},
                     content: null,
                     created: null,
@@ -9830,7 +9833,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     lastModified: null,
                     public: true,
                     title: _this.title.val(),
-                    userName: Api_2.Api.getUserName(),
+                    userName: Api_3.Api.getUserName(),
                     type: "robot"
                 }, null);
                 _this.bus.event(saveProject);
@@ -9843,16 +9846,16 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     Dialog_6.Dialog.alert("Sorry", $("<p>An error occured while saving the project.<p>")).show();
                     return;
                 }
-                Api_2.Api.saveProject(saveProject.project, function (projectCode) {
+                Api_3.Api.saveProject(saveProject.project, function (projectCode) {
                     if (!_this.loadedProject)
                         _this.loadedProject = saveProject.project;
                     _this.loadedProject.code = projectCode;
-                    _this.loadedProject.userName = Api_2.Api.getUserName();
+                    _this.loadedProject.userName = Api_3.Api.getUserName();
                     dialog.hide();
-                    history.pushState(null, document.title, Api_2.Api.getProjectUrl(projectCode));
+                    history.pushState(null, document.title, Api_3.Api.getProjectUrl(projectCode));
                     _this.bus.event(new Events_3.ProjectSaved());
                     if (saveProject.thumbnail) {
-                        Api_2.Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, function () {
+                        Api_3.Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, function () {
                             console.log("Saved thumbnail for " + saveProject.project.code);
                         }, function () {
                             console.log("Couldn't save thumbnail for " + saveProject.project.code);
@@ -9863,8 +9866,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     dialog.hide();
                 });
             };
-            if (this.loadedProject && this.loadedProject.userName != Api_2.Api.getUserName()) {
-                Dialog_6.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
+            if (this.loadedProject && this.loadedProject.userName != Api_3.Api.getUserName()) {
+                Dialog_6.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
                     internalSave();
                 }).show();
             }
@@ -9889,8 +9892,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             else if (event instanceof Events_3.ProjectLoaded) {
                 this.loadedProject = event.project;
                 this.title.val(Utils_8.unescapeHtml(event.project.title));
-                if (this.loadedProject.userName != Api_2.Api.getUserName()) {
-                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_2.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
+                if (this.loadedProject.userName != Api_3.Api.getUserName()) {
+                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
                 }
                 else {
                     this.by.html("");
@@ -9904,7 +9907,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_3, Dialog_7) {
+define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_4, Dialog_7) {
     "use strict";
     exports.__esModule = true;
     var AdminPage = (function () {
@@ -9933,7 +9936,7 @@ define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             if (this.fetching)
                 return;
             console.log("Fetching");
-            Api_3.Api.getProjectsAdmin("Newest", this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
+            Api_4.Api.getProjectsAdmin("Newest", this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
                 _this.renderProjects(projectListDom, projects);
                 _this.fetching = false;
             }, function () {
@@ -9946,7 +9949,7 @@ define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             var _this = this;
             projects.forEach(function (project) {
                 _this.projects.push(project);
-                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_3.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>User:</td><td><a href=\"" + Api_3.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></td></tr>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t");
+                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_4.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>User:</td><td><a href=\"" + Api_4.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></td></tr>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t");
                 dom.append(projectDom);
             });
         };
@@ -10153,16 +10156,16 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
     }(Widget_8.Widget));
     exports.Player = Player;
 });
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_4, Dialog_8) {
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_5, Dialog_8) {
     "use strict";
     exports.__esModule = true;
     var EmbeddedPage = (function () {
         function EmbeddedPage(parent) {
             var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
-            Api_4.Api.loadProject(Api_4.Api.getProjectId(), function (project) {
+            Api_5.Api.loadProject(Api_5.Api.getProjectId(), function (project) {
                 dom.append(new Player_1.Player(project).render());
             }, function () {
-                Dialog_8.Dialog.alert("Sorry", $("Could not load project " + Api_4.Api.getProjectId()));
+                Dialog_8.Dialog.alert("Sorry", $("Could not load project " + Api_5.Api.getProjectId()));
             });
             parent.append(dom);
         }
@@ -10170,7 +10173,7 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_4, Api_5, Dialog_9, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_4, Api_6, Dialog_9, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
@@ -10182,18 +10185,18 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" width=\"390px\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<h1 style=\"text-align: center\">Want to learn how to code?</h1>\n\t\t\t\t<div style=\"margin-bottom: 2em;\">\n\t\t\t\t\t<a class=\"pb-button\" href=\"/learn.html\">Teach me how to code</a>\n\t\t\t\t\t<a class=\"pb-button\" href=\"/devs.html\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share your programs with your friends!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the <a href=\"/learn.html\">Paperbots course</a>\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Read the <a href=\"/for-devs.html\">language documentation</a>, then create interesting programs\n\t\t\t\t\t\tothers can remix and learn from.</p>\n\t\t\t\t</div>\n\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            Api_5.Api.loadProject("IgMlfr", function (project) {
+            Api_6.Api.loadProject("IgMlfr", function (project) {
                 dom.find("#pb-index-page-example").append(new Player_2.Player(project, true, true).render());
             }, function () { });
             $(parent).append(dom);
-            var projectId = Api_5.Api.getUrlParameter("projectId");
+            var projectId = Api_6.Api.getUrlParameter("projectId");
             if (projectId) {
                 window.location = "/project.html?id=" + projectId;
             }
-            Api_5.Api.getFeaturedProjects(function (projects) {
+            Api_6.Api.getFeaturedProjects(function (projects) {
                 var featured = dom.find(".pb-index-page-featured");
                 projects.forEach(function (project) {
-                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_5.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_6.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_6.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
                     card.find(".pb-featured-card-player").append(new Player_2.Player(project, false, false).render());
                     featured.append(card);
                 });
@@ -10227,7 +10230,7 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_10, Toolbar_6, Api_6, Dialog_10, Player_3) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_10, Toolbar_6, Api_7, Dialog_10, Player_3) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
@@ -10240,7 +10243,7 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
-            var userId = Api_6.Api.getUserId();
+            var userId = Api_7.Api.getUserId();
             if (!userId) {
                 var dialog = Dialog_10.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
@@ -10249,7 +10252,7 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 dialog.show();
             }
             else {
-                Api_6.Api.getUserProjects(userId, true, function (projects) {
+                Api_7.Api.getUserProjects(userId, true, function (projects) {
                     _this.renderUser(dom, userId, projects);
                 }, function (error) {
                 });
@@ -10263,13 +10266,13 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                     project.contentObject = JSON.parse(project.content);
                     var preview = new Player_3.Player(project, false, false).render();
                     projectDom.append(preview);
-                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_6.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    if (project.userName == Api_6.Api.getUserName()) {
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_7.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_7.Api.getUserName()) {
                         var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
                         projectDom.append(deleteButton);
                         deleteButton.click(function () {
                             Dialog_10.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
-                                Api_6.Api.deleteProject(project.code, function () {
+                                Api_7.Api.deleteProject(project.code, function () {
                                     projectDom.fadeOut(1000);
                                 }, function () {
                                     Dialog_10.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));

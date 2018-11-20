@@ -2,6 +2,10 @@
 package io.paperbots;
 
 import java.io.File;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,6 +17,7 @@ import io.javalin.staticfiles.Location;
 import io.javalin.websocket.WsHandler;
 import io.javalin.websocket.WsSession;
 import io.marioslab.basis.site.FileWatcher;
+import io.marioslab.basis.template.TemplateLoader.StreamUtils;
 import io.paperbots.Paperbots.Sorting;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
@@ -21,6 +26,8 @@ import io.paperbots.data.ProjectType;
 import io.paperbots.data.UserType;
 
 import javax.servlet.http.Cookie;
+
+import org.apache.commons.compress.utils.IOUtils;
 
 public class Server {
 	private boolean isRunning = false;
@@ -176,6 +183,22 @@ public class Server {
 			Log.info(e.getMessage(), e);
 			ctx.json(new ErrorResponse(PaperbotsError.ServerError));
 			ctx.status(500);
+		});
+
+		// Proxy images to avoid tainted canvases when thumbnailing
+		app.get("/api/proxyimage", ctx -> {
+			String url = ctx.queryParam("url");
+			URLConnection connection = new URL(url).openConnection();
+			connection.connect();
+			String contentType = connection.getHeaderField("Content-Type");
+			if (!contentType.startsWith("image/")) {
+				ctx.status(404);
+				return;
+			}
+			ctx.contentType(contentType);
+			try (InputStream in = connection.getInputStream()) {
+				in.transferTo(ctx.res.getOutputStream());
+			}
 		});
 
 		// Admin endpoints

@@ -23,7 +23,6 @@ export interface Project {
 }
 
 export class Api {
-
 	private static request <Data, Response>(endpoint: string, data: Data, success: (r: Response) => void, error: (e: RequestError) => void) {
 		$.ajax({
 			url: endpoint,
@@ -182,6 +181,10 @@ export class Api {
 
 	public static getProjectUrl(name: string) {
 		return escapeHtml("/project.html?id=" + name);
+	}
+
+	static getImageProxyUrl(url: string): string {
+		return "/api/proxyimage?url=" + url;
 	}
 
 	public static getUrlParameter(name) {

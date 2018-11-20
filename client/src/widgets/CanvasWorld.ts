@@ -201,7 +201,7 @@ export class CanvasWorld extends Widget {
 					asyncResult.value = record;
 				});
 			}
-			image.src = url;
+			image.src = Api.getImageProxyUrl(url);
 			return asyncResult;
 		});
 		functionsAndTypes.addFunction("drawImage",[

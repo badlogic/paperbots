@@ -173,7 +173,7 @@ export class CanvasWorld extends Widget {
 
 		functionsAndTypes.addFunction("loadImage",[
 			{name: "url", type: StringType}
-		], imageType, true, (url) => {
+		], imageType, true, (url: string) => {
 			var image = new Image();
 			let asyncResult: vm.AsyncPromise<Array<any>> = {
 				completed: false,
@@ -201,7 +201,8 @@ export class CanvasWorld extends Widget {
 					asyncResult.value = record;
 				});
 			}
-			image.src = Api.getImageProxyUrl(url);
+			if (url.indexOf("data") == 0) image.src = url;
+			else image.src = Api.getImageProxyUrl(url);
 			return asyncResult;
 		});
 		functionsAndTypes.addFunction("drawImage",[

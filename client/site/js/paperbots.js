@@ -9091,7 +9091,10 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
                         asyncResult.value = record;
                     });
                 };
-                image.src = Api_1.Api.getImageProxyUrl(url);
+                if (url.indexOf("data") == 0)
+                    image.src = url;
+                else
+                    image.src = Api_1.Api.getImageProxyUrl(url);
                 return asyncResult;
             });
             functionsAndTypes.addFunction("drawImage", [

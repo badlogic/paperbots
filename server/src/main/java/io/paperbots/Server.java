@@ -22,12 +22,9 @@ import io.paperbots.Paperbots.Sorting;
 import io.paperbots.Paperbots.TokenAndName;
 import io.paperbots.PaperbotsException.PaperbotsError;
 import io.paperbots.data.Project;
-import io.paperbots.data.ProjectType;
 import io.paperbots.data.UserType;
 
 import javax.servlet.http.Cookie;
-
-import org.apache.commons.compress.utils.IOUtils;
 
 public class Server {
 	private boolean isRunning = false;

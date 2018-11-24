@@ -6,8 +6,7 @@ cache:
 matrix:
   include:
   - language: java
-    jdk:
-      - oraclejdk11
+    jdk: oraclejdk11
     sudo: required
     services:
       - docker

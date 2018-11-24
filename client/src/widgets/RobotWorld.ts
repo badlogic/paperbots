@@ -58,9 +58,9 @@ export class RobotWorld extends Widget {
 		if (this.noTools) this.container.find("#pb-robot-world-tools").hide();
 		this.canvas = this.container.find("#pb-robot-world-canvas")[0] as HTMLCanvasElement;
 		this.ctx = this.canvas.getContext("2d");
-		this.assets.loadImage("img/wall.png");
-		this.assets.loadImage("img/floor.png");
-		this.assets.loadImage("img/robot.png");
+		this.assets.loadImage("/img/wall.png");
+		this.assets.loadImage("/img/floor.png");
+		this.assets.loadImage("/img/robot.png");
 
 		let tools = this.container.find("#pb-robot-world-tools input");
 		for (var i = 0; i < tools.length; i++) {
@@ -610,6 +610,7 @@ export class RobotWorld extends Widget {
 			this.lastFrameTime = -1;
 			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.ProjectLoaded) {
+			this.worldData = JSON.parse(JSON.stringify(event.project.contentObject.world));
 			this.world = new World(event.project.contentObject.world);
 			requestAnimationFrame(() => {this.draw(0)});
 		} else if (event instanceof events.BeforeSaveProject) {
@@ -715,7 +716,7 @@ export class RobotWorld extends Widget {
 
 				switch(obj.kind) {
 					case "wall":
-						img = this.assets.getImage("img/wall.png");
+						img = this.assets.getImage("/img/wall.png");
 						break;
 					case "number":
 						this.drawText("" + obj.value, wx, wy, "#97b757");
@@ -731,7 +732,7 @@ export class RobotWorld extends Widget {
 		}
 
 		let robot = this.world.robot;
-		this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
+		this.drawRotatedImage(this.assets.getImage("/img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
 
 		/*ctx.beginPath();
 		ctx.strokeStyle = "#ff0000";

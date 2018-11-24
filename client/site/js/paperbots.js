@@ -7877,9 +7877,9 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 this.container.find("#pb-robot-world-tools").hide();
             this.canvas = this.container.find("#pb-robot-world-canvas")[0];
             this.ctx = this.canvas.getContext("2d");
-            this.assets.loadImage("img/wall.png");
-            this.assets.loadImage("img/floor.png");
-            this.assets.loadImage("img/robot.png");
+            this.assets.loadImage("/img/wall.png");
+            this.assets.loadImage("/img/floor.png");
+            this.assets.loadImage("/img/robot.png");
             var tools = this.container.find("#pb-robot-world-tools input");
             for (var i = 0; i < tools.length; i++) {
                 $(tools[i]).click(function (tool) {
@@ -8435,6 +8435,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 requestAnimationFrame(function () { _this.draw(0); });
             }
             else if (event instanceof events.ProjectLoaded) {
+                this.worldData = JSON.parse(JSON.stringify(event.project.contentObject.world));
                 this.world = new World(event.project.contentObject.world);
                 requestAnimationFrame(function () { _this.draw(0); });
             }
@@ -8530,7 +8531,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                     var wy = y * cellSize;
                     switch (obj.kind) {
                         case "wall":
-                            img = this.assets.getImage("img/wall.png");
+                            img = this.assets.getImage("/img/wall.png");
                             break;
                         case "number":
                             this.drawText("" + obj.value, wx, wy, "#97b757");
@@ -8545,7 +8546,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                 }
             }
             var robot = this.world.robot;
-            this.drawRotatedImage(this.assets.getImage("img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
+            this.drawRotatedImage(this.assets.getImage("/img/robot.png"), robot.data.x * cellSize + cellSize * 0.05, robot.data.y * cellSize + cellSize * 0.05, cellSize * 0.9, cellSize * 0.9, robot.data.angle);
             ctx.restore();
         };
         RobotWorld.prototype.drawGrid = function () {

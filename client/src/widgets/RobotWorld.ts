@@ -116,7 +116,7 @@ export class RobotWorld extends Widget {
 							Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
 						}
 					}, () => {
-					});
+					}).show();
 				} else if (this.selectedTool == "Letter") {
 					Dialog.prompt("Prompt", "Please enter a letter", (letter) => {
 						letter = letter.trim();
@@ -128,7 +128,7 @@ export class RobotWorld extends Widget {
 							requestAnimationFrame(() => {this.draw(0)});
 						}
 					}, () => {
-					});
+					}).show();
 				} else if (this.selectedTool == "Robot") {
 					if (this.world.robot.data.x != x || this.world.robot.data.y != y) {
 						this.world.robot.data.x = Math.max(0, Math.min(World.WORLD_SIZE - 1, x));

@@ -458,7 +458,7 @@ export class ExternalFunctionsTypesConstants {
 					value: null,
 					stopVirtualMachine: false
 				}
-				let dialog = new Dialog("Program says", $("<p>" + escapeHtml(value) + "</p>")[0], ["Stop", "OK"]);
+				let dialog = new Dialog("Program says", $("<p>" + escapeHtml(value) + "</p>")[0], [{text: "Stop", key: -1}, {text: "OK", key: 13}]);
 				dialog.buttons[0].click(() => {
 					asyncResult.stopVirtualMachine = true;
 					asyncResult.completed = true;
@@ -483,7 +483,7 @@ export class ExternalFunctionsTypesConstants {
 					value: null,
 					stopVirtualMachine: false
 				}
-				let dialog = new Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
+				let dialog = new Dialog("Program says", $("<p>" + value + "</p>")[0], [{text: "Stop", key: -1}, {text: "OK", key: 13}]);
 				dialog.buttons[0].click(() => {
 					asyncResult.stopVirtualMachine = true;
 					asyncResult.completed = true;
@@ -508,7 +508,7 @@ export class ExternalFunctionsTypesConstants {
 					value: null,
 					stopVirtualMachine: false
 				}
-				let dialog = new Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
+				let dialog = new Dialog("Program says", $("<p>" + value + "</p>")[0], [{text: "Stop", key: -1}, {text: "OK", key: 13}]);
 				dialog.buttons[0].click(() => {
 					asyncResult.stopVirtualMachine = true;
 					asyncResult.completed = true;

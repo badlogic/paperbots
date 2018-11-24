@@ -168,7 +168,7 @@ export class Toolbar extends Widget {
 			(window.location as any) = "/project.html?type=canvas";
 		});
 
-		let dialog = new Dialog("New Project", content[0], ["Cancel"]);
+		let dialog = new Dialog("New Project", content[0], [{text: "Cancel", key: 27}]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});
@@ -192,7 +192,7 @@ export class Toolbar extends Widget {
 		let error = content.find("#pb-error");
 		error.hide();
 
-		let dialog = new Dialog("Log in", content[0], ["Cancel", "Log in"]);
+		let dialog = new Dialog("Log in", content[0], [{text: "Cancel", key: 27}, {text: "Log in", key: 13}]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});
@@ -239,7 +239,7 @@ export class Toolbar extends Widget {
 		let error = content.find("#pb-error");
 		error.hide();
 
-		let dialog = new Dialog("Magic code", content[0], ["Cancel", "Log in"]);
+		let dialog = new Dialog("Magic code", content[0], [{text: "Cancel", key: 27}, {text: "Log in", key: 13}]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});
@@ -290,7 +290,7 @@ export class Toolbar extends Widget {
 		let error = content.find("#pb-error");
 		error.hide();
 
-		let dialog = new Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
+		let dialog = new Dialog("Sign up", content[0], [{text: "Cancel", key: 27}, {text: "Sign up", key: 13}]);
 		dialog.buttons[0].click(() => {
 			dialog.hide();
 		});

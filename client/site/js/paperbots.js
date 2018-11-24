@@ -697,36 +697,38 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
             this.dom.remove();
         };
         Dialog.prototype.renderDialog = function (title, content, buttons) {
+            var _this = this;
             var dom = $("\n\t\t<div class=\"pb-dialog\">\n\t\t\t<div class=\"pb-dialog-content\">\n\t\t\t\t<div class=\"pb-dialog-header\"><span>" + title + "</span></div>\n\t\t\t\t<div class=\"pb-dialog-body\"></div>\n\t\t\t\t<div class=\"pb-dialog-footer\"></div>\n\t\t\t</div>\n\t\t</div>\n\t\t");
             dom.find(".pb-dialog-body").append(content);
             var buttonsDiv = $("<div class=\"pb-dialog-buttons\"></div>");
             for (var i = 0; i < buttons.length; i++) {
-                var button = $("<input type=\"button\" value=\"" + buttons[i] + "\">");
+                var button = $("<input type=\"button\" value=\"" + buttons[i].text + "\">");
                 this.buttons.push(button);
                 buttonsDiv.append(button);
             }
             dom.find(".pb-dialog-footer").append(buttonsDiv);
+            dom.attr("tabindex", "1");
+            dom.keyup(function (ev) {
+                buttons.forEach(function (button, index) {
+                    if (ev.keyCode == button.key)
+                        _this.buttons[index].click();
+                });
+            });
+            requestAnimationFrame(function () { _this.dom[0].focus(); });
             return dom;
         };
         Dialog.alert = function (title, message) {
-            var dialog = new Dialog(title, message[0], ["OK"]);
+            var dialog = new Dialog(title, message[0], [{ text: "", key: 27 }, { text: "OK", key: 13 }]);
             dialog.buttons[0].click(function () {
                 dialog.dom.remove();
             });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.attr("contenteditable", "true");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 13)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
+            dialog.buttons[1].click(function () {
+                dialog.dom.remove();
             });
-            dialog.dom.focus();
             return dialog;
         };
         Dialog.confirm = function (title, message, confirmed) {
-            var dialog = new Dialog(title, message[0], ["Cancel", "OK"]);
+            var dialog = new Dialog(title, message[0], [{ text: "Cancel", key: 27 }, { text: "OK", key: 13 }]);
             dialog.buttons[0].click(function () {
                 dialog.dom.remove();
             });
@@ -734,20 +736,11 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
                 dialog.dom.remove();
                 confirmed();
             });
-            dialog.dom.attr("tabindex", "1");
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
-                if (ev.keyCode == 13)
-                    dialog.buttons[1].click();
-            });
-            document.body.appendChild(dialog.dom[0]);
-            dialog.dom.focus();
             return dialog;
         };
         Dialog.prompt = function (title, value, confirmed, cancled) {
             var textField = $("<input type=\"text\" value=\"" + value + "\" class=\"pb-input-field\">");
-            var dialog = new Dialog(title, textField[0], ["Cancel", "OK"]);
+            var dialog = new Dialog(title, textField[0], [{ text: "Cancel", key: 27 }, { text: "OK", key: -1 }]);
             dialog.buttons[0].click(function () {
                 dialog.dom.remove();
                 cancled();
@@ -756,17 +749,14 @@ define("widgets/Dialog", ["require", "exports"], function (require, exports) {
                 dialog.dom.remove();
                 confirmed(textField.val());
             });
-            document.body.appendChild(dialog.dom[0]);
-            textField.focus();
-            textField.select();
             textField.keyup(function (event) {
                 if (event.keyCode == 13) {
                     dialog.buttons[1].click();
                 }
             });
-            dialog.dom.keyup(function (ev) {
-                if (ev.keyCode == 27)
-                    dialog.buttons[0].click();
+            requestAnimationFrame(function () {
+                textField.focus();
+                textField.select();
             });
             return dialog;
         };
@@ -6220,7 +6210,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + Utils_3.escapeHtml(value) + "</p>")[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + Utils_3.escapeHtml(value) + "</p>")[0], [{ text: "Stop", key: -1 }, { text: "OK", key: 13 }]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;
@@ -6239,7 +6229,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], [{ text: "Stop", key: -1 }, { text: "OK", key: 13 }]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;
@@ -6258,7 +6248,7 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                     value: null,
                     stopVirtualMachine: false
                 };
-                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], ["Stop", "OK"]);
+                var dialog = new Dialog_2.Dialog("Program says", $("<p>" + value + "</p>")[0], [{ text: "Stop", key: -1 }, { text: "OK", key: 13 }]);
                 dialog.buttons[0].click(function () {
                     asyncResult.stopVirtualMachine = true;
                     asyncResult.completed = true;
@@ -7944,7 +7934,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                                 Dialog_3.Dialog.alert("Error", $("<p>The number must be between 0-99.</p>")).show();
                             }
                         }, function () {
-                        });
+                        }).show();
                     }
                     else if (_this.selectedTool == "Letter") {
                         Dialog_3.Dialog.prompt("Prompt", "Please enter a letter", function (letter) {
@@ -7958,7 +7948,7 @@ define("widgets/RobotWorld", ["require", "exports", "widgets/Events", "widgets/W
                                 requestAnimationFrame(function () { _this.draw(0); });
                             }
                         }, function () {
-                        });
+                        }).show();
                     }
                     else if (_this.selectedTool == "Robot") {
                         if (_this.world.robot.data.x != x || _this.world.robot.data.y != y) {
@@ -8940,6 +8930,7 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             canvasResize();
             this.announceExternalFunctions();
             this.announceDocs();
+            setTimeout(function () { Dialog_4.Dialog.alert("This is a test", $("test")).show(); }, 3000);
             return dom[0];
         };
         CanvasWorld.prototype.announceExternalFunctions = function () {
@@ -9680,7 +9671,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             content.find("#pb-new-canvas-program").click(function () {
                 window.location = "/project.html?type=canvas";
             });
-            var dialog = new Dialog_6.Dialog("New Project", content[0], ["Cancel"]);
+            var dialog = new Dialog_6.Dialog("New Project", content[0], [{ text: "Cancel", key: 27 }]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9698,7 +9689,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_6.Dialog("Log in", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_6.Dialog("Log in", content[0], [{ text: "Cancel", key: 27 }, { text: "Log in", key: 13 }]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9732,7 +9723,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_6.Dialog("Magic code", content[0], ["Cancel", "Log in"]);
+            var dialog = new Dialog_6.Dialog("Magic code", content[0], [{ text: "Cancel", key: 27 }, { text: "Log in", key: 13 }]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });
@@ -9768,7 +9759,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             spinner.hide();
             var error = content.find("#pb-error");
             error.hide();
-            var dialog = new Dialog_6.Dialog("Sign up", content[0], ["Cancel", "Sign up"]);
+            var dialog = new Dialog_6.Dialog("Sign up", content[0], [{ text: "Cancel", key: 27 }, { text: "Sign up", key: 13 }]);
             dialog.buttons[0].click(function () {
                 dialog.hide();
             });

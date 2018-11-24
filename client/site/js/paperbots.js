@@ -9906,37 +9906,100 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
     }(Widget_7.Widget));
     exports.Toolbar = Toolbar;
 });
-define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog"], function (require, exports, Events_4, Toolbar_2, Api_4, Dialog_7) {
+define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "Api", "widgets/CanvasWorld"], function (require, exports, Widget_8, Events_4, RobotWorld_2, Api_4, CanvasWorld_2) {
     "use strict";
     exports.__esModule = true;
-    var AdminPage = (function () {
-        function AdminPage(parent) {
+    var ProjectPreview = (function (_super) {
+        __extends(ProjectPreview, _super);
+        function ProjectPreview(project) {
+            var _this = _super.call(this, new Events_4.EventBus()) || this;
+            _this.project = project;
+            if (project.type == "robot") {
+                _this.world = new RobotWorld_2.RobotWorld(_this.bus, true);
+                _this.world.setWorldData(project.contentObject.world);
+            }
+            else if (project.type == "canvas") {
+                _this.world = new CanvasWorld_2.CanvasWorld(_this.bus);
+            }
+            return _this;
+        }
+        ProjectPreview.prototype.render = function () {
             var _this = this;
-            this.eventBus = new Events_4.EventBus();
-            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
-            this.projects = [];
-            this.fetching = false;
-            this.eventBus.addListener(this);
-            this.eventBus.addListener(this.toolbar);
-            parent.append(this.toolbar.render());
-            var dom = $("\n\t\t\t<div id=\"pb-admin-page\">\n\t\t\t\t<h1>Administration</h1>\n\t\t\t\t<div class=\"pb-project-list\" style=\"width: 100%\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            $(parent).append(dom);
-            this.fetchProjects(dom.find(".pb-project-list"));
+            this.bus.addListener(this);
+            this.bus.addListener(this.world);
+            var dom = $("\n\t\t\t<div class=\"pb-preview-widget\">\n\t\t\t</div>\n\t\t");
+            if (this.project.type == "robot") {
+                var preview = this.world.render();
+                dom.append(preview);
+                preview.addEventListener("click", function () {
+                    window.location = Api_4.Api.getProjectUrl(_this.project.code);
+                });
+            }
+            else if (this.project.type == "canvas") {
+                var thumbnail = $("<img src=\"" + Api_4.Api.getProjectThumbnailUrl(this.project.code) + "\" style=\"width: 192px; height: 108px;\"/>");
+                thumbnail[0].addEventListener("click", function () {
+                    window.location = Api_4.Api.getProjectUrl(_this.project.code);
+                });
+                dom.append(thumbnail);
+            }
+            return dom[0];
+        };
+        ProjectPreview.prototype.onEvent = function (event) {
+        };
+        return ProjectPreview;
+    }(Widget_8.Widget));
+    exports.ProjectPreview = ProjectPreview;
+});
+define("widgets/ProjectList", ["require", "exports", "widgets/Widget", "Api", "widgets/Dialog", "widgets/ProjectPreview"], function (require, exports, Widget_9, Api_5, Dialog_7, ProjectPreview_1) {
+    "use strict";
+    exports.__esModule = true;
+    var ProjectList = (function (_super) {
+        __extends(ProjectList, _super);
+        function ProjectList(bus, provider) {
+            var _this = _super.call(this, bus) || this;
+            _this.provider = provider;
+            _this.projects = [];
+            _this.sorting = "LastModified";
+            _this.fetching = false;
+            return _this;
+        }
+        ProjectList.prototype.render = function () {
+            var _this = this;
+            var projectsDom = this.projectsDom = ($("\n\t\t\t<div class=\"pb-project-list\">\n\t\t\t\t<div class=\"pb-project-list-sort\">\n\t\t\t\t\t<span>Sort by:</span>\n\t\t\t\t\t<select>\n\t\t\t\t\t\t<option value=\"lastmodified\">Last modified</option>\n\t\t\t\t\t\t<option value=\"newest\">Newest</option>\n\t\t\t\t\t\t<option value=\"oldest\">Oldest</option>\n\t\t\t\t\t</select>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t"));
+            var self = this;
+            projectsDom.find(".pb-project-list-sort > select").on("change", function () {
+                var selected = $(this).val();
+                if (selected == "newest") {
+                    self.sorting = "Newest";
+                }
+                else if (selected == "oldest") {
+                    self.sorting = "Oldest";
+                }
+                else if (selected == "lastmodified") {
+                    self.sorting = "LastModified";
+                }
+                self.projects.length = 0;
+                projectsDom.find(".pb-project-list-item").remove();
+                self.fetchProjects();
+            });
             window.onscroll = function () {
                 var scrollHeight = document.body.scrollHeight;
                 var totalHeight = window.scrollY + window.innerHeight;
                 if (totalHeight >= scrollHeight - 100) {
-                    _this.fetchProjects(dom.find(".pb-project-list"));
+                    _this.fetchProjects();
                 }
             };
-        }
-        AdminPage.prototype.fetchProjects = function (projectListDom) {
+            this.fetchProjects();
+            return projectsDom[0];
+        };
+        ProjectList.prototype.fetchProjects = function () {
             var _this = this;
             if (this.fetching)
                 return;
             console.log("Fetching");
-            Api_4.Api.getProjectsAdmin("Newest", this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
-                _this.renderProjects(projectListDom, projects);
+            this.provider(this.sorting, this.projects.length == 0 ? null : this.projects[this.projects.length - 1].created, function (projects) {
+                _this.renderProjects(projects);
+                projects.forEach(function (project) { return _this.projects.push(project); });
                 _this.fetching = false;
             }, function () {
                 Dialog_7.Dialog.alert("Error", $("<p>Couldn't retrieve projects.</p>")).show();
@@ -9944,14 +10007,59 @@ define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
             });
             this.fetching = true;
         };
-        AdminPage.prototype.renderProjects = function (dom, projects) {
+        ProjectList.prototype.renderProjects = function (projects) {
             var _this = this;
             projects.forEach(function (project) {
-                _this.projects.push(project);
-                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_4.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>User:</td><td><a href=\"" + Api_4.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></td></tr>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t");
-                dom.append(projectDom);
+                var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t</div>\n\t\t\t");
+                try {
+                    project.contentObject = JSON.parse(project.content);
+                    var preview = new ProjectPreview_1.ProjectPreview(project).render();
+                    projectDom.append(preview);
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_5.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_5.Api.getUserName()) {
+                        var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
+                        projectDom.append(deleteButton);
+                        deleteButton.click(function () {
+                            Dialog_7.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
+                                Api_5.Api.deleteProject(project.code, function () {
+                                    projectDom.fadeOut(1000);
+                                }, function () {
+                                    Dialog_7.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));
+                                });
+                            }).show();
+                        });
+                    }
+                    projectDom.appendTo(_this.projectsDom);
+                    projectDom[0].project = project;
+                }
+                catch (e) {
+                    console.log("Couldn't load world data for project " + project.code + ".");
+                }
             });
         };
+        ProjectList.prototype.onEvent = function (event) {
+        };
+        return ProjectList;
+    }(Widget_9.Widget));
+    exports.ProjectList = ProjectList;
+});
+define("AdminPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/ProjectList"], function (require, exports, Events_5, Toolbar_2, Api_6, ProjectList_1) {
+    "use strict";
+    exports.__esModule = true;
+    var AdminPage = (function () {
+        function AdminPage(parent) {
+            this.eventBus = new Events_5.EventBus();
+            this.toolbar = new Toolbar_2.Toolbar(this.eventBus, Toolbar_2.ToolbarMode.UserPage);
+            this.projects = [];
+            this.fetching = false;
+            this.eventBus.addListener(this);
+            this.eventBus.addListener(this.toolbar);
+            parent.append(this.toolbar.render());
+            var dom = $("\n\t\t\t<div id=\"pb-admin-page\">\n\t\t\t\t<h1>Administration</h1>\n\t\t\t</div>\n\t\t");
+            var projectList = new ProjectList_1.ProjectList(this.eventBus, function (sorting, dateOffset, success, error) { return Api_6.Api.getProjectsAdmin(sorting, dateOffset, success, error); });
+            dom.append(projectList.render());
+            $(parent).append(dom);
+        }
         AdminPage.prototype.onEvent = function (event) {
         };
         return AdminPage;
@@ -10024,15 +10132,15 @@ define("BenchmarkPage", ["require", "exports", "language/Compiler", "language/Vi
     }());
     exports.BenchmarkPage = BenchmarkPage;
 });
-define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_5, Editor_2, Debugger_2, CanvasWorld_2) {
+define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", "widgets/Debugger", "widgets/CanvasWorld"], function (require, exports, Events_6, Editor_2, Debugger_2, CanvasWorld_3) {
     "use strict";
     exports.__esModule = true;
     var CanvasPage = (function () {
         function CanvasPage(parent) {
-            this.eventBus = new Events_5.EventBus();
+            this.eventBus = new Events_6.EventBus();
             this.editor = new Editor_2.Editor(this.eventBus);
             this["debugger"] = new Debugger_2.Debugger(this.eventBus);
-            this.canvas = new CanvasWorld_2.CanvasWorld(this.eventBus);
+            this.canvas = new CanvasWorld_3.CanvasWorld(this.eventBus);
             this.sentSource = false;
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.editor);
@@ -10047,7 +10155,7 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
         }
         CanvasPage.prototype.onEvent = function (event) {
             var _this = this;
-            if (event instanceof Events_5.SourceChanged) {
+            if (event instanceof Events_6.SourceChanged) {
                 if (!this.sentSource)
                     requestAnimationFrame(function () { return _this.editor.setSource("\nvar sound = loadSound(\"http://mo.flussbuero.at/music/hochgeladenes/do.mp3\")\nvar id  = playSound(sound)\npause(5000)\nsetSoundVolume(sound, id, 0.5)\npause(5000)\nsetSoundVolume(sound, id, 1)\nsetSoundRate(sound, id, 2)\nstopSound(sound, id)"); });
                 this.sentSource = true;
@@ -10057,12 +10165,12 @@ define("CanvasPage", ["require", "exports", "widgets/Events", "widgets/Editor", 
     }());
     exports.CanvasPage = CanvasPage;
 });
-define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_6, Toolbar_3) {
+define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_7, Toolbar_3) {
     "use strict";
     exports.__esModule = true;
     var DevsPage = (function () {
         function DevsPage(parent) {
-            this.eventBus = new Events_6.EventBus();
+            this.eventBus = new Events_7.EventBus();
             this.toolbar = new Toolbar_3.Toolbar(this.eventBus, Toolbar_3.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -10074,7 +10182,7 @@ define("DevsPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], 
     }());
     exports.DevsPage = DevsPage;
 });
-define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_8, Events_7, RobotWorld_2, Compiler_5, VirtualMachine_2) {
+define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "language/Compiler", "language/VirtualMachine"], function (require, exports, Widget_10, Events_8, RobotWorld_3, Compiler_5, VirtualMachine_2) {
     "use strict";
     exports.__esModule = true;
     var Player = (function (_super) {
@@ -10082,13 +10190,13 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
         function Player(project, autoplay, showSourceLink, bus) {
             if (autoplay === void 0) { autoplay = false; }
             if (showSourceLink === void 0) { showSourceLink = false; }
-            if (bus === void 0) { bus = new Events_7.EventBus(); }
+            if (bus === void 0) { bus = new Events_8.EventBus(); }
             var _this = _super.call(this, bus) || this;
             _this.project = project;
             _this.autoplay = autoplay;
             _this.showSourceLink = showSourceLink;
             _this.vm = null;
-            _this.world = new RobotWorld_2.RobotWorld(bus, true);
+            _this.world = new RobotWorld_3.RobotWorld(bus, true);
             return _this;
         }
         Player.prototype.render = function () {
@@ -10109,7 +10217,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
                     requestAnimationFrame(advanceVm);
                 }
                 else {
-                    _this.bus.event(new Events_7.Stop());
+                    _this.bus.event(new Events_8.Stop());
                     _this.vm.restart();
                     _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                     stop.hide();
@@ -10118,7 +10226,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             };
             var run = dom.find("#pb-player-run");
             run.click(function () {
-                _this.bus.event(new Events_7.Run());
+                _this.bus.event(new Events_8.Run());
                 stop.show();
                 run.hide();
                 _this.vm.restart();
@@ -10127,7 +10235,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             var stop = dom.find("#pb-player-stop");
             stop.hide();
             stop.click(function () {
-                _this.bus.event(new Events_7.Stop());
+                _this.bus.event(new Events_8.Stop());
                 _this.vm.restart();
                 _this.vm.state = VirtualMachine_2.VirtualMachineState.Completed;
                 stop.hide();
@@ -10136,7 +10244,7 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             try {
                 var module_1 = Compiler_5.compile(this.project.contentObject.code, this.extFuncs);
                 this.vm = new VirtualMachine_2.VirtualMachine(module_1.functions, module_1.externalFunctions);
-                this.bus.event(new Events_7.ProjectLoaded(this.project));
+                this.bus.event(new Events_8.ProjectLoaded(this.project));
                 if (this.autoplay)
                     run.click();
             }
@@ -10147,24 +10255,24 @@ define("widgets/Player", ["require", "exports", "widgets/Widget", "widgets/Event
             return dom[0];
         };
         Player.prototype.onEvent = function (event) {
-            if (event instanceof Events_7.AnnounceExternalFunctions) {
+            if (event instanceof Events_8.AnnounceExternalFunctions) {
                 this.extFuncs = event.functions;
             }
         };
         return Player;
-    }(Widget_8.Widget));
+    }(Widget_10.Widget));
     exports.Player = Player;
 });
-define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_5, Dialog_8) {
+define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/Dialog"], function (require, exports, Player_1, Api_7, Dialog_8) {
     "use strict";
     exports.__esModule = true;
     var EmbeddedPage = (function () {
         function EmbeddedPage(parent) {
             var dom = $("\n\t\t\t<div id=\"pb-embed-page\">\n\t\t\t</div>\n\t\t");
-            Api_5.Api.loadProject(Api_5.Api.getProjectId(), function (project) {
+            Api_7.Api.loadProject(Api_7.Api.getProjectId(), function (project) {
                 dom.append(new Player_1.Player(project).render());
             }, function () {
-                Dialog_8.Dialog.alert("Sorry", $("Could not load project " + Api_5.Api.getProjectId()));
+                Dialog_8.Dialog.alert("Sorry", $("Could not load project " + Api_7.Api.getProjectId()));
             });
             parent.append(dom);
         }
@@ -10172,30 +10280,30 @@ define("EmbeddedPage", ["require", "exports", "widgets/Player", "Api", "widgets/
     }());
     exports.EmbeddedPage = EmbeddedPage;
 });
-define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_8, Toolbar_4, Api_6, Dialog_9, Player_2) {
+define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/Player"], function (require, exports, Events_9, Toolbar_4, Api_8, Dialog_9, Player_2) {
     "use strict";
     exports.__esModule = true;
     var IndexPage = (function () {
         function IndexPage(parent) {
-            this.eventBus = new Events_8.EventBus();
+            this.eventBus = new Events_9.EventBus();
             this.toolbar = new Toolbar_4.Toolbar(this.eventBus, Toolbar_4.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
             this.eventBus.addListener(this);
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-index-page\">\n\t\t\t\t<img style=\"display: inline-block; margin-top: 2em;\" width=\"390px\" height=\"200px\" src=\"img/paperbots.svg\">\n\t\t\t\t<h1 style=\"text-align: center\">Want to learn how to code?</h1>\n\t\t\t\t<div style=\"margin-bottom: 2em;\">\n\t\t\t\t\t<a class=\"pb-button\" href=\"/learn.html\">Teach me how to code</a>\n\t\t\t\t\t<a class=\"pb-button\" href=\"/devs.html\">I am a programmer</a>\n\t\t\t\t</div>\n\t\t\t\t<div id=\"pb-index-page-example\"></div>\n\t\t\t\t<div class=\"pb-page-section\">\n\t\t\t\t\t<h1>What is Paperbots?</h1>\n\n\t\t\t\t\t<p>Paperbots lets you write different types of programs, from\n\t\t\t\t\t\tinstructions for a robot, to games and interactive art. Best of\n\t\t\t\t\t\tall: you can share your programs with your friends!</p>\n\n\t\t\t\t\t<p>If you do not yet know how to program, the <a href=\"/learn.html\">Paperbots course</a>\n\t\t\t\t\t\twill teach you all you need to know.</p>\n\n\t\t\t\t\t<p>Are you a seasoned programmer? Great! Read the <a href=\"/for-devs.html\">language documentation</a>, then create interesting programs\n\t\t\t\t\t\tothers can remix and learn from.</p>\n\t\t\t\t</div>\n\t\t\t\t<h1>Featured projects</h1>\n\t\t\t\t<div class=\"pb-index-page-featured\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t");
-            Api_6.Api.loadProject("IgMlfr", function (project) {
+            Api_8.Api.loadProject("IgMlfr", function (project) {
                 dom.find("#pb-index-page-example").append(new Player_2.Player(project, true, true).render());
             }, function () { });
             $(parent).append(dom);
-            var projectId = Api_6.Api.getUrlParameter("projectId");
+            var projectId = Api_8.Api.getUrlParameter("projectId");
             if (projectId) {
                 window.location = "/project.html?id=" + projectId;
             }
-            Api_6.Api.getFeaturedProjects(function (projects) {
+            Api_8.Api.getFeaturedProjects(function (projects) {
                 var featured = dom.find(".pb-index-page-featured");
                 projects.forEach(function (project) {
-                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_6.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_6.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    var card = $("\n\t\t\t\t\t<div class=\"pb-featured-card\">\n\t\t\t\t\t\t<div class=\"pb-featured-card-player\"></div>\n\t\t\t\t\t\t<a class=\"pb-featured-card-title\" href=\"" + Api_8.Api.getProjectUrl(project.code) + "\">" + project.title + "</a>\n\t\t\t\t\t\t<div><span>by </span><a href=\"" + Api_8.Api.getUserUrl(project.userName) + "\">" + project.userName + "</a></div>\n\t\t\t\t\t</div>\n\t\t\t\t");
                     card.find(".pb-featured-card-player").append(new Player_2.Player(project, false, false).render());
                     featured.append(card);
                 });
@@ -10209,12 +10317,12 @@ define("IndexPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", 
     }());
     exports.IndexPage = IndexPage;
 });
-define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_9, Toolbar_5) {
+define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"], function (require, exports, Events_10, Toolbar_5) {
     "use strict";
     exports.__esModule = true;
     var LearnPage = (function () {
         function LearnPage(parent) {
-            this.eventBus = new Events_9.EventBus();
+            this.eventBus = new Events_10.EventBus();
             this.toolbar = new Toolbar_5.Toolbar(this.eventBus, Toolbar_5.ToolbarMode.UserPage);
             this.eventBus.addListener(this);
             this.eventBus.addListener(this.toolbar);
@@ -10229,51 +10337,7 @@ define("LearnPage", ["require", "exports", "widgets/Events", "widgets/Toolbar"],
     }());
     exports.LearnPage = LearnPage;
 });
-define("widgets/ProjectPreview", ["require", "exports", "widgets/Widget", "widgets/Events", "widgets/RobotWorld", "Api", "widgets/CanvasWorld"], function (require, exports, Widget_9, Events_10, RobotWorld_3, Api_7, CanvasWorld_3) {
-    "use strict";
-    exports.__esModule = true;
-    var ProjectPreview = (function (_super) {
-        __extends(ProjectPreview, _super);
-        function ProjectPreview(project) {
-            var _this = _super.call(this, new Events_10.EventBus()) || this;
-            _this.project = project;
-            if (project.type == "robot") {
-                _this.world = new RobotWorld_3.RobotWorld(_this.bus, true);
-                _this.world.setWorldData(project.contentObject.world);
-            }
-            else if (project.type == "canvas") {
-                _this.world = new CanvasWorld_3.CanvasWorld(_this.bus);
-            }
-            return _this;
-        }
-        ProjectPreview.prototype.render = function () {
-            var _this = this;
-            this.bus.addListener(this);
-            this.bus.addListener(this.world);
-            var dom = $("\n\t\t\t<div class=\"pb-preview-widget\">\n\t\t\t</div>\n\t\t");
-            if (this.project.type == "robot") {
-                var preview = this.world.render();
-                dom.append(preview);
-                preview.addEventListener("click", function () {
-                    window.location = Api_7.Api.getProjectUrl(_this.project.code);
-                });
-            }
-            else if (this.project.type == "canvas") {
-                var thumbnail = $("<img src=\"" + Api_7.Api.getProjectThumbnailUrl(this.project.code) + "\" style=\"width: 192px; height: 108px;\"/>");
-                thumbnail[0].addEventListener("click", function () {
-                    window.location = Api_7.Api.getProjectUrl(_this.project.code);
-                });
-                dom.append(thumbnail);
-            }
-            return dom[0];
-        };
-        ProjectPreview.prototype.onEvent = function (event) {
-        };
-        return ProjectPreview;
-    }(Widget_9.Widget));
-    exports.ProjectPreview = ProjectPreview;
-});
-define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/ProjectPreview"], function (require, exports, Events_11, Toolbar_6, Api_8, Dialog_10, ProjectPreview_1) {
+define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "Api", "widgets/Dialog", "widgets/ProjectPreview"], function (require, exports, Events_11, Toolbar_6, Api_9, Dialog_10, ProjectPreview_2) {
     "use strict";
     exports.__esModule = true;
     var UserPage = (function () {
@@ -10286,7 +10350,7 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
             parent.append(this.toolbar.render());
             var dom = $("\n\t\t\t<div id=\"pb-user-page\">\n\t\t\t</div>\n\t\t");
             $(parent).append(dom);
-            var userId = Api_8.Api.getUserId();
+            var userId = Api_9.Api.getUserId();
             if (!userId) {
                 var dialog = Dialog_10.Dialog.alert("Sorry", $("<p>This user doesn't exist.</p>"));
                 dialog.buttons[0].click(function () {
@@ -10295,7 +10359,7 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 dialog.show();
             }
             else {
-                Api_8.Api.getUserProjects(userId, true, function (projects) {
+                Api_9.Api.getUserProjects(userId, true, function (projects) {
                     _this.renderUser(dom, userId, projects);
                 }, function (error) {
                 });
@@ -10307,15 +10371,15 @@ define("UserPage", ["require", "exports", "widgets/Events", "widgets/Toolbar", "
                 var projectDom = $("\n\t\t\t\t<div class=\"pb-project-list-item\">\n\t\t\t\t</div>\n\t\t\t");
                 try {
                     project.contentObject = JSON.parse(project.content);
-                    var preview = new ProjectPreview_1.ProjectPreview(project).render();
+                    var preview = new ProjectPreview_2.ProjectPreview(project).render();
                     projectDom.append(preview);
-                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_8.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
-                    if (project.userName == Api_8.Api.getUserName()) {
+                    projectDom.append("\n\t\t\t\t\t<div class=\"pb-project-list-item-description\">\n\t\t\t\t\t\t<h3><a href=\"" + Api_9.Api.getProjectUrl(project.code) + "\">" + project.title + "</a></h3>\n\t\t\t\t\t\t<table>\n\t\t\t\t\t\t\t<tr><td>Created:</td><td>" + project.created + "</td></tr>\n\t\t\t\t\t\t\t<tr><td>Last modified:</td><td>" + project.lastModified + "</td></tr>\n\t\t\t\t\t\t</table>\n\t\t\t\t\t</div>\n\t\t\t\t");
+                    if (project.userName == Api_9.Api.getUserName()) {
                         var deleteButton = $("<i class=\"pb-project-list-item-delete fas fa-trash-alt\"></i>");
                         projectDom.append(deleteButton);
                         deleteButton.click(function () {
                             Dialog_10.Dialog.confirm("Delete project", $("<p>Are you sure you want to delete project '" + project.title + "'?</p>"), function () {
-                                Api_8.Api.deleteProject(project.code, function () {
+                                Api_9.Api.deleteProject(project.code, function () {
                                     projectDom.fadeOut(1000);
                                 }, function () {
                                     Dialog_10.Dialog.alert("Sorry", $("<p>Could not delete project '" + project.title + "'.</p>"));

@@ -399,8 +399,9 @@ public class Paperbots {
 			if (offset == null) {
 				offset = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date());
 			}
-			List<Project> projects = handle.createQuery(
-				"SELECT code, userName, title, public, type, lastModified, created FROM projects WHERE created < :dateOffset ORDER BY " + sqlSorting + " LIMIT 10")
+			List<Project> projects = handle
+				.createQuery("SELECT code, userName, title, public, type, lastModified, created, content FROM projects WHERE created < :dateOffset ORDER BY "
+					+ sqlSorting + " LIMIT 10")
 				.bind("dateOffset", offset).mapToBean(Project.class).list();
 			return projects.toArray(new Project[projects.size()]);
 		});

@@ -129,7 +129,7 @@ export class Api {
 		});
 	}
 
-	static getProjectsAdmin (sorting: Sorting, dateOffset: String, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
+	static getProjectsAdmin (sorting: Sorting, dateOffset: string, success: (projects: Array<Project>) => void, error: (error: RequestError) => void) {
 		this.request("/api/getprojectsadmin", {sorting: sorting, dateOffset: dateOffset},
 		(projects: Array<Project>) => {
 			success(projects);

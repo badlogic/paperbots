@@ -49,7 +49,6 @@ export class CanvasWorld extends Widget {
 		this.announceExternalFunctions();
 		this.announceDocs();
 
-		setTimeout(() => { Dialog.alert("This is a test", $("test")).show(); }, 3000);
 		return dom[0];
 	}
 

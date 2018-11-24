@@ -8930,7 +8930,6 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             canvasResize();
             this.announceExternalFunctions();
             this.announceDocs();
-            setTimeout(function () { Dialog_4.Dialog.alert("This is a test", $("test")).show(); }, 3000);
             return dom[0];
         };
         CanvasWorld.prototype.announceExternalFunctions = function () {

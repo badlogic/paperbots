@@ -9151,12 +9151,15 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             });
             canvas.addEventListener("keypress", function (ev) {
                 console.log("Press: " + JSON.stringify(ev));
+                ev.preventDefault();
             });
             canvas.addEventListener("keydown", function (ev) {
                 _this.pressedKeys[ev.key] = true;
+                ev.preventDefault();
             });
             canvas.addEventListener("keyup", function (ev) {
                 _this.pressedKeys[ev.key] = false;
+                ev.preventDefault();
             });
             functionsAndTypes.addFunction("isKeyDown", [{ name: "key", type: Compiler_3.StringType }], compiler.BooleanType, false, function (key) {
                 return _this.pressedKeys[key];

@@ -260,14 +260,17 @@ export class CanvasWorld extends Widget {
 
 		canvas.addEventListener("keypress", (ev: KeyboardEvent) => {
 			console.log("Press: " + JSON.stringify(ev));
+			ev.preventDefault();
 		});
 
 		canvas.addEventListener("keydown", (ev: KeyboardEvent) => {
 			this.pressedKeys[ev.key] = true;
+			ev.preventDefault();
 		});
 
 		canvas.addEventListener("keyup", (ev: KeyboardEvent) => {
 			this.pressedKeys[ev.key] = false;
+			ev.preventDefault();
 		});
 
 		functionsAndTypes.addFunction("isKeyDown",[{name: "key", type: StringType}],compiler.BooleanType,false,(key: string)=>{

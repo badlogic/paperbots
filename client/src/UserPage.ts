@@ -2,7 +2,7 @@ import { EventBus, EventListener, Event } from "./widgets/Events"
 import { Toolbar, ToolbarMode } from "./widgets/Toolbar";
 import { Api, Project } from "./Api";
 import { Dialog } from "./widgets/Dialog";
-import { Player } from "./widgets/Player";
+import { ProjectPreview } from "./widgets/ProjectPreview";
 
 export class UserPage implements EventListener {
 	private eventBus = new EventBus();
@@ -67,7 +67,7 @@ export class UserPage implements EventListener {
 			`);
 			try {
 				project.contentObject = JSON.parse(project.content);
-				let preview = new Player(project, false, false).render()
+				let preview = new ProjectPreview(project).render()
 				projectDom.append(preview);
 				projectDom.append(/*html*/`
 					<div class="pb-project-list-item-description">

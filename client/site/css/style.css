@@ -247,6 +247,19 @@ WIDGET STYLES
 ------------------------------------------------------------------------*/
 /** Preview widget styles **/
 .pb-preview-widget {
+	width: 192px;
+}
+
+.pb-preview-widget img {
+	max-width: unset !important;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.pb-preview-widget #pb-robot-world {
+	max-width: unset !important;
+	padding: 0;
+	cursor: pointer;
 }
 
 /** Player widget styles **/
@@ -336,7 +349,7 @@ WIDGET STYLES
 	user-select: text !important;
 	-moz-user-select: text !important;
 	-webkit-user-select: text !important;
-	-ms-user-select: text !important;
+	-ms-user-select: text !important;f
 }
 #pb-toolbar-title:focus {
 	border-color: #ffffff;
@@ -820,11 +833,11 @@ PAGE STYLES
 }
 
 .pb-project-list-item-description {
-	width: 100%;
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
 	padding-bottom: 0.5em;
+	padding-left: 1em;
 }
 
 .pb-project-list-item-description h3 {

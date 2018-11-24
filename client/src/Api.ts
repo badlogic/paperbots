@@ -183,6 +183,10 @@ export class Api {
 		return escapeHtml("/project.html?id=" + name);
 	}
 
+	static getProjectThumbnailUrl(code: string): any {
+		return escapeHtml("/thumbnails/" + code + ".png");
+	}
+
 	static getImageProxyUrl(url: string): string {
 		return "/api/proxyimage?url=" + url;
 	}

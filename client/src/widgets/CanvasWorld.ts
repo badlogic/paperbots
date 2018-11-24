@@ -609,8 +609,8 @@ end</code>
 							desc: "Returns whether any mouse button is pressed, or at least one finger is touching the canvas."
 						},
 						{
-							anchor: "canvas-is-key-pressed",
-							name: "<code>isKeyPressed(key: string): boolean</code>",
+							anchor: "canvas-is-key-down",
+							name: "<code>isKeyDown(key: string): boolean</code>",
 							desc: `Returns whether the <code>key</code> is pressed. The key is either a single letter string like <code>"a"</code>, or, if a special key like a cursor key was pressed, the name of that special key. Common special key names are <code>"ArrowLeft"</code>, <code>"ArrowRight"</code>, <code>"ArrowUp"</code>, and <code>"ArrowDown</code> for the arrow keys, <code>"Escape"</code> for the escape key, and <code>"Enter"</code> for the enter key. The space key is returned as the string <code>" "</code> (a string with a space in it). See the <a href="https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values">the key values table</a> for the names of other special keys.`
 						},
 					],

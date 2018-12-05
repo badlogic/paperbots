@@ -188,7 +188,7 @@ export class Api {
 	}
 
 	static getImageProxyUrl(url: string): string {
-		return "/api/proxyimage?url=" + url;
+		return "/api/proxyimage?url=" + encodeURIComponent(url);
 	}
 
 	public static getUrlParameter(name) {

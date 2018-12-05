@@ -7245,7 +7245,7 @@ define("Api", ["require", "exports", "Utils"], function (require, exports, Utils
             return Utils_4.escapeHtml("/thumbnails/" + code + ".png");
         };
         Api.getImageProxyUrl = function (url) {
-            return "/api/proxyimage?url=" + url;
+            return "/api/proxyimage?url=" + encodeURIComponent(url);
         };
         Api.getUrlParameter = function (name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');

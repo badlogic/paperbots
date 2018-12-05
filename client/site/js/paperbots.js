@@ -9827,17 +9827,15 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 Dialog_6.Dialog.alert("Sorry", $("<p>Can not save project without a title<p>")).show();
                 return;
             }
-            var internalSave = function () {
+            var internalSave = function (isFork) {
                 var content = $("\n\t\t\t<div style=\"display: flex; flex-direction: column; width: 100%; height: 100%;\">\n\t\t\t\t<p>Saving project '" + Utils_8.escapeHtml(_this.title.val()) + "', just a second!</p>\n\t\t\t\t<div id=\"pb-spinner\" class=\"fa-3x\" style=\"text-align: center; margin: 0.5em\"><i class=\"fas fa-spinner fa-pulse\"></i></div>\n\t\t\t</div>");
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_6.Dialog("Saving", content[0], []);
                 dialog.show();
                 var userName = _this.loadedProject ? _this.loadedProject.userName : Api_3.Api.getUserName();
                 var code = _this.loadedProject ? Api_3.Api.getProjectId() : null;
-                if (!adminSave) {
-                    if (_this.loadedProject.userName != Api_3.Api.getUserName())
-                        code = null;
-                }
+                if (isFork && !adminSave)
+                    code = null;
                 var saveProject = new Events_3.BeforeSaveProject({
                     code: code,
                     contentObject: {},
@@ -9870,10 +9868,10 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     history.pushState(null, document.title, Api_3.Api.getProjectUrl(projectCode));
                     _this.bus.event(new Events_3.ProjectSaved());
                     if (saveProject.thumbnail) {
-                        Api_3.Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, function () {
-                            console.log("Saved thumbnail for " + saveProject.project.code);
+                        Api_3.Api.saveThumbnail(_this.loadedProject.code, saveProject.thumbnail, function () {
+                            console.log("Saved thumbnail for " + _this.loadedProject.code);
                         }, function () {
-                            console.log("Couldn't save thumbnail for " + saveProject.project.code);
+                            console.log("Couldn't save thumbnail for " + _this.loadedProject.code);
                         });
                     }
                 }, function (error) {
@@ -9883,11 +9881,11 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
             };
             if (this.loadedProject && this.loadedProject.userName != Api_3.Api.getUserName() && !adminSave) {
                 Dialog_6.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
-                    internalSave();
+                    internalSave(true);
                 }).show();
             }
             else {
-                internalSave();
+                internalSave(false);
             }
         };
         Toolbar.prototype.onEvent = function (event) {

@@ -367,7 +367,7 @@ export class Toolbar extends Widget {
 			return;
 		}
 
-		let internalSave = () => {
+		let internalSave = (isFork: boolean) => {
 			let content = $(/*html*/`
 			<div style="display: flex; flex-direction: column; width: 100%; height: 100%;">
 				<p>Saving project '${escapeHtml(this.title.val() as string)}', just a second!</p>
@@ -379,10 +379,8 @@ export class Toolbar extends Widget {
 			dialog.show();
 
 			let userName = this.loadedProject ? this.loadedProject.userName : Api.getUserName();
-			let code = this.loadedProject ? Api.getProjectId() : null;
-			if (!adminSave) {
-				if (this.loadedProject.userName != Api.getUserName()) code = null;
-			}
+			let code = this.loadedProject? Api.getProjectId() : null;
+			if (isFork && !adminSave) code = null;
 			let saveProject = new BeforeSaveProject({
 				// If the project doesn't belong to us, we save a copy
 				// to our account, so code = null.
@@ -419,10 +417,10 @@ export class Toolbar extends Widget {
 				this.bus.event(new ProjectSaved());
 
 				if (saveProject.thumbnail) {
-					Api.saveThumbnail(saveProject.project.code, saveProject.thumbnail, () => {
-						console.log("Saved thumbnail for " + saveProject.project.code);
+					Api.saveThumbnail(this.loadedProject.code, saveProject.thumbnail, () => {
+						console.log("Saved thumbnail for " + this.loadedProject.code);
 					}, () => {
-						console.log("Couldn't save thumbnail for " + saveProject.project.code);
+						console.log("Couldn't save thumbnail for " + this.loadedProject.code);
 					});
 				}
 			}, (error) => {
@@ -433,10 +431,10 @@ export class Toolbar extends Widget {
 
 		if (this.loadedProject && this.loadedProject.userName != Api.getUserName() && !adminSave) {
 			Dialog.confirm("Copy?", $(`<div><p>The project you want to save belongs to <a target="_blank" href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>`), () => {
-				internalSave();
+				internalSave(true);
 			}).show();
 		} else {
-			internalSave();
+			internalSave(false);
 		}
 	}
 

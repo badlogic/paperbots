@@ -936,7 +936,8 @@ function typeCheck(functions: Array<FunctionDecl>, records: Array<RecordDecl>, e
 			let otherLoc = other.declarationNode.location.start;
 			throw new CompilerError(`Function '${other.signature}' already defined in line ${otherLoc.line}.`, funDecl.name.location);
 		}
-		if (types.getExternalFunction(type.signature)) throw new CompilerError(`Function '${other.signature}' already defined externally.`, funDecl.name.location);
+		let otherExternal = types.getExternalFunction(type.signature);
+		if (otherExternal) throw new CompilerError(`Function '${otherExternal.signature}' already defined externally.`, funDecl.name.location);
 
 		types.add(type);
 	});

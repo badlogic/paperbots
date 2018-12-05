@@ -6528,8 +6528,9 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
                 var otherLoc = other.declarationNode.location.start;
                 throw new CompilerError("Function '" + other.signature + "' already defined in line " + otherLoc.line + ".", funDecl.name.location);
             }
-            if (types.getExternalFunction(type.signature))
-                throw new CompilerError("Function '" + other.signature + "' already defined externally.", funDecl.name.location);
+            var otherExternal = types.getExternalFunction(type.signature);
+            if (otherExternal)
+                throw new CompilerError("Function '" + otherExternal.signature + "' already defined externally.", funDecl.name.location);
             types.add(type);
         });
         functions.forEach(function (node) { return typeCheckRec(node, types, new Scopes(), node, null); });

@@ -9273,31 +9273,34 @@ define("widgets/CanvasWorld", ["require", "exports", "widgets/Events", "widgets/
             }
             else if (event instanceof events.BeforeSaveProject) {
                 event.project.type = "canvas";
-                try {
-                    var canvas = document.createElement("canvas");
-                    canvas.width = 192;
-                    canvas.height = 108;
-                    var sx = 0, sy = 0, sw = 0, sh = 0;
-                    var ratio = canvas.height / canvas.width;
-                    if (ratio * this.canvas.width <= this.canvas.height) {
-                        sw = this.canvas.width;
-                        sh = this.canvas.width * ratio;
-                        sx = 0;
-                        sy = this.canvas.height / 2 - sh / 2;
-                    }
-                    else {
-                        sh = this.canvas.height;
-                        sw = this.canvas.height * canvas.width / canvas.height;
-                        sx = this.canvas.width / 2 - sw / 2;
-                        sy = 0;
-                    }
-                    var ctx = canvas.getContext("2d");
-                    ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-                    event.thumbnail = canvas.toDataURL();
+                this.uploadThumbnail(event);
+            }
+        };
+        CanvasWorld.prototype.uploadThumbnail = function (event) {
+            try {
+                var canvas = document.createElement("canvas");
+                canvas.width = 192;
+                canvas.height = 108;
+                var sx = 0, sy = 0, sw = 0, sh = 0;
+                var ratio = canvas.height / canvas.width;
+                if (ratio * this.canvas.width <= this.canvas.height) {
+                    sw = this.canvas.width;
+                    sh = this.canvas.width * ratio;
+                    sx = 0;
+                    sy = this.canvas.height / 2 - sh / 2;
                 }
-                catch (e) {
-                    console.log(e);
+                else {
+                    sh = this.canvas.height;
+                    sw = this.canvas.height * canvas.width / canvas.height;
+                    sx = this.canvas.width / 2 - sw / 2;
+                    sy = 0;
                 }
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+                event.thumbnail = canvas.toDataURL();
+            }
+            catch (e) {
+                console.log(e);
             }
         };
         CanvasWorld.prototype.announceDocs = function () {
@@ -9647,6 +9650,10 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                         e.preventDefault();
                         _this.saveProject();
                     }
+                    if (e.keyCode == 186 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+                        e.preventDefault();
+                        _this.saveProject(true);
+                    }
                 }, false);
             }
             return dom[0];
@@ -9809,8 +9816,9 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
         Toolbar.prototype.serverErrorDialog = function () {
             Dialog_6.Dialog.alert("Sorry!", $("<p>We couldn't reach the server. If the problem persists, let us know at <a href=\"mailto:contact@paperbots.com\">contact@paperbots.io</a></p>"));
         };
-        Toolbar.prototype.saveProject = function () {
+        Toolbar.prototype.saveProject = function (adminSave) {
             var _this = this;
+            if (adminSave === void 0) { adminSave = false; }
             if (!Api_3.Api.getUserName()) {
                 Dialog_6.Dialog.alert("Sorry", $("<p>You need to be logged in to save a project.<p>")).show();
                 return;
@@ -9824,8 +9832,14 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 var spinner = content.find("#pb-spinner");
                 var dialog = new Dialog_6.Dialog("Saving", content[0], []);
                 dialog.show();
+                var userName = _this.loadedProject ? _this.loadedProject.userName : Api_3.Api.getUserName();
+                var code = _this.loadedProject ? Api_3.Api.getProjectId() : null;
+                if (!adminSave) {
+                    if (_this.loadedProject.userName != Api_3.Api.getUserName())
+                        code = null;
+                }
                 var saveProject = new Events_3.BeforeSaveProject({
-                    code: _this.loadedProject && _this.loadedProject.userName == Api_3.Api.getUserName() ? Api_3.Api.getProjectId() : null,
+                    code: code,
                     contentObject: {},
                     content: null,
                     created: null,
@@ -9833,7 +9847,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     lastModified: null,
                     public: true,
                     title: _this.title.val(),
-                    userName: Api_3.Api.getUserName(),
+                    userName: userName,
                     type: "robot"
                 }, null);
                 _this.bus.event(saveProject);
@@ -9850,7 +9864,8 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     if (!_this.loadedProject)
                         _this.loadedProject = saveProject.project;
                     _this.loadedProject.code = projectCode;
-                    _this.loadedProject.userName = Api_3.Api.getUserName();
+                    if (!adminSave)
+                        _this.loadedProject.userName = Api_3.Api.getUserName();
                     dialog.hide();
                     history.pushState(null, document.title, Api_3.Api.getProjectUrl(projectCode));
                     _this.bus.event(new Events_3.ProjectSaved());
@@ -9866,7 +9881,7 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                     dialog.hide();
                 });
             };
-            if (this.loadedProject && this.loadedProject.userName != Api_3.Api.getUserName()) {
+            if (this.loadedProject && this.loadedProject.userName != Api_3.Api.getUserName() && !adminSave) {
                 Dialog_6.Dialog.confirm("Copy?", $("<div><p>The project you want to save belongs to <a target=\"_blank\" href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>"), function () {
                     internalSave();
                 }).show();
@@ -9900,7 +9915,12 @@ define("widgets/Toolbar", ["require", "exports", "widgets/Widget", "widgets/Even
                 }
             }
             else if (event instanceof Events_3.ProjectSaved) {
-                this.by.hide();
+                if (this.loadedProject.userName != Api_3.Api.getUserName()) {
+                    this.by.html("\n\t\t\t\t\t<span>by </span><a href=\"" + Api_3.Api.getUserUrl(this.loadedProject.userName) + "\">" + this.loadedProject.userName + "</a>\n\t\t\t\t");
+                }
+                else {
+                    this.by.html("");
+                }
             }
         };
         return Toolbar;

@@ -243,7 +243,24 @@ public class Paperbots {
 		});
 	}
 
-	public String saveProject (String token, String code, String title, String description, String content, boolean isPublic, ProjectType type) {
+	public User getUserForName (String name) {
+		if (name == null) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Name must not be null.");
+		if (name.trim().length() == 0) throw new PaperbotsException(PaperbotsError.InvalidArgument, "Name must not be empty.");
+
+		final String verifiedName = name.trim();
+
+		return jdbi.withHandle(handle -> {
+			try {
+				User user = handle.createQuery("SELECT id, name FROM users WHERE name=:name").bind("name", name).mapToBean(User.class).findOnly();
+				return user;
+			} catch (IllegalStateException t) {
+				throw new PaperbotsException(PaperbotsError.UserDoesNotExist);
+			}
+		});
+	}
+
+	public String saveProject (String token, String code, String projectUserName, String title, String description, String content, boolean isPublic,
+		ProjectType type) {
 		// Fetch the user based on the token
 		User user = getUserForToken(token);
 
@@ -268,6 +285,10 @@ public class Paperbots {
 					return projectCode;
 				} else {
 					//@off
+					User projectUser = getUserForName(projectUserName);
+					if (projectUser.getId() != user.getId()) {
+						if (user.getType() != UserType.admin) throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
+					}
 					handle.createUpdate("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'").execute();
 					int rows = handle.createUpdate("update projects set title=:title, description=:description, content=:content, public=:isPublic where code=:code and userId=:userId")
 						.bind("title", Encode.forHtml(title))
@@ -275,7 +296,7 @@ public class Paperbots {
 						.bind("content", content)
 						.bind("isPublic", isPublic)
 						.bind("code", code)
-						.bind("userId", user.getId())
+						.bind("userId", projectUser.getId())
 						.execute();
 					//@on
 					if (rows == 0) throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
@@ -300,7 +321,7 @@ public class Paperbots {
 		jdbi.withHandle(handle -> {
 			try {
 				Project project = handle.createQuery("SELECT userName FROM projects WHERE code=:code").bind("code", code).mapToBean(Project.class).findOnly();
-				if (!project.getUserName().equals(user.getName())) {
+				if (user.getType() != UserType.admin && !project.getUserName().equals(user.getName())) {
 					throw new PaperbotsException(PaperbotsError.ProjectDoesNotExist);
 				}
 				files.saveThumbnail(code, decodedThumbnail);

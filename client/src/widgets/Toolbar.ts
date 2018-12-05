@@ -122,6 +122,12 @@ export class Toolbar extends Widget {
 					e.preventDefault();
 					this.saveProject()
 				}
+
+				// Admin save, CTRL + Ö
+				if (e.keyCode == 186 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+					e.preventDefault();
+					this.saveProject(true)
+				}
 			}, false);
 		}
 
@@ -350,7 +356,7 @@ export class Toolbar extends Widget {
 		Dialog.alert("Sorry!", $(/*html*/`<p>We couldn't reach the server. If the problem persists, let us know at <a href="mailto:contact@paperbots.com">contact@paperbots.io</a></p>`));
 	}
 
-	saveProject () {
+	saveProject (adminSave = false) {
 		if (!Api.getUserName()) {
 			Dialog.alert("Sorry", $(`<p>You need to be logged in to save a project.<p>`)).show();
 			return;
@@ -372,10 +378,15 @@ export class Toolbar extends Widget {
 			let dialog = new Dialog("Saving", content[0], []);
 			dialog.show();
 
+			let userName = this.loadedProject ? this.loadedProject.userName : Api.getUserName();
+			let code = this.loadedProject ? Api.getProjectId() : null;
+			if (!adminSave) {
+				if (this.loadedProject.userName != Api.getUserName()) code = null;
+			}
 			let saveProject = new BeforeSaveProject({
 				// If the project doesn't belong to us, we save a copy
 				// to our account, so code = null.
-				code: this.loadedProject && this.loadedProject.userName == Api.getUserName() ? Api.getProjectId() : null,
+				code: code,
 				contentObject: { },
 				content: null,
 				created: null,
@@ -383,7 +394,7 @@ export class Toolbar extends Widget {
 				lastModified: null,
 				public: true,
 				title: this.title.val() as string,
-				userName: Api.getUserName(),
+				userName: userName,
 				type: "robot"
 			}, null);
 
@@ -402,7 +413,7 @@ export class Toolbar extends Widget {
 			Api.saveProject(saveProject.project, (projectCode) => {
 				if (!this.loadedProject) this.loadedProject = saveProject.project;
 				this.loadedProject.code = projectCode;
-				this.loadedProject.userName = Api.getUserName();
+				if (!adminSave) this.loadedProject.userName = Api.getUserName();
 				dialog.hide();
 				history.pushState(null, document.title, Api.getProjectUrl(projectCode))
 				this.bus.event(new ProjectSaved());
@@ -420,7 +431,7 @@ export class Toolbar extends Widget {
 			});
 		}
 
-		if (this.loadedProject && this.loadedProject.userName != Api.getUserName()) {
+		if (this.loadedProject && this.loadedProject.userName != Api.getUserName() && !adminSave) {
 			Dialog.confirm("Copy?", $(`<div><p>The project you want to save belongs to <a target="_blank" href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>.</p><p>Do you want to make a copy and store it in your account?</p></div>`), () => {
 				internalSave();
 			}).show();
@@ -451,7 +462,13 @@ export class Toolbar extends Widget {
 				this.by.html("");
 			}
 		} else if (event instanceof ProjectSaved) {
-			this.by.hide();
+			if (this.loadedProject.userName != Api.getUserName()) {
+				this.by.html(/*html*/`
+					<span>by </span><a href="${Api.getUserUrl(this.loadedProject.userName)}">${this.loadedProject.userName}</a>
+				`);
+			} else {
+				this.by.html("");
+			}
 		}
 	}
 }

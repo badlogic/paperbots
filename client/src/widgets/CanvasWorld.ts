@@ -404,29 +404,33 @@ export class CanvasWorld extends Widget {
 			this.pressedKeys = {};
 		} else if (event instanceof events.BeforeSaveProject) {
 			event.project.type = "canvas";
-			try {
-				let canvas = document.createElement("canvas");
-				canvas.width = 192;
-				canvas.height = 108;
-				var sx = 0, sy = 0, sw = 0, sh = 0;
-				let ratio = canvas.height / canvas.width;
-				if (ratio * this.canvas.width <= this.canvas.height) {
-					sw = this.canvas.width;
-					sh = this.canvas.width * ratio;
-					sx = 0;
-					sy = this.canvas.height / 2 - sh / 2;
-				} else {
-					sh = this.canvas.height;
-					sw = this.canvas.height * canvas.width / canvas.height;
-					sx = this.canvas.width / 2 - sw / 2;
-					sy = 0;
-				}
-				let ctx = canvas.getContext("2d");
-				ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-				event.thumbnail = canvas.toDataURL();
-			} catch (e) {
-				console.log(e);
+			this.uploadThumbnail(event);
+		}
+	}
+
+	uploadThumbnail(event: events.BeforeSaveProject) {
+		try {
+			let canvas = document.createElement("canvas");
+			canvas.width = 192;
+			canvas.height = 108;
+			var sx = 0, sy = 0, sw = 0, sh = 0;
+			let ratio = canvas.height / canvas.width;
+			if (ratio * this.canvas.width <= this.canvas.height) {
+				sw = this.canvas.width;
+				sh = this.canvas.width * ratio;
+				sx = 0;
+				sy = this.canvas.height / 2 - sh / 2;
+			} else {
+				sh = this.canvas.height;
+				sw = this.canvas.height * canvas.width / canvas.height;
+				sx = this.canvas.width / 2 - sw / 2;
+				sy = 0;
 			}
+			let ctx = canvas.getContext("2d");
+			ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+			event.thumbnail = canvas.toDataURL();
+		} catch (e) {
+			console.log(e);
 		}
 	}
 

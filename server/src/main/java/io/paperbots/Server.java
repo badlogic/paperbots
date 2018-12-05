@@ -142,8 +142,8 @@ public class Server {
 
 		app.post("/api/saveproject", ctx -> {
 			Project request = ctx.bodyAsClass(Project.class);
-			String projectId = paperbots.saveProject(ctx.cookie("token"), request.getCode(), request.getTitle(), request.getDescription(), request.getContent(),
-				request.isPublic(), request.getType());
+			String projectId = paperbots.saveProject(ctx.cookie("token"), request.getCode(), request.getUserName(), request.getTitle(), request.getDescription(),
+				request.getContent(), request.isPublic(), request.getType());
 			ctx.json(new ProjectRequest(projectId));
 		});
 

@@ -6204,6 +6204,9 @@ define("language/Compiler", ["require", "exports", "Utils", "language/Parser", "
             this.records = new Array();
             this.recordLookup = {};
             var externals = this;
+            externals.addFunction("openUrl", [{ name: "url", type: exports.StringType }], exports.NothingType, false, function (url) {
+                window.open(url);
+            });
             externals.addFunction("alert", [{ name: "message", type: exports.StringType }], exports.NothingType, true, function (value) {
                 var asyncResult = {
                     completed: false,

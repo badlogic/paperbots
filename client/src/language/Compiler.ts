@@ -448,6 +448,15 @@ export class ExternalFunctionsTypesConstants {
 	constructor() {
 		let externals = this;
 		externals.addFunction(
+			"openUrl",
+			[{name: "url", type: StringType}],
+			NothingType,
+			false,
+			(url: string) => {
+				window.open(url);
+			}
+		)
+		externals.addFunction(
 			"alert",
 			[{name: "message", type: StringType}],
 			NothingType,

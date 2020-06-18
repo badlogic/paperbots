@@ -72,7 +72,7 @@
 		<jdbi.version>3.3.0</jdbi.version>
 		<junit.version>4.12</junit.version>
 		<flyway.version>5.2.0</flyway.version>	
-		<jackson.version>2.9.5</jackson.version>	
+		<jackson.version>2.10.0.pr1</jackson.version>	
 		<commons-validator.version>1.6</commons-validator.version>
 		<owasp-encoder.version>1.2.2</owasp-encoder.version>
 	</properties>

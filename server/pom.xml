@@ -67,7 +67,7 @@
 		<basissite.version>1.6-SNAPSHOT</basissite.version>
 		<javalin.version>2.3.0</javalin.version>
 		<slf4jsimple.version>1.7.25</slf4jsimple.version>
-		<mysql-connector.version>8.0.12</mysql-connector.version>
+		<mysql-connector.version>8.0.16</mysql-connector.version>
 		<java-mail.version>1.6.1</java-mail.version>
 		<jdbi.version>3.3.0</jdbi.version>
 		<junit.version>4.12</junit.version>

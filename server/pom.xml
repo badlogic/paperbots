@@ -70,7 +70,7 @@
 		<mysql-connector.version>8.0.12</mysql-connector.version>
 		<java-mail.version>1.6.1</java-mail.version>
 		<jdbi.version>3.3.0</jdbi.version>
-		<junit.version>4.12</junit.version>
+		<junit.version>4.13.1</junit.version>
 		<flyway.version>5.2.0</flyway.version>	
 		<jackson.version>2.9.5</jackson.version>	
 		<commons-validator.version>1.6</commons-validator.version>
